@@ -1,0 +1,16 @@
+{
+  "name": "@alloy/api-client",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "openapi-ts"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.99.0",
+    "api": "workspace:*",
+    "typescript": "^5.9.0"
+  }
+}
