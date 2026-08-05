@@ -47,7 +47,9 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv sync --locked
+      # --all-packages installs the workspace members (apps/api) too; the root
+      # project is virtual and carries only the shared dev toolchain.
+      - run: uv sync --locked --all-packages
 
       - run: uv run ruff format --check .
       - run: uv run ruff check .
@@ -75,7 +77,7 @@ jobs:
           enable-cache: true
 
       - run: pnpm install --frozen-lockfile
-      - run: uv sync --locked
+      - run: uv sync --locked --all-packages
 
       - run: pnpm --filter api run build
       - run: pnpm --filter @alloy/api-client run build
