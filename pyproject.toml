@@ -13,7 +13,7 @@ package = false
 
 [dependency-groups]
 # Shared Python toolchain — every workspace member gets these via `uv run`.
-dev = ["ruff>=0.14", "ty", "pytest>=8"]
+dev = ["ruff>=0.16.2", "ty", "pytest>=8"]
 
 [tool.ruff]
 line-length = 88
