@@ -8,6 +8,9 @@ updates:
     cooldown:
       default-days: 4
     groups:
+      # vite-plus and vite need a manual bump together. See: pnpm-workspace.yaml
+      vite-plus:
+        patterns: ["vite", "vite-plus", "@voidzero-dev/vite-plus-core"]
       dev-dependencies:
         dependency-type: development
 
