@@ -8,8 +8,10 @@ catalogMode: prefer
 catalog:
   "@types/node": ^24
   typescript: ^7.0.2
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.7
-  vite-plus: 0.2.7
+  # Bump these two together. A split pair fails at startup. Dependabot misses
+  # the coupling through the npm: alias, so update both by hand.
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.8
+  vite-plus: 0.2.8
 overrides:
   vite: "catalog:"
 peerDependencyRules:
