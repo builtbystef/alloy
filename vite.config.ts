@@ -8,7 +8,9 @@ export default defineConfig({
   fmt: {
     // Machine-written files keep their generators' formatting so the CI
     // contract job can diff regenerated output against what's committed.
-    ignorePatterns: ["**/src/generated/**", "**/openapi.json"],
+    // Agent tooling (skills, local settings) is vendored content, not project
+    // source. Formatting it is noise, and it must not fail CI if committed.
+    ignorePatterns: ["**/src/generated/**", "**/openapi.json", "**/.agents/**", "**/.claude/**"],
   },
   lint: {
     plugins: ["typescript"],
@@ -16,7 +18,14 @@ export default defineConfig({
       typeAware: true,
       typeCheck: true,
     },
-    ignorePatterns: ["**/dist/**", "**/coverage/**", "**/.next/**", "**/src/generated/**"],
+    ignorePatterns: [
+      "**/dist/**",
+      "**/coverage/**",
+      "**/.next/**",
+      "**/src/generated/**",
+      "**/.agents/**",
+      "**/.claude/**",
+    ],
     overrides: [
       {
         // `plugins` in an override replaces the base list, so repeat it.
