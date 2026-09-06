@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Mirrors pnpm's minimumReleaseAge (5760 min): don't propose versions younger than 4 days.
+    cooldown:
+      default-days: 4
+    ignore:
+      # The runtime is pinned to Node 24 (.node-version, engines). Keep the
+      # types on the same major so they describe APIs that actually exist.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # vite-plus and vite need a manual bump together. See: pnpm-workspace.yaml
+      vite-plus:
+        patterns: ["vite", "vite-plus", "@voidzero-dev/vite-plus-core"]
+      dev-dependencies:
+        dependency-type: development
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

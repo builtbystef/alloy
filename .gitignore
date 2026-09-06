@@ -1,0 +1,26 @@
+# Agent tooling
+.agents/
+.claude/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Test output
+coverage/
+
+# Tool caches
+.cache/
+.vite/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs & OS noise
+*.log
+.DS_Store
