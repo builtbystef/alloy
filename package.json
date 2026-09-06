@@ -5,16 +5,16 @@
   "author": "builtbystef",
   "type": "module",
   "scripts": {
-    "check": "pnpm check:ts && pnpm check:py",
-    "check:fix": "pnpm check:ts --fix && pnpm check:py:fix",
+    "check": "vp run check:ts && vp run check:py",
+    "check:fix": "vp run check:ts --fix && vp run check:py:fix",
     "check:ts": "vp check",
     "check:py": "uv run ruff format --check . && uv run ruff check . && uv run ty check",
     "check:py:fix": "uv run ruff check --fix . && uv run ruff format . && uv run ty check",
-    "test": "pnpm test:ts && pnpm test:py",
+    "test": "vp run test:ts && vp run test:py",
     "test:ts": "vp test",
     "test:py": "uv run pytest",
     "build": "vp run -r build",
-    "ci": "pnpm check && pnpm test && pnpm build"
+    "ci": "vp run check && vp run test && vp run -r build"
   },
   "devDependencies": {
     "@types/node": "catalog:",

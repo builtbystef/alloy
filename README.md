@@ -28,11 +28,11 @@ dependencies, formatting, linting, type checking, and tests:
 The root `package.json` scripts cover both languages:
 
 ```sh
-pnpm check          # format + lint + typecheck, both languages
-pnpm check:fix
-pnpm test           # Vitest + pytest
-pnpm build          # vp run -r build
-pnpm run ci         # everything CI runs (plain `pnpm ci` is a clean install)
+vp run check        # format + lint + typecheck, both languages
+vp run check:fix
+vp run test         # Vitest + pytest
+vp run build
+vp run ci           # everything CI runs
 ```
 
 Each language is also available on its own:
@@ -40,16 +40,16 @@ Each language is also available on its own:
 ```sh
 vp install          # install Node dependencies
 vp add / remove     # change Node dependencies
-vp check [--fix]    # oxfmt + oxlint + tsc          (pnpm check:ts)
-vp test             # Vitest                         (pnpm test:ts)
+vp check [--fix]    # oxfmt + oxlint + tsc          (vp run check:ts)
+vp test             # Vitest                         (vp run test:ts)
 vp run -r build     # dependency-aware, cached task runner
 
 uv sync --all-packages   # create .venv, install every Python project
 uv add / remove          # change Python dependencies (run inside the project)
-uv run ruff format .     # format                     (pnpm check:py)
+uv run ruff format .     # format                     (vp run check:py)
 uv run ruff check .      # lint
 uv run ty check          # type check
-uv run pytest            # tests                      (pnpm test:py)
+uv run pytest            # tests                      (vp run test:py)
 ```
 
 A pre-commit hook (`.vite-hooks/`) runs `vp check --fix` on staged files and

@@ -46,9 +46,9 @@ jobs:
           restore-keys: |
             vite-task-${{ runner.os }}-${{ runner.arch }}-
 
-      - run: pnpm check
-      - run: pnpm test
-      - run: pnpm build
+      - run: vp run check
+      - run: vp run test
+      - run: vp run -r build
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: success()
