@@ -4,20 +4,31 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    # Mirrors pnpm's minimumReleaseAge (5760 min): don't propose versions younger than 4 days.
+    # Matches minimumReleaseAge in pnpm-workspace.yaml.
     cooldown:
       default-days: 4
     ignore:
-      # The runtime is pinned to Node 24 (.node-version, engines). Keep the
-      # types on the same major so they describe APIs that actually exist.
+      # Keep @types/node on the same major as .node-version.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
     groups:
-      # vite-plus and vite need a manual bump together. See: pnpm-workspace.yaml
+      # See the catalog note in pnpm-workspace.yaml.
       vite-plus:
         patterns: ["vite", "vite-plus", "@voidzero-dev/vite-plus-core"]
       dev-dependencies:
         dependency-type: development
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    # Matches exclude-newer in pyproject.toml.
+    cooldown:
+      default-days: 4
+    groups:
+      # uv does not support dependency-type grouping, so group by pattern.
+      python-dependencies:
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /

@@ -1,0 +1,64 @@
+[project]
+name = "alloy"
+version = "0.0.0"
+requires-python = ">=3.14"
+license = "MIT"
+authors = [{ name = "builtbystef" }]
+
+[dependency-groups]
+dev = ["pytest>=9.1.1", "ruff>=0.16.5", "ty>=0.0.77"]
+
+[tool.uv]
+required-version = ">=0.12"
+# Never resolve a release younger than 4 days. Written to uv.lock as a
+# duration, so the lockfile stays reproducible as time passes.
+exclude-newer = "4 days"
+
+[tool.uv.workspace]
+# uv rejects a glob that matches a directory without a pyproject.toml, and the
+# TypeScript packages in apps/, packages/, and tools/ have none. List Python
+# projects explicitly instead.
+members = []
+
+[tool.ruff]
+line-length = 100
+# Vendored agent tooling. Excluded here, not only via .gitignore, so it never
+# fails checks if it is committed.
+extend-exclude = [".agents", ".claude"]
+# Lets isort classify imports of workspace members as first-party.
+src = [".", "apps/*/src", "packages/*/src", "tools/*/src"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "D", # docstrings are optional
+  "COM812", # conflicts with the formatter
+  "CPY", # no per-file copyright headers
+  "FIX", # TODO and FIXME comments are allowed
+  "TD", # and need no author or issue link
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = [
+  "S101", # assert
+  "PLR2004", # magic values
+  "ANN", # missing annotations
+  "INP001", # implicit namespace package
+]
+"**/test_*.py" = ["S101", "PLR2004", "ANN", "INP001"]
+"**/conftest.py" = ["INP001"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ty.src]
+exclude = ["**/.agents/**", "**/.claude/**"]
+
+[tool.pytest]
+minversion = "9.0"
+testpaths = ["apps", "packages", "tools"]
+addopts = ["-ra", "--import-mode=importlib"]
+# Unknown markers, unknown config keys, passing xfails, and duplicate
+# parametrize ids are errors.
+strict = true
+filterwarnings = ["error"]

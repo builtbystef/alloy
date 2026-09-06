@@ -3,14 +3,14 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   staged: {
     "*": "vp check --fix",
+    "*.py": ["uv run ruff check --fix", "uv run ruff format"],
   },
-  // Agent tooling (skills, local settings) is vendored content, not project
-  // source. Formatting it is noise, and it must not fail CI if committed.
+  // Vendored agent tooling. Excluded here, not only via .gitignore, so it never
+  // fails checks if it is committed.
   fmt: {
     ignorePatterns: ["**/.agents/**", "**/.claude/**"],
   },
   lint: {
-    plugins: ["typescript"],
     options: {
       typeAware: true,
       typeCheck: true,
@@ -18,9 +18,8 @@ export default defineConfig({
     ignorePatterns: ["**/dist/**", "**/coverage/**", "**/.agents/**", "**/.claude/**"],
     overrides: [
       {
-        // `plugins` in an override replaces the base list, so repeat it.
         files: ["**/*.test.ts", "**/*.spec.ts"],
-        plugins: ["typescript", "vitest"],
+        plugins: ["vitest"],
       },
     ],
   },

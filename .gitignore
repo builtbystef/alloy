@@ -4,17 +4,23 @@
 
 # Dependencies
 node_modules/
+.venv/
 
 # Build output
 dist/
 *.tsbuildinfo
+*.egg-info/
 
 # Test output
 coverage/
+.coverage
 
 # Tool caches
 .cache/
 .vite/
+__pycache__/
+.ruff_cache/
+.pytest_cache/
 
 # Environment
 .env
