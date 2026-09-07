@@ -21,7 +21,6 @@ import { useCan, useWorkspace } from "@/lib/workspace";
 
 import { useTaskMutations } from "./use-task-mutations";
 
-/** The tasks linked to one contact or company, on their detail page. */
 export function TaskList({
   timeZone,
   contact,

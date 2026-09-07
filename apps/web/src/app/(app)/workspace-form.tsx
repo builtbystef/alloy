@@ -21,7 +21,6 @@ import { errorMessage, unwrap } from "@/lib/api-error";
 import { invalidateWorkspaces } from "@/lib/queries";
 import { workspaceSchema, type WorkspaceInput } from "@/lib/schemas";
 
-/** Creates a workspace and opens it. Used on first sign-up and from the switcher. */
 export function CreateWorkspaceForm({ onCreated }: { onCreated?: () => void }) {
   const router = useRouter();
   const queryClient = useQueryClient();

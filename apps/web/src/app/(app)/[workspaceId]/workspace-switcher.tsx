@@ -21,7 +21,6 @@ import { useWorkspace } from "@/lib/workspace";
 
 import { WorkspaceDialog } from "../workspace-form";
 
-/** The logo block in the sidebar header doubles as the switcher between workspaces. */
 export function WorkspaceSwitcher({ workspaces }: { workspaces: WorkspaceRead[] }) {
   const current = useWorkspace();
   const { isMobile } = useSidebar();

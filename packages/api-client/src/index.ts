@@ -4,7 +4,6 @@ import type { paths } from "./generated/schema";
 
 export type * from "./generated/schema";
 
-/** A typed fetch client for apps/api. */
 export type ApiClient = ReturnType<typeof createClient<paths>>;
 
 /**

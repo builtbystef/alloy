@@ -57,8 +57,7 @@ def string_enum[E: StrEnum](enum_type: type[E]) -> Enum:
     )
 
 
-# Autogenerate only sees models on `Base.metadata`, so every feature's models are
-# imported here. They import `Base` from this module, which is defined above.
+# Autogenerate only sees models on `Base.metadata`. Imported last: they import `Base`.
 from alloy_api.auth import models as _auth_models  # noqa: E402, F401
 from alloy_api.crm import models as _crm_models  # noqa: E402, F401
 from alloy_api.workspaces import models as _workspace_models  # noqa: E402, F401

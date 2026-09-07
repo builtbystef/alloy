@@ -88,9 +88,6 @@ def pending_invites(workspace_id: UUID):  # noqa: ANN201 - a Select[tuple[Worksp
     )
 
 
-# Workspaces
-
-
 @router.get("/")
 async def list_workspaces(session: SessionDep, user: CurrentUserDep) -> list[WorkspaceRead]:
     """Every workspace the caller belongs to, oldest first."""
@@ -144,9 +141,6 @@ async def leave_workspace(membership: CurrentMembership, session: SessionDep) ->
     await session.delete(membership.member)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-# Members
 
 
 async def fetch_member(
@@ -208,9 +202,6 @@ async def remove_member(
     await session.delete(member)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-# Invitations
 
 
 @scoped.get("/invites")

@@ -105,9 +105,6 @@ def test_validation(alice: Actor):
     assert alice.post("/contacts/", json={**GRACE, "status": "vip"}).status_code == 422
 
 
-# Activities
-
-
 def test_activity_feed_is_newest_first(alice: Actor):
     contact = alice.post("/contacts/", json=GRACE).json()
     url = f"/contacts/{contact['id']}/activities"

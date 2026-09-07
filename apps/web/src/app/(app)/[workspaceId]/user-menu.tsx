@@ -20,7 +20,6 @@ import { browserApi } from "@/lib/api-browser";
 import { errorMessage, unwrap } from "@/lib/api-error";
 import { useWorkspace } from "@/lib/workspace";
 
-/** The account menu in the sidebar footer; opens beside the sidebar on desktop. */
 export function UserMenu({ email }: { email: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();

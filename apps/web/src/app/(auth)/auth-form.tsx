@@ -66,7 +66,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     validators: { onDynamic: authFormSchema(mode) },
     onSubmit: async ({ value }) => {
       setServerError(null);
-      // Failures are shown through onError; nothing else to do here.
+      // Failures are shown through onError.
       await mutation.mutateAsync({ email: value.email, password: value.password }).catch(() => {});
     },
   });

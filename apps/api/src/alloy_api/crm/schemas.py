@@ -31,9 +31,6 @@ class ReadModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Companies
-
-
 class CompanyCreate(BaseModel):
     name: Name
     website: Website | None = None
@@ -61,9 +58,6 @@ class CompanyRead(CompanyRef):
     notes: str | None
     created_at: datetime
     updated_at: datetime
-
-
-# Contacts
 
 
 class ContactCreate(BaseModel):
@@ -102,9 +96,6 @@ class ContactRead(ContactRef):
     updated_at: datetime
 
 
-# Activities
-
-
 class ActivityCreate(BaseModel):
     type: ActivityType
     notes: str | None = None
@@ -116,9 +107,6 @@ class ActivityRead(ReadModel):
     type: ActivityType
     notes: str | None
     created_at: datetime
-
-
-# Tasks
 
 
 class TaskCreate(BaseModel):
@@ -149,9 +137,6 @@ class TaskRead(ReadModel):
     company: CompanyRef | None
     created_at: datetime
     updated_at: datetime
-
-
-# Dashboard
 
 
 class Dashboard(BaseModel):

@@ -72,8 +72,6 @@ const optionalDateTime = (timeZone: string) =>
       .nullable(),
   );
 
-// Auth
-
 const password = z
   .string()
   .min(8, "Password must be at least 8 characters")
@@ -110,8 +108,6 @@ export const passwordChangeSchema = z
     path: ["confirm"],
   });
 
-// Workspaces
-
 export const workspaceSchema = z.object({
   name: requiredText("Name", 100),
 });
@@ -120,8 +116,6 @@ export const inviteSchema = z.object({
   email: z.email("Enter a valid email address"),
   role: z.enum(workspaceRoles),
 });
-
-// CRM
 
 export const companySchema = z.object({
   name: requiredText("Name", 200),

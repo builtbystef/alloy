@@ -1,14 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Cache Components: routes prerender a static shell, `use cache` opts data
-  // into the cache, and uncached reads stream behind <Suspense>.
+  // Routes prerender a static shell; uncached reads stream behind <Suspense>.
   cacheComponents: true,
-  // Type-checks <Link href> and router.push() against the real routes.
   typedRoutes: true,
-  // React Compiler (babel-plugin-react-compiler): memoizes components and
-  // values automatically, so manual useMemo/useCallback is only for cases
-  // that need precise control. Next.js runs it only on files with JSX or hooks.
+  // Memoizes automatically; manual useMemo/useCallback only where precise control is needed.
   reactCompiler: true,
   // The FastAPI collection routes end in a slash (`/contacts/`). Without this,
   // Next.js would 308 `/api/contacts/` to `/api/contacts` before the proxy

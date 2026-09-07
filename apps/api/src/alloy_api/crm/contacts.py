@@ -107,9 +107,6 @@ async def delete_contact(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-# Activity feed
-
-
 @router.get("/{contact_id}/activities")
 async def list_activities(
     contact_id: UUID, session: SessionDep, membership: CanReadCrm, page: Annotated[Page, Query()]

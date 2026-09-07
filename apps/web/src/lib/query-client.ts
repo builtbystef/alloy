@@ -8,8 +8,7 @@ function makeQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        // Data prefetched on the server is not refetched the moment the
-        // client mounts.
+        // So server-prefetched data is not refetched on mount.
         staleTime: 60 * 1000,
       },
       dehydrate: {

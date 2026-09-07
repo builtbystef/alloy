@@ -46,7 +46,6 @@ export class ApiError extends Error {
   }
 }
 
-/** `data` from a successful result; throws `ApiError` otherwise. */
 export function unwrap<T>(result: ApiResult<T>): T {
   if (result.response.ok) {
     return result.data as T;
@@ -54,7 +53,6 @@ export function unwrap<T>(result: ApiResult<T>): T {
   throw ApiError.fromResult(result);
 }
 
-/** A message for the user from anything a query or mutation can reject with. */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   if (error instanceof TypeError) return "The API could not be reached.";

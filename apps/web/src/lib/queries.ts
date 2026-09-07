@@ -71,8 +71,6 @@ export const taskKeys = {
   list: (ws: string, filters: TaskListFilters) => [...taskKeys.all, ws, "list", filters] as const,
 };
 
-// Workspaces
-
 export function workspaceListQuery(api: ApiClient) {
   return queryOptions({
     queryKey: workspaceKeys.list(),
@@ -103,8 +101,6 @@ export function inviteListQuery(api: ApiClient, ws: string) {
       ),
   });
 }
-
-// CRM
 
 export function contactListQuery(api: ApiClient, ws: string, filters: ContactListFilters) {
   return queryOptions({

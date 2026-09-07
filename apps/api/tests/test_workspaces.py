@@ -73,9 +73,6 @@ def test_validation(client: TestClient, alice: Actor):
     )
 
 
-# Members and roles
-
-
 def member_id(host: Actor, email: str) -> str:
     return next(m["id"] for m in host.get("/members").json() if m["email"] == email)
 

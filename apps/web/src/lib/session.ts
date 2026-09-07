@@ -20,7 +20,7 @@ export async function getSessionApi(): Promise<ApiClient> {
   return createApi(globalThis.fetch, token ? { cookie: `${SESSION_COOKIE}=${token}` } : undefined);
 }
 
-/** The logged-in user, or null. Deduplicated per request across layout and page. */
+/** Deduplicated per request, so the layout and the page share one call. */
 export const getCurrentUser = cache(async (): Promise<UserRead | null> => {
   const api = await getSessionApi();
   const result = await api.GET("/auth/me");
@@ -29,14 +29,12 @@ export const getCurrentUser = cache(async (): Promise<UserRead | null> => {
   throw ApiError.fromResult(result);
 });
 
-/** The logged-in user; sends anyone else to the login page. */
 export async function requireUser(): Promise<UserRead> {
   const user = await getCurrentUser();
   if (user === null) redirect("/login");
   return user;
 }
 
-/** Every workspace the logged-in user belongs to. */
 export async function listWorkspaces(): Promise<WorkspaceRead[]> {
   await requireUser();
   const api = await getSessionApi();
@@ -45,11 +43,7 @@ export async function listWorkspaces(): Promise<WorkspaceRead[]> {
   throw ApiError.fromResult(result);
 }
 
-/**
- * The workspace from the URL, with the caller's role and permissions, or null
- * when they are not a member (the API answers 404 either way). Deduplicated
- * per request, so the layout and the page share one call.
- */
+/** Null for non-members too: the API answers 404 either way. Deduplicated per request. */
 export const getWorkspace = cache(async (workspaceId: string): Promise<WorkspaceRead | null> => {
   const api = await getSessionApi();
   const result = await api.GET("/workspaces/{workspace_id}", {
@@ -61,7 +55,6 @@ export const getWorkspace = cache(async (workspaceId: string): Promise<Workspace
   throw ApiError.fromResult(result);
 });
 
-/** The workspace from the URL; logged-out users go to `/login`, non-members get a 404. */
 export async function requireWorkspace(workspaceId: string): Promise<WorkspaceRead> {
   const workspace = await getWorkspace(workspaceId);
   if (workspace === null) notFound();
