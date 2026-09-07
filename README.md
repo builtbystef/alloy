@@ -350,21 +350,33 @@ including `vp check` and `vp pack`, stays on TypeScript 7.
 ## apps/web
 
 A [Next.js](https://nextjs.org/docs) 16 app (App Router, Turbopack, TypeScript),
-package `@alloy/web`:
+package `@alloy/web`: the front end for the Tiny CRM, with login, a dashboard,
+and contacts, companies, and tasks.
 
 ```text
 apps/web/
-├── package.json              # next, react, react-dom; @alloy/api-client; tailwindcss; @base-ui/react, cn, lucide-react
-├── next.config.ts            # cacheComponents, typedRoutes, reactCompiler
+├── package.json              # next, react; @alloy/api-client; zod; @tanstack/react-{query,form,table}; tailwindcss; @base-ui/react, lucide-react, sonner
+├── next.config.ts            # cacheComponents, typedRoutes, reactCompiler, skipTrailingSlashRedirect
 ├── postcss.config.mjs        # @tailwindcss/postcss
 ├── components.json           # shadcn/ui config: base-nova style, zinc, src/app/globals.css
 ├── tsconfig.json             # tsconfig/browser.json + jsx, paths (@/*), next plugin
 ├── .env.example              # API_URL
 └── src/
-    ├── app/                  # routes: layout.tsx, page.tsx, globals.css (Tailwind + theme tokens)
-    │   └── api-status.tsx    # awaits api.GET("/health/") behind <Suspense>
-    ├── components/ui/        # shadcn/ui components, added with `pnpm dlx shadcn@latest add`
-    └── lib/api.ts            # createApiClient({ baseUrl: process.env.API_URL })
+    ├── proxy.ts              # redirects on the session cookie's presence (formerly middleware)
+    ├── app/
+    │   ├── layout.tsx, providers.tsx   # font, QueryClientProvider, next-themes, toasts
+    │   ├── api/[...path]/route.ts      # forwards /api/* to the FastAPI service with the cookie
+    │   ├── (auth)/login, signup        # one shared client form
+    │   └── (app)/                      # sidebar layout with nav + user menu; dashboard, contacts, companies, tasks, settings
+    ├── components/
+    │   ├── ui/               # shadcn/ui components, added with `pnpm dlx shadcn@latest add`
+    │   ├── form/             # TanStack Form hook bound to shadcn Field components
+    │   └── data-table.tsx    # TanStack Table v9 with sorting and paging
+    └── lib/
+        ├── api.ts, session.ts, api-browser.ts   # the typed client, server-side and browser-side
+        ├── queries.ts        # TanStack Query definitions shared by both sides
+        ├── schemas.ts        # Zod schemas for every form and URL
+        └── dates.ts, time-zone.ts               # the user's zone, for "today"
 ```
 
 ```sh
@@ -374,17 +386,18 @@ cd apps/web && vp run start   # production server
 cd apps/web && vp run typegen # regenerate next-env.d.ts and .next/types without a build
 ```
 
-`src/lib/api.ts` builds the `@alloy/api-client` instance from `API_URL`
-(default `http://127.0.0.1:8000`). It is a server-only variable, no
-`NEXT_PUBLIC_` prefix, so the browser never calls the API directly and one build
-can target a different API per environment. Copy `.env.example` to `.env.local`
-to change it; `.env*` is gitignored except the example.
+The browser only talks to Next.js. `API_URL` is read on the server (no
+`NEXT_PUBLIC_` prefix), and `src/app/api/[...path]/route.ts` forwards `/api/*`
+to it with the session cookie, so one build can target a different API per
+environment and no CORS setup is needed. See `apps/web/README.md` for how the
+pages split between Server and Client Components, how data flows through
+TanStack Query, and how forms and tables are built.
 
 Choices worth knowing, all from the Next.js 16 docs:
 
 - `cacheComponents: true`: the current caching model. Routes prerender a static
   shell; uncached reads go behind `<Suspense>` and stream, or opt in with
-  `"use cache"`. `next build` reports `/` as Partial Prerender.
+  `"use cache"`. `next build` reports every route as Partial Prerender.
 - `typedRoutes: true`: `<Link href>` and `router.push()` are checked against the
   routes generated in `.next/types`.
 - `reactCompiler: true`: the React Compiler memoizes components and values
@@ -393,6 +406,9 @@ Choices worth knowing, all from the Next.js 16 docs:
   `babel-plugin-react-compiler` on files with JSX or hooks only. The
   Babel-free `experimental.turbopackRustReactCompiler` exists but is not yet
   recommended for production.
+- `skipTrailingSlashRedirect: true`: the FastAPI collection routes end in a
+  slash (`/contacts/`), and Next.js would otherwise 308 `/api/contacts/` to
+  `/api/contacts` before the proxy route could forward it.
 - Tailwind CSS v4 through `@tailwindcss/postcss`, configured in CSS only, and
   shadcn/ui (`base-nova` style on Base UI primitives) initialized from a preset.
   See `apps/web/README.md` for the theme layout and how to add components.

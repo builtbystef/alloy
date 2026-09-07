@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   // values automatically, so manual useMemo/useCallback is only for cases
   // that need precise control. Next.js runs it only on files with JSX or hooks.
   reactCompiler: true,
+  // The FastAPI collection routes end in a slash (`/contacts/`). Without this,
+  // Next.js would 308 `/api/contacts/` to `/api/contacts` before the proxy
+  // route handler in src/app/api/[...path] could forward it.
+  skipTrailingSlashRedirect: true,
 };
 
 export default nextConfig;

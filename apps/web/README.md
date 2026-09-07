@@ -9,22 +9,41 @@ vp run dev:api      # the API it talks to, in another terminal
 
 ```text
 apps/web/
-├── next.config.ts        # cacheComponents, typedRoutes, reactCompiler
+├── next.config.ts        # cacheComponents, typedRoutes, reactCompiler, skipTrailingSlashRedirect
 ├── postcss.config.mjs    # @tailwindcss/postcss
 ├── components.json       # shadcn/ui: style, base color, aliases
 ├── tsconfig.json         # extends tsconfig/browser.json with what Next.js needs
 ├── .env.example          # API_URL, copy to .env.local
 └── src/
+    ├── proxy.ts          # no cookie → /login; cookie on /login → /
     ├── app/
-    │   ├── layout.tsx    # root layout, loads the Geist font
-    │   ├── page.tsx      # /, static shell with <ApiStatus> behind <Suspense>
-    │   ├── api-status.tsx
-    │   └── globals.css   # Tailwind import, shadcn theme tokens
-    ├── components/ui/    # shadcn/ui components, owned by this repo
+    │   ├── layout.tsx    # root layout: Geist font, <Providers>
+    │   ├── providers.tsx # QueryClientProvider, next-themes, sonner <Toaster>
+    │   ├── globals.css   # Tailwind import, shadcn theme tokens
+    │   ├── api/[...path]/route.ts   # the proxy to the API
+    │   ├── (auth)/       # centered layout; login and signup share auth-form.tsx
+    │   └── (app)/        # app layout (shadcn sidebar with nav + user menu, time-zone sync), error.tsx, not-found.tsx
+    │       ├── page.tsx              # dashboard (Server Component only)
+    │       ├── contacts/             # page, contacts-table, contact-columns, contact-form, [id]/ (detail, activity feed), new/, [id]/edit/
+    │       ├── companies/            # same shape as contacts
+    │       ├── tasks/                # page, tasks-table, task-dialog + task-form, task-list (used on detail pages)
+    │       └── settings/             # change password, log out everywhere
+    ├── components/
+    │   ├── ui/           # shadcn/ui components, owned by this repo
+    │   ├── form/         # useAppForm + TextField, TextareaField, SelectField, DateTimeField, SubmitButton
+    │   ├── data-table.tsx, confirm-dialog.tsx, page-header.tsx, status-badge.tsx, skeletons.tsx
+    │   └── time-zone-sync.tsx
     └── lib/
-        ├── api.ts        # the @alloy/api-client instance, baseUrl from API_URL
-        ├── api.test.ts
-        └── utils.ts      # cn(), re-exported from the cn package
+        ├── api.ts        # createApi(): the @alloy/api-client instance, baseUrl from API_URL
+        ├── session.ts    # server-only: getSessionApi(), getCurrentUser(), requireUser()
+        ├── api-browser.ts# browserApi: the same client pointed at /api
+        ├── api-error.ts  # ApiError, unwrap(), errorMessage()
+        ├── queries.ts    # queryOptions() factories and keys; invalidateCrm()
+        ├── query-client.ts
+        ├── schemas.ts    # Zod: form schemas (input → request body) and URL search params
+        ├── dates.ts      # ISO ⇄ datetime-local in a zone; relative days
+        ├── time-zone.ts  # server-only: the zone from the `tz` cookie
+        └── labels.ts, use-url-filters.ts, use-debounced-value.ts, utils.ts
 ```
 
 ## Styling: Tailwind CSS and shadcn/ui
@@ -62,28 +81,101 @@ this) rather than relying on `prefers-color-scheme`.
 
 ## Calling the API
 
-`src/lib/api.ts` exports `api`, a client from `@alloy/api-client` typed against
-the FastAPI OpenAPI schema. Use it in Server Components, Route Handlers, and
-Server Actions:
+The browser never sees `API_URL`. Every request goes through
+`src/app/api/[...path]/route.ts`, a Route Handler that forwards the method,
+path, query, body, `Cookie`, and `Set-Cookie` between the browser and the API.
+The API's login response sets its `__Host-session` cookie for the Next.js
+origin; the browser sends it back on the next `/api/...` call by itself, and
+Server Components read it with `cookies()` and forward it through
+`getSessionApi()`. Because the FastAPI collection routes end in a slash,
+`skipTrailingSlashRedirect` is on so `/api/contacts/` is not redirected first.
+
+Two clients, one set of types from `@alloy/api-client`:
 
 ```tsx
-import { api } from "@/lib/api";
+// Server Components: the caller's session, read from cookies()
+const api = await getSessionApi();
+const user = await requireUser(); // redirects to /login on 401
 
-async function ApiStatus() {
-  const { data } = await api.GET("/health/"); // data: { status: string } | undefined
-  return <p>{data?.status}</p>;
-}
+// Client Components: same-origin, cookie attached by the browser
+import { browserApi } from "@/lib/api-browser";
 ```
 
-`API_URL` is read on the server and not prefixed `NEXT_PUBLIC_`, so it is never
-inlined into the browser bundle; one build can be pointed at different APIs per
-environment. The browser only talks to Next.js.
+`unwrap()` turns a non-2xx result into an `ApiError` with the API's `detail`
+as the message and, for a 422, per-field messages in `fields`.
 
-With `cacheComponents` on, every route prerenders a static shell. A component
-that reads uncached data (like `ApiStatus`) must sit inside `<Suspense>` so its
-fallback ships in the shell and the data streams in at request time, or use the
-`"use cache"` directive with a `cacheLife` to be included in the shell. The dev
-overlay flags a component that does neither.
+### Server Components first
+
+Pages are Server Components. The static parts (headers, buttons, layout) go
+into the prerendered shell; anything that reads the session cookie or the URL
+sits behind `<Suspense>` and streams, as Cache Components requires. Where the
+page is read-only, that is the whole story: the dashboard fetches with the
+session client and renders, no client bundle involved.
+
+Where the page mutates or filters, a Client Component takes over from the
+prefetched data, following the TanStack Query "advanced SSR" guide:
+
+```tsx
+// Server Component: prefetch into a per-request QueryClient, hand over the cache
+const queryClient = getQueryClient();
+await queryClient.prefetchQuery(contactListQuery(api, filters));
+return (
+  <HydrationBoundary state={dehydrate(queryClient)}>
+    <ContactsTable initialFilters={filters} timeZone={timeZone} />
+  </HydrationBoundary>
+);
+
+// Client Component: same key, same data, no second request
+const { data } = useSuspenseQuery(contactListQuery(browserApi, filters));
+```
+
+Query definitions in `src/lib/queries.ts` take the client as a parameter so
+both sides build identical keys. Mutations use `useMutation` and call
+`invalidateCrm()`, which drops every CRM query: the entities reference each
+other (a task embeds its contact, completing one logs an activity), so a
+broad invalidation is simpler than encoding those rules.
+
+List filters live in the URL. A filter change updates the address bar with
+`history.replaceState` (no server round trip) and the previous rows stay
+visible through `useDeferredValue` while the next query loads; a real
+navigation (back/forward) remounts the table with the new URL, and the server
+prefetches whatever the URL says.
+
+### Forms: Zod + TanStack Form + shadcn Field
+
+`src/components/form` binds TanStack Form to the shadcn `Field` components
+with `createFormHook`, so a form is:
+
+```tsx
+const form = useAppForm({
+  defaultValues: { name: "", email: "" },
+  validationLogic: revalidateLogic(),        // quiet until submit, then live
+  validators: { onDynamic: contactSchema },  // a Zod schema, no adapter
+  onSubmit: async ({ value }) => mutation.mutateAsync(contactSchema.parse(value)),
+});
+
+<form.AppField name="email">{(field) => <field.TextField label="Email" type="email" />}</form.AppField>
+<form.AppForm><form.SubmitButton>Save</form.SubmitButton></form.AppForm>
+```
+
+The Zod schemas in `src/lib/schemas.ts` take what inputs hold (strings) and
+produce the API's request body: `""` becomes `null`, which a PATCH treats as
+"clear this field"; datetime-local values become ISO instants in the user's
+zone. Errors from the API land in a form-level `<FormError>`.
+
+### Tables: TanStack Table v9
+
+`src/components/data-table.tsx` registers only sorting and pagination with
+`tableFeatures()` (v9 is tree-shakeable) and exports a column helper typed
+with those features. Sorting and paging happen on the client; the API caps a
+page at 500 rows, plenty for the demo.
+
+### Time zones
+
+"Today" depends on where the user is. `<TimeZoneSync>` writes the browser's
+zone to a `tz` cookie on first visit and refreshes; the server reads it for the
+API's `tz` parameter and passes it to every component that formats a date, so
+server and client render the same text. Until the cookie exists, UTC.
 
 ## React Compiler
 
