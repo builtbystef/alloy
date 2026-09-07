@@ -11,6 +11,7 @@ export default defineConfig({
     ignorePatterns: [
       "**/.agents/**",
       "**/.claude/**",
+      "**/.next/**",
       "**/src/generated/**",
       "packages/api-client/openapi.json",
     ],
@@ -22,6 +23,7 @@ export default defineConfig({
     },
     ignorePatterns: [
       "**/dist/**",
+      "**/.next/**",
       "**/coverage/**",
       "**/.agents/**",
       "**/.claude/**",

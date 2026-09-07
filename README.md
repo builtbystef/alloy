@@ -33,6 +33,8 @@ vp run check:fix
 vp run test         # Vitest + pytest
 vp run build
 vp run ci           # everything CI runs
+vp run dev:api      # FastAPI with reload, http://127.0.0.1:8000
+vp run dev:web      # Next.js with Turbopack, http://localhost:3000
 ```
 
 Each language is also available on its own:
@@ -172,8 +174,14 @@ vp run check:generated    # fail if openapi.json or schema.ts is stale; CI runs 
 ```
 
 Both generated files are committed so consumers never need Python installed
-and schema changes show up in review. `scripts/generate.ts` runs under Node's
-native type stripping, calls `uv run --package alloy-api python -m
+and schema changes show up in review.
+
+`exports` points at `src/index.ts`, so `apps/web` (whose bundler compiles
+workspace packages) consumes the source and `next dev` needs no build step;
+`publishConfig.exports` swaps in `dist/` if the package is ever published, and
+`vp pack` still builds it.
+
+`scripts/generate.ts` runs under Node's native type stripping, calls `uv run --package alloy-api python -m
 alloy_api.openapi`, and feeds the result to the openapi-typescript Node API
 with `rootTypes` on, so every component schema is also a top-level alias
 (`Health`, not only `components["schemas"]["Health"]`).
@@ -183,6 +191,60 @@ the TypeScript 7 package (the Go port) no longer ships. The package therefore
 declares its own `typescript: ^5.9` dev dependency instead of the catalog, and
 pnpm resolves openapi-typescript's peer from it; the rest of the workspace,
 including `vp check` and `vp pack`, stays on TypeScript 7.
+
+## apps/web
+
+A [Next.js](https://nextjs.org/docs) 16 app (App Router, Turbopack, TypeScript),
+package `@alloy/web`:
+
+```text
+apps/web/
+├── package.json              # next, react, react-dom; @alloy/api-client; babel-plugin-react-compiler
+├── next.config.ts            # cacheComponents, typedRoutes, reactCompiler
+├── tsconfig.json             # tsconfig/browser.json + jsx, paths (@/*), next plugin
+├── .env.example              # API_URL
+└── src/
+    ├── app/                  # routes: layout.tsx, page.tsx, globals.css
+    │   └── api-status.tsx    # awaits api.GET("/health/") behind <Suspense>
+    └── lib/api.ts            # createApiClient({ baseUrl: process.env.API_URL })
+```
+
+```sh
+vp run dev:web                # next dev, http://localhost:3000
+cd apps/web && vp run build   # next build (part of vp run -r build)
+cd apps/web && vp run start   # production server
+cd apps/web && vp run typegen # regenerate next-env.d.ts and .next/types without a build
+```
+
+`src/lib/api.ts` builds the `@alloy/api-client` instance from `API_URL`
+(default `http://127.0.0.1:8000`). It is a server-only variable, no
+`NEXT_PUBLIC_` prefix, so the browser never calls the API directly and one build
+can target a different API per environment. Copy `.env.example` to `.env.local`
+to change it; `.env*` is gitignored except the example.
+
+Choices worth knowing, all from the Next.js 16 docs:
+
+- `cacheComponents: true`: the current caching model. Routes prerender a static
+  shell; uncached reads go behind `<Suspense>` and stream, or opt in with
+  `"use cache"`. `next build` reports `/` as Partial Prerender.
+- `typedRoutes: true`: `<Link href>` and `router.push()` are checked against the
+  routes generated in `.next/types`.
+- `reactCompiler: true`: the React Compiler memoizes components and values
+  automatically, so write plain React and reach for `useMemo`/`useCallback`
+  only for precise control, as the React docs advise. It runs as
+  `babel-plugin-react-compiler` on files with JSX or hooks only. The
+  Babel-free `experimental.turbopackRustReactCompiler` exists but is not yet
+  recommended for production.
+- No ESLint. Next 16 no longer lints during `next build`; oxlint via `vp check`
+  covers the app like every other package.
+- TypeScript 7 from the catalog: `next build` runs the project-local `tsc` CLI
+  by default, which is what makes TS 7 work.
+- `next-env.d.ts`, `.next/`, and `out/` are gitignored. `tsconfig.json` includes
+  the generated types when present, and `vp check` passes on a fresh clone
+  without them.
+- The `vp run` task cache never hits for `@alloy/web#build` because `next build`
+  writes into the project directory; the API client and other packages still
+  cache.
 
 ## Supply-chain policy
 

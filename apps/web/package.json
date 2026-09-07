@@ -1,0 +1,28 @@
+{
+  "name": "@alloy/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Next.js front end for apps/api",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typegen": "next typegen"
+  },
+  "dependencies": {
+    "@alloy/api-client": "workspace:*",
+    "next": "^16.3.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
