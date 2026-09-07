@@ -8,14 +8,25 @@ export default defineConfig({
   // Vendored agent tooling. Excluded here, not only via .gitignore, so it never
   // fails checks if it is committed.
   fmt: {
-    ignorePatterns: ["**/.agents/**", "**/.claude/**"],
+    ignorePatterns: [
+      "**/.agents/**",
+      "**/.claude/**",
+      "**/src/generated/**",
+      "packages/api-client/openapi.json",
+    ],
   },
   lint: {
     options: {
       typeAware: true,
       typeCheck: true,
     },
-    ignorePatterns: ["**/dist/**", "**/coverage/**", "**/.agents/**", "**/.claude/**"],
+    ignorePatterns: [
+      "**/dist/**",
+      "**/coverage/**",
+      "**/.agents/**",
+      "**/.claude/**",
+      "**/src/generated/**",
+    ],
     overrides: [
       {
         files: ["**/*.test.ts", "**/*.spec.ts"],

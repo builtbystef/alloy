@@ -9,13 +9,15 @@
     "check:fix": "vp run check:ts --fix && vp run check:py:fix",
     "check:ts": "vp check",
     "check:py": "uv run ruff format --check . && uv run ruff check . && uv run ty check",
+    "check:generated": "vp run -r generate:check",
+    "generate": "vp run -r generate",
     "check:py:fix": "uv run ruff check --fix . && uv run ruff format . && uv run ty check",
     "test": "vp run test:ts && vp run test:py",
     "test:ts": "vp test",
     "test:py": "uv run pytest",
     "build": "vp run -r build",
     "dev:api": "cd apps/api && uv run fastapi dev",
-    "ci": "vp run check && vp run test && vp run -r build"
+    "ci": "vp run check && vp run check:generated && vp run test && vp run -r build"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -47,6 +47,8 @@ jobs:
             vite-task-${{ runner.os }}-${{ runner.arch }}-
 
       - run: vp run check
+      # Committed OpenAPI schema and generated client types match apps/api.
+      - run: vp run check:generated
       - run: vp run test
       - run: vp run -r build
 

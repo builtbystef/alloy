@@ -1,0 +1,29 @@
+{
+  "name": "@alloy/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed fetch client for apps/api, generated from its OpenAPI schema",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "vp pack"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3",
+    "vite-plus": "catalog:"
+  }
+}
