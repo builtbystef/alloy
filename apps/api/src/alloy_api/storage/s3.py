@@ -140,11 +140,20 @@ class S3ObjectStore:
                     Delete={"Objects": keys[start : start + DELETE_BATCH], "Quiet": True},
                 )
 
-    async def upload_url(self, key: str, content_type: str, expires_in: timedelta) -> str:
-        # `ContentType` is part of the signature: a PUT with another type is refused.
+    async def upload_url(
+        self, key: str, content_type: str, size: int, expires_in: timedelta
+    ) -> str:
+        # `ContentType` and `ContentLength` become signed headers: a PUT with another
+        # type or another body size fails the signature check before anything is
+        # written.
         return await self.signer.generate_presigned_url(
             "put_object",
-            Params={"Bucket": self.bucket, "Key": key, "ContentType": content_type},
+            Params={
+                "Bucket": self.bucket,
+                "Key": key,
+                "ContentType": content_type,
+                "ContentLength": size,
+            },
             ExpiresIn=int(expires_in.total_seconds()),
         )
 

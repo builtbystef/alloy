@@ -342,8 +342,9 @@ presigned-URL tests that need the real server.
 Bytes never pass through the API. The browser uploads with a presigned `PUT`
 and downloads through a presigned `GET`, both signed by the store for
 `ALLOY_STORAGE_URL_TTL` (default 15 minutes). A presigned `PUT` pins the
-`Content-Type`, so storage refuses a body of another type, and the object key
-never comes from the client. Keys are `workspaces/{id}/attachments/{id}`, so
+`Content-Type` and the `Content-Length` the client declared, so storage refuses
+a body of another type or size before writing it, and the object key never
+comes from the client. Keys are `workspaces/{id}/attachments/{id}`, so
 deleting a workspace clears its files with one `delete_prefix`. The `storage-init`
 Compose service creates the bucket and sets its CORS rule for
 `http://localhost:3000`; a hosted bucket needs the same rule for the web

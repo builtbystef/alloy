@@ -800,7 +800,8 @@ export interface components {
         /**
          * AttachmentUpload
          * @description Step one of an upload: `PUT` the file to `upload_url` with the `Content-Type`
-         *     given at creation, then `POST .../attachments/{id}/complete`.
+         *     and `size` given at creation (the URL accepts nothing else), then
+         *     `POST .../attachments/{id}/complete`.
          */
         AttachmentUpload: {
             attachment: components["schemas"]["AttachmentRead"];

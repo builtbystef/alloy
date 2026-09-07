@@ -37,8 +37,13 @@ class MemoryObjectStore:
         for key in [k for k in self.objects if k.startswith(prefix)]:
             del self.objects[key]
 
-    async def upload_url(self, key: str, content_type: str, expires_in: timedelta) -> str:
-        return f"memory://{key}?put&content_type={content_type}&expires={expires_in.seconds}"
+    async def upload_url(
+        self, key: str, content_type: str, size: int, expires_in: timedelta
+    ) -> str:
+        return (
+            f"memory://{key}?put&content_type={content_type}&size={size}"
+            f"&expires={expires_in.seconds}"
+        )
 
     async def download_url(self, key: str, filename: str, expires_in: timedelta) -> str:
         return f"memory://{key}?get&filename={filename}&expires={expires_in.seconds}"

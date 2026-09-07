@@ -45,8 +45,12 @@ class ObjectStore(Protocol):
         """Delete every object whose key starts with `prefix`."""
         ...
 
-    async def upload_url(self, key: str, content_type: str, expires_in: timedelta) -> str:
-        """A URL that accepts one `PUT` of a body with exactly this `Content-Type`."""
+    async def upload_url(
+        self, key: str, content_type: str, size: int, expires_in: timedelta
+    ) -> str:
+        """A URL that accepts one `PUT` of a body with exactly this `Content-Type` and
+        exactly `size` bytes. The store refuses anything else, so a client cannot
+        upload more than it declared."""
         ...
 
     async def download_url(self, key: str, filename: str, expires_in: timedelta) -> str:

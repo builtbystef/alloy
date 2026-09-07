@@ -25,7 +25,7 @@ def upload(actor: Actor, store: MemoryObjectStore, path: str, body: dict, data: 
     assert ticket["attachment"]["uploaded_at"] is None
     assert ticket["expires_at"]
     key = store.key_of(ticket["upload_url"])
-    assert f"?put&content_type={body['content_type']}" in ticket["upload_url"]
+    assert f"?put&content_type={body['content_type']}&size={body['size']}" in ticket["upload_url"]
     store.objects[key] = (data, body["content_type"])
     completed = actor.post(f"/attachments/{ticket['attachment']['id']}/complete")
     assert completed.status_code == 200, completed.text

@@ -92,14 +92,24 @@ async def test_delete_prefix_leaves_neighbours(store: ObjectStore, prefix: str):
         await store.delete_prefix(prefix)
 
 
-async def test_upload_url_accepts_one_put_of_the_declared_type(s3: S3ObjectStore, prefix: str):
+async def test_upload_url_accepts_one_put_of_the_declared_type_and_size(
+    s3: S3ObjectStore, prefix: str
+):
     key = prefix + "upload.txt"
-    url = await s3.upload_url(key, "text/plain", TTL)
+    url = await s3.upload_url(key, "text/plain", 5, TTL)
+    text = {"Content-Type": "text/plain"}
     try:
         async with httpx.AsyncClient() as http:
-            wrong_type = await http.put(url, content=b"x", headers={"Content-Type": "image/png"})
+            wrong_type = await http.put(
+                url, content=b"hello", headers={"Content-Type": "image/png"}
+            )
             assert wrong_type.status_code == 403
-            ok = await http.put(url, content=b"hello", headers={"Content-Type": "text/plain"})
+            too_big = await http.put(url, content=b"hello!", headers=text)
+            assert too_big.status_code == 403
+            too_small = await http.put(url, content=b"hell", headers=text)
+            assert too_small.status_code == 403
+            assert await s3.head(key) is None
+            ok = await http.put(url, content=b"hello", headers=text)
             assert ok.status_code == 200, ok.text
         info = await s3.head(key)
         assert info is not None

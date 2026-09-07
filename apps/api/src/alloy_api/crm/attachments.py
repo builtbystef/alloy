@@ -62,7 +62,10 @@ class AttachmentStorage:
 
     async def upload_url(self, attachment: Attachment) -> str:
         return await self.store.upload_url(
-            attachment.key, attachment.content_type, self.settings.storage_url_ttl
+            attachment.key,
+            attachment.content_type,
+            attachment.size,
+            self.settings.storage_url_ttl,
         )
 
     async def download_url(self, attachment: Attachment) -> str:
