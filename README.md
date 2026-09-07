@@ -114,7 +114,7 @@ A [FastAPI](https://fastapi.tiangolo.com) service, package `alloy_api`:
 
 ```text
 apps/api/
-├── pyproject.toml            # fastapi, pydantic-settings, sqlalchemy, psycopg, alembic; [tool.alembic]
+├── pyproject.toml            # fastapi, pydantic-settings, sqlalchemy, psycopg, alembic, pwdlib; [tool.alembic]
 ├── compose.yaml              # local PostgreSQL 18
 ├── alembic.ini               # Alembic logging only
 ├── alembic/                  # env.py (async, URL from Settings), script.py.mako, versions/
@@ -123,8 +123,10 @@ apps/api/
 │   ├── main.py               # app, lifespan (database engine), CORS, router includes
 │   ├── config.py             # Settings (pydantic-settings) + get_settings dependency
 │   ├── db.py                 # engine, session factory, get_session / SessionDep
-│   ├── models.py             # declarative Base with a naming convention; models go here
-│   └── routers/health.py     # GET /health/ (liveness), GET /health/db (readiness)
+│   ├── models.py             # declarative Base, naming convention, id/timestamp mixins; imports every model
+│   ├── routers/health.py     # GET /health/ (liveness), GET /health/db (readiness)
+│   ├── auth/                 # sign up, log in, log out; cookie sessions in Postgres; CurrentUserDep
+│   └── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, dashboard
 └── tests/                    # TestClient fixture: settings overridden, one rolled-back transaction
 ```
 
@@ -182,8 +184,13 @@ migration files are date-prefixed and run through Ruff by post-write hooks.
 The engine is opened in the app lifespan and shared through `request.state`.
 Handlers take a `SessionDep` and get one `AsyncSession` per request; commit
 explicitly. `models.py` holds the `Base` (with a naming convention, so
-constraints can be dropped by name in later migrations) and must import every
-model, because autogenerate only sees what is on `Base.metadata`.
+constraints can be dropped by name in later migrations) plus the
+`UUIDPrimaryKey` (UUIDv7, generated client-side) and `Timestamps` mixins, and
+imports every feature's models at the bottom, because autogenerate only sees
+what is on `Base.metadata`. Ruff is told that `Base` and `pydantic.BaseModel`
+subclasses evaluate their annotations at runtime, and that the modules
+exporting `*Dep` aliases are never moved into `TYPE_CHECKING` blocks, since
+FastAPI reads dependency annotations at import time.
 
 Tests use the real database, never SQLite. The `client` fixture opens one
 connection, begins a transaction, runs `create_all` inside it, and hands out
@@ -193,6 +200,103 @@ transactional in PostgreSQL). `test_migrations_match_models` upgrades to head
 inside such a transaction and diffs the result against `Base.metadata`, so a
 model change without a migration fails CI. CI runs a `postgres:18` service
 container with the same credentials.
+
+### Authentication
+
+`auth/` is a small, self-contained login system, kept apart from the demo so
+it can stay when the CRM goes. Sessions are opaque and server-side: the
+browser holds a random token in an `HttpOnly` cookie, PostgreSQL holds its
+hash, and there are no JWTs to expire or rotate.
+
+```text
+POST /auth/signup      {email, password}                  → 201 UserRead + Set-Cookie
+POST /auth/login       {email, password}                  → 200 UserRead + Set-Cookie   (401 on a bad email or password)
+POST /auth/logout      cookie                             → 204, cookie cleared         (revokes this session)
+POST /auth/logout-all  cookie                             → 204, cookie cleared         (revokes every session of the user)
+POST /auth/password    cookie {current_password, new_password} → 204                    (revokes every other session)
+GET  /auth/me          cookie                             → 200 UserRead
+```
+
+Logging in runs:
+
+```text
+verify password (Argon2id)
+  → token = secrets.token_urlsafe(32)
+  → INSERT user_sessions (token_hash = sha256(token), expires_at = now + ALLOY_SESSION_TTL)
+  → Set-Cookie: __Host-session=<token>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=...
+```
+
+and every authenticated request runs the reverse: cookie → hash → session
+row (not revoked, not expired) → user → `Principal`. `CurrentUserDep` in
+`auth/deps.py` is what a protected handler asks for; `CurrentPrincipal` also
+gives the session, which logout needs. A missing, unknown, revoked, or
+expired cookie is a 401. Logout sets `revoked_at` rather than deleting the
+row, and `last_used_at` is refreshed at most every five minutes. Rows for
+old sessions are kept until you prune them
+(`DELETE FROM user_sessions WHERE revoked_at IS NOT NULL OR expires_at < now()`).
+
+The cookie name's `__Host-` prefix makes browsers refuse it unless it is
+`Secure`, has `Path=/`, and has no `Domain`, so it cannot be planted by a
+sibling subdomain. Chrome and Firefox treat `http://localhost` as secure, so
+`next dev` works as is; Safari does not, so use `next dev --experimental-https`
+there. `SameSite=Lax` plus JSON-only bodies is the CSRF defence: a cross-site
+form post neither carries the cookie nor passes body validation, and no `GET`
+changes state. CORS is configured with `allow_credentials=True` and the
+explicit `ALLOY_CORS_ORIGINS` list a credentialed request requires.
+
+The Next.js side needs no auth library. Whether it calls the API from the
+browser (`credentials: "include"`) or from a Route Handler that forwards the
+`Cookie` and `Set-Cookie` headers, the cookie is the whole session, and the
+API stays the authority on who is logged in.
+
+Passwords are hashed with Argon2id through [pwdlib](https://frankie567.github.io/pwdlib/),
+which the FastAPI security tutorial recommends, in a worker thread so hashing
+never blocks the event loop. An unknown email is verified against a dummy
+hash so both failures take about as long. Emails are stored lower-cased and
+must be unique (409 on signup). The `APIKeyCookie` scheme is in the OpenAPI
+schema, so the generated client knows which endpoints are protected.
+
+### Tiny CRM (demo)
+
+`crm/` is a sample application on top of the template: contacts, companies,
+an activity feed per contact, tasks, and a dashboard, for freelancers and
+small teams. It exists to show the setup end to end and can be deleted as a
+unit (the package, its migration, its tests, and two lines in `main.py`).
+
+Every row is owned by a user (`OwnedByUser` mixin), every query filters on
+the caller, and a row that belongs to someone else is a 404, whether it is
+addressed in the path or referenced from a body (`company_id`, `contact_id`).
+Lists take `limit` (≤ 500) and `offset`. `PATCH` bodies are partial: a field
+left out is untouched, a field sent as `null` is cleared.
+
+```text
+GET/POST          /companies/                    ?q=            search name, website, industry
+GET/PATCH/DELETE  /companies/{id}                               delete keeps contacts and tasks, clears the link
+GET               /companies/{id}/contacts
+
+GET/POST          /contacts/                     ?q= &status= &company_id=
+GET/PATCH/DELETE  /contacts/{id}                                delete removes the activity feed, keeps tasks
+GET/POST          /contacts/{id}/activities                     newest first
+
+GET/POST          /tasks/                        ?due=overdue|today|upcoming &tz= &status= &contact_id= &company_id=
+GET/PATCH/DELETE  /tasks/{id}
+
+GET               /dashboard/                    ?tz= &stale_days=30 &limit=5
+```
+
+- Contact `status`: `lead`, `active`, `inactive`. Task `status`: `open`,
+  `done`. Activity `type`: `note`, `call`, `email`, `meeting`, `follow_up`,
+  `task_completed`. Enums are stored as `VARCHAR`, so adding a member needs
+  no migration.
+- Logging a call, email, meeting, or follow-up sets the contact's
+  `last_contacted_at`; a note does not. Marking a task `done` logs a
+  `task_completed` activity on its contact (once).
+- "Today" depends on where the user is, so `tz` takes an IANA zone (default
+  `UTC`). Overdue means due before today, upcoming means due after it, and
+  undated tasks are neither. `due` and `status` filter independently; the
+  dashboard counts only open tasks.
+- The dashboard lists the most recently contacted people and those not
+  contacted in `stale_days` (never-contacted last).
 
 ## packages/api-client
 

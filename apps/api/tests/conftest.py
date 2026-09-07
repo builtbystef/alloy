@@ -11,6 +11,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from alloy_api.auth.cookies import SESSION_COOKIE
 from alloy_api.config import Settings, get_settings
 from alloy_api.db import get_session
 from alloy_api.main import app
@@ -37,7 +38,8 @@ def engine(settings: Settings) -> AsyncEngine:
 def app_client(settings: Settings) -> Iterator[TestClient]:
     """Settings overridden, real database wiring."""
     app.dependency_overrides[get_settings] = lambda: settings
-    with TestClient(app) as client:
+    # https: the session cookie is `Secure`, and httpx's jar only sends it over https.
+    with TestClient(app, base_url="https://testserver") as client:
         yield client
     app.dependency_overrides.clear()
 
@@ -97,3 +99,28 @@ def db(app_client: TestClient, engine: AsyncEngine) -> Iterator[Database]:
 def client(app_client: TestClient, db: Database) -> TestClient:  # noqa: ARG001
     """`app_client` with the `db` transaction."""
     return app_client
+
+
+def signup(client: TestClient, email: str) -> dict[str, str]:
+    """Create a user and return a `Cookie` header for them.
+
+    Explicit headers, not the client's cookie jar, so two users can share one client.
+    """
+    response = client.post(
+        "/auth/signup", json={"email": email, "password": "correct horse battery"}
+    )
+    assert response.status_code == 201, response.text
+    token = response.cookies[SESSION_COOKIE]
+    client.cookies.clear()
+    return {"Cookie": f"{SESSION_COOKIE}={token}"}
+
+
+@pytest.fixture
+def alice(client: TestClient) -> dict[str, str]:
+    return signup(client, "alice@example.com")
+
+
+@pytest.fixture
+def bob(client: TestClient) -> dict[str, str]:
+    """A second user, for data isolation tests."""
+    return signup(client, "bob@example.com")

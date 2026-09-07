@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from alloy_api.auth.router import router as auth_router
 from alloy_api.config import SettingsDep, get_settings
+from alloy_api.crm.router import router as crm_router
 from alloy_api.db import DatabaseState, create_database_state
 from alloy_api.routers import health
 
@@ -48,6 +50,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(health.router)
+app.include_router(auth_router)
+app.include_router(crm_router)
 
 
 @app.get("/")

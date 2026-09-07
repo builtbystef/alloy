@@ -39,6 +39,15 @@ ignore = [
 ]
 
 [tool.ruff.lint.flake8-type-checking]
+# SQLAlchemy and Pydantic read model annotations at import time; keep those imports.
+runtime-evaluated-base-classes = [
+  "alloy_api.models.Base",
+  "sqlalchemy.orm.DeclarativeBase",
+  "pydantic.BaseModel",
+]
+# FastAPI also reads the annotations of plain dependency functions, so the modules
+# that export `*Dep` aliases are never moved into a type-checking block.
+exempt-modules = ["typing", "alloy_api.config", "alloy_api.db", "alloy_api.auth.deps"]
 # FastAPI reads route handler annotations at import time; keep those imports.
 runtime-evaluated-decorators = [
   "fastapi.FastAPI.get",

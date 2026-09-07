@@ -1,3 +1,4 @@
+from datetime import timedelta
 from functools import lru_cache
 from typing import Annotated
 
@@ -10,9 +11,15 @@ class Settings(BaseSettings):
     """Read from `ALLOY_*` environment variables and `.env`."""
 
     app_name: str = "Alloy API"
+
     cors_origins: list[str] = ["http://localhost:3000"]
+
     database_url: PostgresDsn = PostgresDsn("postgresql+psycopg://alloy:alloy@localhost:5432/alloy")
+    # Log SQL queries to the console when enabled.
     database_echo: bool = False
+
+    # How long a login stays valid. Env: seconds or ISO 8601 (`P30D`).
+    session_ttl: timedelta = timedelta(days=30)
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ALLOY_")
 
