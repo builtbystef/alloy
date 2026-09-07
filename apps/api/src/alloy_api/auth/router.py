@@ -13,6 +13,7 @@ from alloy_api.auth.tokens import hash_token, new_token
 from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
 from alloy_api.models import utcnow
+from alloy_api.workspaces.service import DEFAULT_WORKSPACE_NAME, create_workspace
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -59,7 +60,7 @@ async def revoke_sessions(session: AsyncSession, user_id: UUID, *, keep: UUID | 
 async def signup(
     credentials: Credentials, session: SessionDep, settings: SettingsDep, response: Response
 ) -> UserRead:
-    """Create an account and log in."""
+    """Create an account, a first workspace owned by it, and log in."""
     user = User(
         email=credentials.email.lower(), password_hash=await hash_password(credentials.password)
     )
@@ -68,6 +69,7 @@ async def signup(
         await session.flush()
     except IntegrityError:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
+    create_workspace(session, DEFAULT_WORKSPACE_NAME, user)
     return await start_session(session, settings, user, response)
 
 

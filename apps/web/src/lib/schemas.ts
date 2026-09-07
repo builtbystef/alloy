@@ -1,4 +1,10 @@
-import type { ActivityType, ContactStatus, DueFilter, TaskStatus } from "@alloy/api-client";
+import type {
+  ActivityType,
+  ContactStatus,
+  DueFilter,
+  TaskStatus,
+  WorkspaceRole,
+} from "@alloy/api-client";
 import { z } from "zod";
 
 import { wallClockToIso } from "./dates";
@@ -15,6 +21,12 @@ export const contactStatuses = [
   "inactive",
 ] as const satisfies readonly ContactStatus[];
 export const taskStatuses = ["open", "done"] as const satisfies readonly TaskStatus[];
+export const workspaceRoles = [
+  "owner",
+  "admin",
+  "member",
+  "viewer",
+] as const satisfies readonly WorkspaceRole[];
 export const dueFilters = ["overdue", "today", "upcoming"] as const satisfies readonly DueFilter[];
 /** The types a user logs by hand; `task_completed` is written by the API. */
 export const loggableActivityTypes = [
@@ -98,6 +110,17 @@ export const passwordChangeSchema = z
     path: ["confirm"],
   });
 
+// Workspaces
+
+export const workspaceSchema = z.object({
+  name: requiredText("Name", 100),
+});
+
+export const inviteSchema = z.object({
+  email: z.email("Enter a valid email address"),
+  role: z.enum(workspaceRoles),
+});
+
 // CRM
 
 export const companySchema = z.object({
@@ -137,6 +160,8 @@ export type LoginInput = z.input<typeof loginSchema>;
 export type SignupInput = z.input<typeof signupSchema>;
 export type AuthFormInput = z.input<ReturnType<typeof authFormSchema>>;
 export type PasswordChangeInput = z.input<typeof passwordChangeSchema>;
+export type WorkspaceInput = z.input<typeof workspaceSchema>;
+export type InviteInput = z.input<typeof inviteSchema>;
 export type CompanyInput = z.input<typeof companySchema>;
 export type ContactInput = z.input<ReturnType<typeof contactSchema>>;
 export type TaskInput = z.input<ReturnType<typeof taskSchema>>;

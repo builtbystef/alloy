@@ -3,20 +3,21 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+    from tests.conftest import Actor
 
 
 def iso(moment: datetime) -> str:
     return moment.isoformat()
 
 
-def test_tasks_require_login(client: TestClient):
-    assert client.get("/tasks/").status_code == 401
+def test_tasks_require_login(client: TestClient, alice: Actor):
+    assert client.get(alice.ws("/tasks/")).status_code == 401
 
 
-def test_create_and_read_a_task(client: TestClient, alice: dict[str, str]):
-    company = client.post("/companies/", json={"name": "Navy"}, headers=alice).json()
-    contact = client.post("/contacts/", json={"name": "Grace"}, headers=alice).json()
-    created = client.post(
+def test_create_and_read_a_task(alice: Actor):
+    company = alice.post("/companies/", json={"name": "Navy"}).json()
+    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    created = alice.post(
         "/tasks/",
         json={
             "title": "Send proposal",
@@ -25,7 +26,6 @@ def test_create_and_read_a_task(client: TestClient, alice: dict[str, str]):
             "company_id": company["id"],
             "notes": "Include the discount",
         },
-        headers=alice,
     )
     assert created.status_code == 201, created.text
     task = created.json()
@@ -35,38 +35,34 @@ def test_create_and_read_a_task(client: TestClient, alice: dict[str, str]):
     assert task["company"] == {"id": company["id"], "name": "Navy"}
     assert datetime.fromisoformat(task["due_at"]) == datetime(2026, 9, 10, 9, tzinfo=UTC)
 
-    assert client.get(f"/tasks/{task['id']}", headers=alice).json() == task
+    assert alice.get(f"/tasks/{task['id']}").json() == task
 
 
-def test_task_without_relations_or_due_date(client: TestClient, alice: dict[str, str]):
-    task = client.post("/tasks/", json={"title": "Tidy inbox"}, headers=alice).json()
+def test_task_without_relations_or_due_date(alice: Actor):
+    task = alice.post("/tasks/", json={"title": "Tidy inbox"}).json()
     assert task["contact"] is None
     assert task["company"] is None
     assert task["due_at"] is None
 
 
-def test_task_cannot_reference_another_users_rows(
-    client: TestClient, alice: dict[str, str], bob: dict[str, str]
-):
-    contact = client.post("/contacts/", json={"name": "Grace"}, headers=bob).json()
-    response = client.post(
-        "/tasks/", json={"title": "Call", "contact_id": contact["id"]}, headers=alice
-    )
+def test_task_cannot_reference_another_users_rows(alice: Actor, bob: Actor):
+    contact = bob.post("/contacts/", json={"name": "Grace"}).json()
+    response = alice.post("/tasks/", json={"title": "Call", "contact_id": contact["id"]})
     assert response.status_code == 404
 
 
-def test_due_views(client: TestClient, alice: dict[str, str]):
+def test_due_views(alice: Actor):
     now = datetime.now(UTC)
     for title, due_at in [
         ("Overdue", now - timedelta(days=2)),
         ("Today", now),
         ("Upcoming", now + timedelta(days=2)),
     ]:
-        client.post("/tasks/", json={"title": title, "due_at": iso(due_at)}, headers=alice)
-    client.post("/tasks/", json={"title": "Someday"}, headers=alice)
+        alice.post("/tasks/", json={"title": title, "due_at": iso(due_at)})
+    alice.post("/tasks/", json={"title": "Someday"})
 
     def titles(**params: str) -> list[str]:
-        response = client.get("/tasks/", params=params, headers=alice)
+        response = alice.get("/tasks/", params=params)
         assert response.status_code == 200, response.text
         return [t["title"] for t in response.json()]
 
@@ -74,37 +70,35 @@ def test_due_views(client: TestClient, alice: dict[str, str]):
     assert titles(due="overdue") == ["Overdue"]
     assert titles(due="today") == ["Today"]
     assert titles(due="upcoming") == ["Upcoming"]
-    assert client.get("/tasks/", params={"due": "later"}, headers=alice).status_code == 422
+    assert alice.get("/tasks/", params={"due": "later"}).status_code == 422
 
 
-def test_today_depends_on_the_timezone(client: TestClient, alice: dict[str, str]):
+def test_today_depends_on_the_timezone(alice: Actor):
     # One minute into today in UTC is still yesterday twelve hours west of it.
     start_of_today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-    client.post(
-        "/tasks/",
-        json={"title": "Early", "due_at": iso(start_of_today + timedelta(minutes=1))},
-        headers=alice,
+    alice.post(
+        "/tasks/", json={"title": "Early", "due_at": iso(start_of_today + timedelta(minutes=1))}
     )
 
     def titles(due: str, tz: str) -> list[str]:
-        response = client.get("/tasks/", params={"due": due, "tz": tz}, headers=alice)
+        response = alice.get("/tasks/", params={"due": due, "tz": tz})
         return [t["title"] for t in response.json()]
 
     assert titles("today", "UTC") == ["Early"]
     assert titles("today", "Etc/GMT+12") == []
     assert titles("overdue", "Etc/GMT+12") == ["Early"]
-    assert client.get("/tasks/", params={"tz": "Mars/Olympus"}, headers=alice).status_code == 422
+    assert alice.get("/tasks/", params={"tz": "Mars/Olympus"}).status_code == 422
 
 
-def test_filter_by_status_contact_and_company(client: TestClient, alice: dict[str, str]):
-    company = client.post("/companies/", json={"name": "Navy"}, headers=alice).json()
-    contact = client.post("/contacts/", json={"name": "Grace"}, headers=alice).json()
-    client.post("/tasks/", json={"title": "A", "contact_id": contact["id"]}, headers=alice)
-    client.post("/tasks/", json={"title": "B", "company_id": company["id"]}, headers=alice)
-    client.post("/tasks/", json={"title": "C", "status": "done"}, headers=alice)
+def test_filter_by_status_contact_and_company(alice: Actor):
+    company = alice.post("/companies/", json={"name": "Navy"}).json()
+    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    alice.post("/tasks/", json={"title": "A", "contact_id": contact["id"]})
+    alice.post("/tasks/", json={"title": "B", "company_id": company["id"]})
+    alice.post("/tasks/", json={"title": "C", "status": "done"})
 
     def titles(**params: str) -> list[str]:
-        return [t["title"] for t in client.get("/tasks/", params=params, headers=alice).json()]
+        return [t["title"] for t in alice.get("/tasks/", params=params).json()]
 
     assert titles(status="open") == ["A", "B"]
     assert titles(status="done") == ["C"]
@@ -112,48 +106,42 @@ def test_filter_by_status_contact_and_company(client: TestClient, alice: dict[st
     assert titles(company_id=company["id"]) == ["B"]
 
 
-def test_update_and_delete_a_task(client: TestClient, alice: dict[str, str]):
-    task = client.post(
-        "/tasks/", json={"title": "Call", "due_at": "2026-09-10T09:00:00Z"}, headers=alice
-    ).json()
-    response = client.patch(
-        f"/tasks/{task['id']}", json={"title": "Call back", "due_at": None}, headers=alice
-    )
+def test_update_and_delete_a_task(alice: Actor):
+    task = alice.post("/tasks/", json={"title": "Call", "due_at": "2026-09-10T09:00:00Z"}).json()
+    response = alice.patch(f"/tasks/{task['id']}", json={"title": "Call back", "due_at": None})
     assert response.status_code == 200
     assert response.json()["title"] == "Call back"
     assert response.json()["due_at"] is None
 
-    assert client.delete(f"/tasks/{task['id']}", headers=alice).status_code == 204
-    assert client.get(f"/tasks/{task['id']}", headers=alice).status_code == 404
+    assert alice.delete(f"/tasks/{task['id']}").status_code == 204
+    assert alice.get(f"/tasks/{task['id']}").status_code == 404
 
 
-def test_completing_a_task_is_logged_on_the_contact(client: TestClient, alice: dict[str, str]):
-    contact = client.post("/contacts/", json={"name": "Grace"}, headers=alice).json()
-    task = client.post(
-        "/tasks/", json={"title": "Send proposal", "contact_id": contact["id"]}, headers=alice
+def test_completing_a_task_is_logged_on_the_contact(alice: Actor):
+    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    task = alice.post(
+        "/tasks/", json={"title": "Send proposal", "contact_id": contact["id"]}
     ).json()
 
-    done = client.patch(f"/tasks/{task['id']}", json={"status": "done"}, headers=alice)
+    done = alice.patch(f"/tasks/{task['id']}", json={"status": "done"})
     assert done.json()["status"] == "done"
     # Saving an already done task again does not log it twice.
-    client.patch(f"/tasks/{task['id']}", json={"status": "done", "notes": "Sent"}, headers=alice)
+    alice.patch(f"/tasks/{task['id']}", json={"status": "done", "notes": "Sent"})
 
-    feed = client.get(f"/contacts/{contact['id']}/activities", headers=alice).json()
+    feed = alice.get(f"/contacts/{contact['id']}/activities").json()
     assert [(a["type"], a["notes"]) for a in feed] == [("task_completed", "Send proposal")]
 
 
-def test_deleting_a_contact_keeps_its_tasks(client: TestClient, alice: dict[str, str]):
-    contact = client.post("/contacts/", json={"name": "Grace"}, headers=alice).json()
-    task = client.post("/tasks/", json={"title": "A", "contact_id": contact["id"]}, headers=alice)
-    client.delete(f"/contacts/{contact['id']}", headers=alice)
-    assert client.get(f"/tasks/{task.json()['id']}", headers=alice).json()["contact"] is None
+def test_deleting_a_contact_keeps_its_tasks(alice: Actor):
+    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    task = alice.post("/tasks/", json={"title": "A", "contact_id": contact["id"]})
+    alice.delete(f"/contacts/{contact['id']}")
+    assert alice.get(f"/tasks/{task.json()['id']}").json()["contact"] is None
 
 
-def test_users_only_see_their_own_tasks(
-    client: TestClient, alice: dict[str, str], bob: dict[str, str]
-):
-    task = client.post("/tasks/", json={"title": "A"}, headers=alice).json()
-    assert client.get("/tasks/", headers=bob).json() == []
-    assert client.get(f"/tasks/{task['id']}", headers=bob).status_code == 404
-    assert client.patch(f"/tasks/{task['id']}", json={"title": "X"}, headers=bob).status_code == 404
-    assert client.delete(f"/tasks/{task['id']}", headers=bob).status_code == 404
+def test_users_only_see_their_own_tasks(alice: Actor, bob: Actor):
+    task = alice.post("/tasks/", json={"title": "A"}).json()
+    assert bob.get("/tasks/").json() == []
+    assert bob.get(f"/tasks/{task['id']}").status_code == 404
+    assert bob.patch(f"/tasks/{task['id']}", json={"title": "X"}).status_code == 404
+    assert bob.delete(f"/tasks/{task['id']}").status_code == 404

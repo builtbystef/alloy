@@ -1,7 +1,8 @@
 import uuid
 from datetime import UTC, datetime
+from enum import StrEnum
 
-from sqlalchemy import DateTime, MetaData
+from sqlalchemy import DateTime, Enum, MetaData
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -43,7 +44,21 @@ class Timestamps:
     )
 
 
+def string_enum[E: StrEnum](enum_type: type[E]) -> Enum:
+    """A VARCHAR holding the member values (not names), so adding a member needs no migration.
+
+    No PostgreSQL enum type and no CHECK constraint: the API validates the values.
+    """
+    return Enum(
+        enum_type,
+        native_enum=False,
+        length=32,
+        values_callable=lambda members: [member.value for member in members],
+    )
+
+
 # Autogenerate only sees models on `Base.metadata`, so every feature's models are
 # imported here. They import `Base` from this module, which is defined above.
 from alloy_api.auth import models as _auth_models  # noqa: E402, F401
 from alloy_api.crm import models as _crm_models  # noqa: E402, F401
+from alloy_api.workspaces import models as _workspace_models  # noqa: E402, F401

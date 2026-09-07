@@ -3,8 +3,10 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
-from pydantic import PostgresDsn
+from pydantic import HttpUrl, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from alloy_api.mail import MailProvider
 
 
 class Settings(BaseSettings):
@@ -18,8 +20,19 @@ class Settings(BaseSettings):
     # Log SQL queries to the console when enabled.
     database_echo: bool = False
 
+    # Python logging level for the app's own loggers (the console mailer logs at INFO).
+    log_level: str = "INFO"
+
     # How long a login stays valid. Env: seconds or ISO 8601 (`P30D`).
     session_ttl: timedelta = timedelta(days=30)
+    # How long a workspace invitation link works.
+    invite_ttl: timedelta = timedelta(days=7)
+
+    # Where the web app lives; invitation links point here.
+    frontend_url: HttpUrl = HttpUrl("http://localhost:3000")
+
+    mail_provider: MailProvider = "console"
+    mail_from: str = "Alloy <no-reply@alloy.local>"
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ALLOY_")
 

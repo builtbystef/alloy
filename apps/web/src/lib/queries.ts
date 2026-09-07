@@ -8,6 +8,9 @@ import { unwrap } from "./api-error";
  * session client) and Client Components (which read with the browser client).
  * The key is the identity, so both sides must build it the same way; the
  * client is a parameter rather than an import for that reason.
+ *
+ * Every CRM query is scoped to a workspace, so the workspace id is part of
+ * the key and of the request path.
  */
 
 // The API's maximum page. Enough for the demo; a real list would paginate.
@@ -39,86 +42,151 @@ function query<T extends object>(filters: T): { [K in keyof T]?: Exclude<T[K], u
   };
 }
 
+export const workspaceKeys = {
+  all: ["workspaces"] as const,
+  list: () => [...workspaceKeys.all, "list"] as const,
+  detail: (id: string) => [...workspaceKeys.all, "detail", id] as const,
+  members: (id: string) => [...workspaceKeys.detail(id), "members"] as const,
+  invites: (id: string) => [...workspaceKeys.detail(id), "invites"] as const,
+};
+
 export const contactKeys = {
   all: ["contacts"] as const,
-  list: (filters: ContactListFilters) => [...contactKeys.all, "list", filters] as const,
-  detail: (id: string) => [...contactKeys.all, "detail", id] as const,
-  activities: (id: string) => [...contactKeys.detail(id), "activities"] as const,
+  list: (ws: string, filters: ContactListFilters) =>
+    [...contactKeys.all, ws, "list", filters] as const,
+  detail: (ws: string, id: string) => [...contactKeys.all, ws, "detail", id] as const,
+  activities: (ws: string, id: string) => [...contactKeys.detail(ws, id), "activities"] as const,
 };
 
 export const companyKeys = {
   all: ["companies"] as const,
-  list: (filters: CompanyListFilters) => [...companyKeys.all, "list", filters] as const,
-  detail: (id: string) => [...companyKeys.all, "detail", id] as const,
-  contacts: (id: string) => [...companyKeys.detail(id), "contacts"] as const,
+  list: (ws: string, filters: CompanyListFilters) =>
+    [...companyKeys.all, ws, "list", filters] as const,
+  detail: (ws: string, id: string) => [...companyKeys.all, ws, "detail", id] as const,
+  contacts: (ws: string, id: string) => [...companyKeys.detail(ws, id), "contacts"] as const,
 };
 
 export const taskKeys = {
   all: ["tasks"] as const,
-  list: (filters: TaskListFilters) => [...taskKeys.all, "list", filters] as const,
+  list: (ws: string, filters: TaskListFilters) => [...taskKeys.all, ws, "list", filters] as const,
 };
 
-export function contactListQuery(api: ApiClient, filters: ContactListFilters) {
+// Workspaces
+
+export function workspaceListQuery(api: ApiClient) {
   return queryOptions({
-    queryKey: contactKeys.list(filters),
-    queryFn: async () =>
-      unwrap(await api.GET("/contacts/", { params: { query: { ...query(filters), ...PAGE } } })),
+    queryKey: workspaceKeys.list(),
+    queryFn: async () => unwrap(await api.GET("/workspaces/")),
   });
 }
 
-export function contactQuery(api: ApiClient, id: string) {
+export function memberListQuery(api: ApiClient, ws: string) {
   return queryOptions({
-    queryKey: contactKeys.detail(id),
-    queryFn: async () =>
-      unwrap(await api.GET("/contacts/{contact_id}", { params: { path: { contact_id: id } } })),
-  });
-}
-
-export function contactActivitiesQuery(api: ApiClient, id: string) {
-  return queryOptions({
-    queryKey: contactKeys.activities(id),
+    queryKey: workspaceKeys.members(ws),
     queryFn: async () =>
       unwrap(
-        await api.GET("/contacts/{contact_id}/activities", {
-          params: { path: { contact_id: id }, query: PAGE },
+        await api.GET("/workspaces/{workspace_id}/members", {
+          params: { path: { workspace_id: ws } },
         }),
       ),
   });
 }
 
-export function companyListQuery(api: ApiClient, filters: CompanyListFilters) {
+export function inviteListQuery(api: ApiClient, ws: string) {
   return queryOptions({
-    queryKey: companyKeys.list(filters),
-    queryFn: async () =>
-      unwrap(await api.GET("/companies/", { params: { query: { ...query(filters), ...PAGE } } })),
-  });
-}
-
-export function companyQuery(api: ApiClient, id: string) {
-  return queryOptions({
-    queryKey: companyKeys.detail(id),
-    queryFn: async () =>
-      unwrap(await api.GET("/companies/{company_id}", { params: { path: { company_id: id } } })),
-  });
-}
-
-export function companyContactsQuery(api: ApiClient, id: string) {
-  return queryOptions({
-    queryKey: companyKeys.contacts(id),
+    queryKey: workspaceKeys.invites(ws),
     queryFn: async () =>
       unwrap(
-        await api.GET("/companies/{company_id}/contacts", {
-          params: { path: { company_id: id } },
+        await api.GET("/workspaces/{workspace_id}/invites", {
+          params: { path: { workspace_id: ws } },
         }),
       ),
   });
 }
 
-export function taskListQuery(api: ApiClient, filters: TaskListFilters) {
+// CRM
+
+export function contactListQuery(api: ApiClient, ws: string, filters: ContactListFilters) {
   return queryOptions({
-    queryKey: taskKeys.list(filters),
+    queryKey: contactKeys.list(ws, filters),
     queryFn: async () =>
-      unwrap(await api.GET("/tasks/", { params: { query: { ...query(filters), ...PAGE } } })),
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/contacts/", {
+          params: { path: { workspace_id: ws }, query: { ...query(filters), ...PAGE } },
+        }),
+      ),
+  });
+}
+
+export function contactQuery(api: ApiClient, ws: string, id: string) {
+  return queryOptions({
+    queryKey: contactKeys.detail(ws, id),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/contacts/{contact_id}", {
+          params: { path: { workspace_id: ws, contact_id: id } },
+        }),
+      ),
+  });
+}
+
+export function contactActivitiesQuery(api: ApiClient, ws: string, id: string) {
+  return queryOptions({
+    queryKey: contactKeys.activities(ws, id),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/contacts/{contact_id}/activities", {
+          params: { path: { workspace_id: ws, contact_id: id }, query: PAGE },
+        }),
+      ),
+  });
+}
+
+export function companyListQuery(api: ApiClient, ws: string, filters: CompanyListFilters) {
+  return queryOptions({
+    queryKey: companyKeys.list(ws, filters),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/companies/", {
+          params: { path: { workspace_id: ws }, query: { ...query(filters), ...PAGE } },
+        }),
+      ),
+  });
+}
+
+export function companyQuery(api: ApiClient, ws: string, id: string) {
+  return queryOptions({
+    queryKey: companyKeys.detail(ws, id),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/companies/{company_id}", {
+          params: { path: { workspace_id: ws, company_id: id } },
+        }),
+      ),
+  });
+}
+
+export function companyContactsQuery(api: ApiClient, ws: string, id: string) {
+  return queryOptions({
+    queryKey: companyKeys.contacts(ws, id),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/companies/{company_id}/contacts", {
+          params: { path: { workspace_id: ws, company_id: id } },
+        }),
+      ),
+  });
+}
+
+export function taskListQuery(api: ApiClient, ws: string, filters: TaskListFilters) {
+  return queryOptions({
+    queryKey: taskKeys.list(ws, filters),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/tasks/", {
+          params: { path: { workspace_id: ws }, query: { ...query(filters), ...PAGE } },
+        }),
+      ),
   });
 }
 
@@ -133,4 +201,9 @@ export async function invalidateCrm(queryClient: QueryClient): Promise<void> {
       queryClient.invalidateQueries({ queryKey }),
     ),
   );
+}
+
+/** Drop the workspace list, members, and invitations after a membership change. */
+export async function invalidateWorkspaces(queryClient: QueryClient): Promise<void> {
+  await queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
 }

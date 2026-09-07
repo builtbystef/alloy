@@ -15,27 +15,35 @@ apps/web/
 ├── tsconfig.json         # extends tsconfig/browser.json with what Next.js needs
 ├── .env.example          # API_URL, copy to .env.local
 └── src/
-    ├── proxy.ts          # no cookie → /login; cookie on /login → /
+    ├── proxy.ts          # no cookie → /login?next=…; cookie on /login → /
     ├── app/
     │   ├── layout.tsx    # root layout: Geist font, <Providers>
     │   ├── providers.tsx # QueryClientProvider, next-themes, sonner <Toaster>
     │   ├── globals.css   # Tailwind import, shadcn theme tokens
+    │   ├── icon.svg, favicon.ico, apple-icon.png   # the logo, in the formats browsers ask for
     │   ├── api/[...path]/route.ts   # the proxy to the API
-    │   ├── (auth)/       # centered layout; login and signup share auth-form.tsx
-    │   └── (app)/        # app layout (shadcn sidebar with nav + user menu, time-zone sync), error.tsx, not-found.tsx
-    │       ├── page.tsx              # dashboard (Server Component only)
-    │       ├── contacts/             # page, contacts-table, contact-columns, contact-form, [id]/ (detail, activity feed), new/, [id]/edit/
-    │       ├── companies/            # same shape as contacts
-    │       ├── tasks/                # page, tasks-table, task-dialog + task-form, task-list (used on detail pages)
-    │       └── settings/             # change password, log out everywhere
+    │   ├── (auth)/       # centered layout with the logo; login and signup share auth-form.tsx; invites/[token]/ accepts an invitation
+    │   └── (app)/
+    │       ├── page.tsx              # `/`: opens the last-used (cookie) or first workspace; offers to create one if none
+    │       ├── workspace-form.tsx    # create a workspace (first sign-in and the switcher's dialog)
+    │       └── [workspaceId]/        # app layout (sidebar: workspace switcher, nav, user menu; <WorkspaceProvider>), error.tsx, not-found.tsx
+    │           ├── page.tsx          # dashboard (Server Component only)
+    │           ├── contacts/         # page, contacts-table, contact-columns, contact-form, [id]/ (detail, activity feed), new/, [id]/edit/
+    │           ├── companies/        # same shape as contacts
+    │           ├── tasks/            # page, tasks-table, task-dialog + task-form, task-list (used on detail pages)
+    │           ├── members/          # members table (roles, remove), invitations card (invite, revoke)
+    │           ├── settings/         # rename, leave, delete the workspace
+    │           └── account/          # change password, log out everywhere
     ├── components/
     │   ├── ui/           # shadcn/ui components, owned by this repo
     │   ├── form/         # useAppForm + TextField, TextareaField, SelectField, DateTimeField, SubmitButton
     │   ├── data-table.tsx, confirm-dialog.tsx, page-header.tsx, status-badge.tsx, skeletons.tsx
-    │   └── time-zone-sync.tsx
+    │   └── logo.tsx, time-zone-sync.tsx, remember-workspace.tsx
     └── lib/
         ├── api.ts        # createApi(): the @alloy/api-client instance, baseUrl from API_URL
-        ├── session.ts    # server-only: getSessionApi(), getCurrentUser(), requireUser()
+        ├── session.ts    # server-only: getSessionApi(), getCurrentUser(), requireUser(), listWorkspaces(), requireWorkspace()
+        ├── workspace.tsx # client: <WorkspaceProvider>, useWorkspace(), useCan(), <Can permission>
+        ├── routes.ts     # workspacePaths(id): every href under /{workspaceId}
         ├── api-browser.ts# browserApi: the same client pointed at /api
         ├── api-error.ts  # ApiError, unwrap(), errorMessage()
         ├── queries.ts    # queryOptions() factories and keys; invalidateCrm()
@@ -45,6 +53,29 @@ apps/web/
         ├── time-zone.ts  # server-only: the zone from the `tz` cookie
         └── labels.ts, use-url-filters.ts, use-debounced-value.ts, utils.ts
 ```
+
+## Workspaces
+
+Every app page lives under `/{workspaceId}`. The layout for that segment
+calls `requireWorkspace()` but does not await it: the promise goes into
+`<WorkspaceProvider>`, and Client Components read it with `useWorkspace()`
+(`use()` under the hood), each suspending inside the page's own `<Suspense>`.
+The static shell therefore stays prerendered while the workspace, with the
+caller's role and permissions, streams in once. `requireWorkspace()` is
+`cache()`d, so the layout, the sidebar, and the page share one request; a
+non-member gets the segment's `not-found.tsx`.
+
+Permissions come from the API (`WorkspaceRead.permissions`). `useCan()` and
+`<Can permission="crm:write">` hide what the request would reject: new/edit/
+delete buttons, the task checkboxes, the invitation form, the role selects.
+The API stays the real check. Links are built with `workspacePaths(id)` from
+`lib/routes.ts`, typed as template literals so `typedRoutes` verifies them.
+
+`/` picks a workspace: the one in the `workspace` cookie that
+`<RememberWorkspace>` writes on every visit, else the first. Invitation links
+(`/invites/{token}`) preview without a login; the proxy sends logged-out
+visitors to `/login?next=…`, and the auth form keeps `next` across the
+login/sign-up links so a new user lands back on the invitation.
 
 ## Styling: Tailwind CSS and shadcn/ui
 

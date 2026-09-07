@@ -3,14 +3,15 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+    from tests.conftest import Actor
 
 
-def test_dashboard_requires_login(client: TestClient):
-    assert client.get("/dashboard/").status_code == 401
+def test_dashboard_requires_login(client: TestClient, alice: Actor):
+    assert client.get(alice.ws("/dashboard/")).status_code == 401
 
 
-def test_empty_dashboard(client: TestClient, alice: dict[str, str]):
-    response = client.get("/dashboard/", headers=alice)
+def test_empty_dashboard(alice: Actor):
+    response = alice.get("/dashboard/")
     assert response.status_code == 200
     assert response.json() == {
         "total_contacts": 0,
@@ -21,22 +22,22 @@ def test_empty_dashboard(client: TestClient, alice: dict[str, str]):
     }
 
 
-def test_dashboard_counts_and_lists(client: TestClient, alice: dict[str, str], bob: dict[str, str]):
+def test_dashboard_counts_and_lists(alice: Actor, bob: Actor):
     now = datetime.now(UTC)
 
-    def contact(name: str, last_contacted: datetime | None, headers: dict[str, str] = alice):
+    def contact(name: str, last_contacted: datetime | None, who: Actor = alice):
         body = {"name": name, "last_contacted_at": last_contacted and last_contacted.isoformat()}
-        return client.post("/contacts/", json=body, headers=headers).json()
+        return who.post("/contacts/", json=body).json()
 
     contact("Fresh", now - timedelta(days=1))
     contact("Recent", now - timedelta(days=10))
     contact("Stale", now - timedelta(days=45))
     contact("Never", None)
-    contact("Bobs", now, headers=bob)
+    contact("Bobs", now, who=bob)
 
     def task(title: str, due_at: datetime | None, status: str = "open"):
         body = {"title": title, "due_at": due_at and due_at.isoformat(), "status": status}
-        client.post("/tasks/", json=body, headers=alice)
+        alice.post("/tasks/", json=body)
 
     task("Overdue", now - timedelta(days=3))
     task("Overdue but done", now - timedelta(days=3), status="done")
@@ -45,7 +46,7 @@ def test_dashboard_counts_and_lists(client: TestClient, alice: dict[str, str], b
     task("Upcoming", now + timedelta(days=3))
     task("Undated", None)
 
-    dashboard = client.get("/dashboard/", headers=alice).json()
+    dashboard = alice.get("/dashboard/").json()
     assert dashboard["total_contacts"] == 4
     assert dashboard["tasks_due_today"] == 2
     assert dashboard["overdue_tasks"] == 1
@@ -54,17 +55,15 @@ def test_dashboard_counts_and_lists(client: TestClient, alice: dict[str, str], b
     assert [c["name"] for c in dashboard["not_recently_contacted"]] == ["Stale", "Never"]
 
 
-def test_dashboard_stale_days_and_limit(client: TestClient, alice: dict[str, str]):
+def test_dashboard_stale_days_and_limit(alice: Actor):
     now = datetime.now(UTC)
     for days in [1, 5, 10]:
         body = {
             "name": f"{days} days",
             "last_contacted_at": (now - timedelta(days=days)).isoformat(),
         }
-        client.post("/contacts/", json=body, headers=alice)
+        alice.post("/contacts/", json=body)
 
-    dashboard = client.get(
-        "/dashboard/", params={"stale_days": 7, "limit": 2}, headers=alice
-    ).json()
+    dashboard = alice.get("/dashboard/", params={"stale_days": 7, "limit": 2}).json()
     assert [c["name"] for c in dashboard["recently_contacted"]] == ["1 days", "5 days"]
     assert [c["name"] for c in dashboard["not_recently_contacted"]] == ["10 days"]

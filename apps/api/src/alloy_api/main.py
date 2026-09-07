@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -8,7 +9,10 @@ from alloy_api.auth.router import router as auth_router
 from alloy_api.config import SettingsDep, get_settings
 from alloy_api.crm.router import router as crm_router
 from alloy_api.db import DatabaseState, create_database_state
+from alloy_api.mail import Mailer, create_mailer
 from alloy_api.routers import health
+from alloy_api.workspaces.invites import router as invites_router
+from alloy_api.workspaces.router import router as workspaces_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -16,6 +20,15 @@ if TYPE_CHECKING:
     from fastapi.routing import APIRoute
 
 settings = get_settings()
+
+# Uvicorn configures only its own loggers; this gives the app's a handler and level.
+logging.basicConfig(level=settings.log_level, format="%(levelname)s [%(name)s] %(message)s")
+
+
+class AppState(DatabaseState):
+    """What the lifespan puts on `request.state`."""
+
+    mailer: Mailer
 
 
 def generate_unique_id(route: APIRoute) -> str:
@@ -30,9 +43,9 @@ def generate_unique_id(route: APIRoute) -> str:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[DatabaseState]:
+async def lifespan(_app: FastAPI) -> AsyncIterator[AppState]:
     """The yielded dict becomes `request.state`. The engine connects lazily."""
-    state = create_database_state(settings)
+    state = AppState(**create_database_state(settings), mailer=create_mailer(settings))
     yield state
     await state["engine"].dispose()
 
@@ -51,6 +64,8 @@ app.add_middleware(
 )
 app.include_router(health.router)
 app.include_router(auth_router)
+app.include_router(workspaces_router)
+app.include_router(invites_router)
 app.include_router(crm_router)
 
 

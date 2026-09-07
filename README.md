@@ -126,6 +126,8 @@ apps/api/
 │   ├── models.py             # declarative Base, naming convention, id/timestamp mixins; imports every model
 │   ├── routers/health.py     # GET /health/ (liveness), GET /health/db (readiness)
 │   ├── auth/                 # sign up, log in, log out; cookie sessions in Postgres; CurrentUserDep
+│   ├── workspaces/           # workspaces, members, roles and permissions, invitations; CurrentMembership
+│   ├── mail/                 # Mailer protocol + ConsoleMailer; MailerDep
 │   └── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, dashboard
 └── tests/                    # TestClient fixture: settings overridden, one rolled-back transaction
 ```
@@ -256,6 +258,59 @@ hash so both failures take about as long. Emails are stored lower-cased and
 must be unique (409 on signup). The `APIKeyCookie` scheme is in the OpenAPI
 schema, so the generated client knows which endpoints are protected.
 
+### Workspaces, roles, and invitations
+
+Every business record belongs to a workspace, and a user reaches it through a
+seat in that workspace (`workspace_members`) with one of four roles. Signing
+up creates a first workspace with the new user as owner.
+
+```text
+GET/POST          /workspaces/                              the caller's workspaces (with role and permissions) / create one as owner
+GET/PATCH/DELETE  /workspaces/{id}                          read · rename (workspace:manage) · delete with everything in it (workspace:delete)
+POST              /workspaces/{id}/leave                    give up your seat; the last owner cannot
+GET               /workspaces/{id}/members                  members:read
+PATCH/DELETE      /workspaces/{id}/members/{member_id}      change role · remove (members:manage)
+GET/POST          /workspaces/{id}/invites                  pending invitations · email a link {email, role} (members:manage)
+DELETE            /workspaces/{id}/invites/{invite_id}      revoke
+GET               /invites/{token}                          preview, no login (404 unknown/used/revoked, 410 expired)
+POST              /invites/{token}/accept                   take the seat; the account's email must match
+```
+
+| Role   | Permissions                                                                   |
+| ------ | ----------------------------------------------------------------------------- |
+| owner  | everything, including `workspace:delete`                                      |
+| admin  | `crm:read`, `crm:write`, `members:read`, `members:manage`, `workspace:manage` |
+| member | `crm:read`, `crm:write`, `members:read`                                       |
+| viewer | `crm:read`, `members:read`                                                    |
+
+`workspaces/permissions.py` is the one place roles map to permissions.
+Handlers never ask for a role: they take one of the `Can*` dependencies from
+`workspaces/deps.py` (`CanReadCrm`, `CanWriteCrm`, `CanManageMembers`, ...),
+each of which loads the caller's membership of `{workspace_id}` (404 for
+non-members, so ids leak nothing) and returns 403 when the role lacks the
+permission. Managing seats follows one rule, `can_manage_role`: owners manage
+everyone, others only roles below their own, and a workspace always keeps at
+least one owner (409 otherwise).
+
+Invitations are emailed links. The token is random, only its SHA-256 is
+stored, and the row is stamped `accepted_at` or `revoked_at` rather than
+deleted. A link works for `ALLOY_INVITE_TTL` (default 7 days) and only for the
+invited address, which the accepting account's email must match. The link
+points at `ALLOY_FRONTEND_URL/invites/{token}`.
+
+### Email
+
+`mail/` keeps the app one step away from any email provider. `Mailer`
+(`mail/base.py`) is a protocol with a single `send(Email)` method;
+`ConsoleMailer` implements it by logging the message at INFO, which is what
+`fastapi dev` and the tests use. `create_mailer(settings)` picks the
+implementation from `ALLOY_MAIL_PROVIDER`, the lifespan puts it on
+`request.state`, and handlers take a `MailerDep`. To add Resend or another
+provider: write a class with the same `send` method, add its name to
+`MailProvider`, return it from `create_mailer`, and read its credentials from
+`Settings`. Nothing else changes. Tests override `get_mailer` with an
+in-memory outbox and read the invitation token out of the message body.
+
 ### Tiny CRM (demo)
 
 `crm/` is a sample application on top of the template: contacts, companies,
@@ -263,25 +318,28 @@ an activity feed per contact, tasks, and a dashboard, for freelancers and
 small teams. It exists to show the setup end to end and can be deleted as a
 unit (the package, its migration, its tests, and two lines in `main.py`).
 
-Every row is owned by a user (`OwnedByUser` mixin), every query filters on
-the caller, and a row that belongs to someone else is a 404, whether it is
-addressed in the path or referenced from a body (`company_id`, `contact_id`).
-Lists take `limit` (≤ 500) and `offset`. `PATCH` bodies are partial: a field
-left out is untouched, a field sent as `null` is cleared.
+Every row belongs to a workspace (`OwnedByWorkspace` mixin), every query
+filters on the workspace in the URL, and a row from another workspace is a
+404, whether it is addressed in the path or referenced from a body
+(`company_id`, `contact_id`). Reads need `crm:read`, writes `crm:write`
+(403 for viewers). Lists take `limit` (≤ 500) and `offset`. `PATCH` bodies
+are partial: a field left out is untouched, a field sent as `null` is cleared.
 
 ```text
-GET/POST          /companies/                    ?q=            search name, website, industry
-GET/PATCH/DELETE  /companies/{id}                               delete keeps contacts and tasks, clears the link
-GET               /companies/{id}/contacts
+                  /workspaces/{workspace_id}/...  every route below hangs off a workspace
 
-GET/POST          /contacts/                     ?q= &status= &company_id=
-GET/PATCH/DELETE  /contacts/{id}                                delete removes the activity feed, keeps tasks
-GET/POST          /contacts/{id}/activities                     newest first
+GET/POST          .../companies/                 ?q=            search name, website, industry
+GET/PATCH/DELETE  .../companies/{id}                            delete keeps contacts and tasks, clears the link
+GET               .../companies/{id}/contacts
 
-GET/POST          /tasks/                        ?due=overdue|today|upcoming &tz= &status= &contact_id= &company_id=
-GET/PATCH/DELETE  /tasks/{id}
+GET/POST          .../contacts/                  ?q= &status= &company_id=
+GET/PATCH/DELETE  .../contacts/{id}                             delete removes the activity feed, keeps tasks
+GET/POST          .../contacts/{id}/activities                  newest first
 
-GET               /dashboard/                    ?tz= &stale_days=30 &limit=5
+GET/POST          .../tasks/                     ?due=overdue|today|upcoming &tz= &status= &contact_id= &company_id=
+GET/PATCH/DELETE  .../tasks/{id}
+
+GET               .../dashboard/                 ?tz= &stale_days=30 &limit=5
 ```
 
 - Contact `status`: `lead`, `active`, `inactive`. Task `status`: `open`,

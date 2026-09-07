@@ -32,6 +32,10 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
   const isSignup = mode === "signup";
+  // Kept across the login/sign-up links, so an invitation survives either path.
+  const next = searchParams.get("next");
+  const search = next ? `?next=${encodeURIComponent(next)}` : "";
+  const isInvite = next?.startsWith("/invites/") ?? false;
 
   const mutation = useMutation({
     mutationFn: async (credentials: { email: string; password: string }) =>
@@ -42,7 +46,6 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       ),
     onSuccess: () => {
       queryClient.clear();
-      const next = searchParams.get("next");
       router.push(next?.startsWith("/") ? (next as "/") : "/");
       router.refresh();
     },
@@ -79,7 +82,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <CardHeader>
           <CardTitle>{isSignup ? "Create an account" : "Log in"}</CardTitle>
           <CardDescription>
-            {isSignup ? "A few seconds and you are in." : "Welcome back to your CRM."}
+            {isInvite
+              ? `${isSignup ? "Create an account" : "Log in"} to accept your invitation.`
+              : isSignup
+                ? "A few seconds and you are in."
+                : "Welcome back to your CRM."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -121,14 +128,20 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             {isSignup ? (
               <>
                 Already have an account?{" "}
-                <Link href="/login" className="text-foreground underline underline-offset-4">
+                <Link
+                  href={`/login${search}`}
+                  className="text-foreground underline underline-offset-4"
+                >
                   Log in
                 </Link>
               </>
             ) : (
               <>
                 New here?{" "}
-                <Link href="/signup" className="text-foreground underline underline-offset-4">
+                <Link
+                  href={`/signup${search}`}
+                  className="text-foreground underline underline-offset-4"
+                >
                   Create an account
                 </Link>
               </>

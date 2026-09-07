@@ -36,30 +36,18 @@ ignore = [
   "CPY", # no per-file copyright headers
   "FIX", # TODO and FIXME comments are allowed
   "TD", # and need no author or issue link
+  # FastAPI, SQLAlchemy, and Pydantic read annotations at runtime, so most imports
+  # cannot move into a TYPE_CHECKING block anyway.
+  "TC",
 ]
 
 [tool.ruff.lint.flake8-type-checking]
-# SQLAlchemy and Pydantic read model annotations at import time; keep those imports.
+# SQLAlchemy and Pydantic read model annotations at import time, so quoted
+# forward references in their subclasses are needed (UP037).
 runtime-evaluated-base-classes = [
   "alloy_api.models.Base",
   "sqlalchemy.orm.DeclarativeBase",
   "pydantic.BaseModel",
-]
-# FastAPI also reads the annotations of plain dependency functions, so the modules
-# that export `*Dep` aliases are never moved into a type-checking block.
-exempt-modules = ["typing", "alloy_api.config", "alloy_api.db", "alloy_api.auth.deps"]
-# FastAPI reads route handler annotations at import time; keep those imports.
-runtime-evaluated-decorators = [
-  "fastapi.FastAPI.get",
-  "fastapi.FastAPI.post",
-  "fastapi.FastAPI.put",
-  "fastapi.FastAPI.patch",
-  "fastapi.FastAPI.delete",
-  "fastapi.APIRouter.get",
-  "fastapi.APIRouter.post",
-  "fastapi.APIRouter.put",
-  "fastapi.APIRouter.patch",
-  "fastapi.APIRouter.delete",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -69,8 +57,6 @@ runtime-evaluated-decorators = [
   "ANN", # missing annotations
   "INP001", # implicit namespace package
 ]
-"**/test_*.py" = ["S101", "PLR2004", "ANN", "INP001"]
-"**/conftest.py" = ["INP001"]
 # Run by Alembic, not a package.
 "**/alembic/env.py" = ["INP001"]
 "**/alembic/versions/*.py" = [

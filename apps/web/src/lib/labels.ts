@@ -1,4 +1,10 @@
-import type { ActivityType, ContactStatus, DueFilter, TaskStatus } from "@alloy/api-client";
+import type {
+  ActivityType,
+  ContactStatus,
+  DueFilter,
+  TaskStatus,
+  WorkspaceRole,
+} from "@alloy/api-client";
 
 export const contactStatusLabels: Record<ContactStatus, string> = {
   lead: "Lead",
@@ -24,4 +30,18 @@ export const activityTypeLabels: Record<ActivityType, string> = {
   meeting: "Meeting",
   follow_up: "Follow-up",
   task_completed: "Task completed",
+};
+
+export const roleLabels: Record<WorkspaceRole, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  member: "Member",
+  viewer: "Viewer",
+};
+
+export const roleDescriptions: Record<WorkspaceRole, string> = {
+  owner: "Everything, including deleting the workspace.",
+  admin: "Edits records, manages members and settings.",
+  member: "Edits contacts, companies, and tasks.",
+  viewer: "Read-only.",
 };

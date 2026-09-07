@@ -14,11 +14,12 @@ from sqlalchemy.pool import NullPool
 from alloy_api.auth.cookies import SESSION_COOKIE
 from alloy_api.config import Settings, get_settings
 from alloy_api.db import get_session
+from alloy_api.mail import Email, get_mailer
 from alloy_api.main import app
 from alloy_api.models import Base
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
 
     from anyio.from_thread import BlockingPortal
 
@@ -34,10 +35,23 @@ def engine(settings: Settings) -> AsyncEngine:
     return create_async_engine(str(settings.database_url), poolclass=NullPool)
 
 
+class Outbox(list[Email]):
+    """A `Mailer` that keeps what it is asked to send."""
+
+    async def send(self, email: Email) -> None:
+        self.append(email)
+
+
 @pytest.fixture
-def app_client(settings: Settings) -> Iterator[TestClient]:
-    """Settings overridden, real database wiring."""
+def outbox() -> Outbox:
+    return Outbox()
+
+
+@pytest.fixture
+def app_client(settings: Settings, outbox: Outbox) -> Iterator[TestClient]:
+    """Settings and mailer overridden, real database wiring."""
     app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_mailer] = lambda: outbox
     # https: the session cookie is `Secure`, and httpx's jar only sends it over https.
     with TestClient(app, base_url="https://testserver") as client:
         yield client
@@ -101,26 +115,92 @@ def client(app_client: TestClient, db: Database) -> TestClient:  # noqa: ARG001
     return app_client
 
 
+PASSWORD = "correct horse battery"  # noqa: S105 - a fixture, not a secret
+
+
 def signup(client: TestClient, email: str) -> dict[str, str]:
     """Create a user and return a `Cookie` header for them.
 
     Explicit headers, not the client's cookie jar, so two users can share one client.
     """
-    response = client.post(
-        "/auth/signup", json={"email": email, "password": "correct horse battery"}
-    )
+    response = client.post("/auth/signup", json={"email": email, "password": PASSWORD})
     assert response.status_code == 201, response.text
     token = response.cookies[SESSION_COOKIE]
     client.cookies.clear()
     return {"Cookie": f"{SESSION_COOKIE}={token}"}
 
 
-@pytest.fixture
-def alice(client: TestClient) -> dict[str, str]:
-    return signup(client, "alice@example.com")
+@dataclass
+class Actor:
+    """A logged-in user acting inside one workspace.
+
+    `get`/`post`/... take a path relative to the workspace (`/contacts/`), send the
+    user's cookie, and return the response. `ws()` builds the absolute path.
+    """
+
+    client: TestClient
+    email: str
+    headers: dict[str, str]
+    workspace: str
+
+    def ws(self, path: str = "") -> str:
+        return f"/workspaces/{self.workspace}{path}"
+
+    def get(self, path: str, *, params: Mapping[str, str | int] | None = None):
+        return self.client.get(self.ws(path), params=params, headers=self.headers)
+
+    def post(self, path: str, *, json: object = None):
+        return self.client.post(self.ws(path), json=json, headers=self.headers)
+
+    def patch(self, path: str, *, json: object = None):
+        return self.client.patch(self.ws(path), json=json, headers=self.headers)
+
+    def delete(self, path: str):
+        return self.client.delete(self.ws(path), headers=self.headers)
+
+
+def actor(client: TestClient, email: str) -> Actor:
+    """Sign up and act in the workspace signup created."""
+    headers = signup(client, email)
+    workspaces = client.get("/workspaces/", headers=headers).json()
+    assert len(workspaces) == 1
+    return Actor(client, email, headers, workspaces[0]["id"])
 
 
 @pytest.fixture
-def bob(client: TestClient) -> dict[str, str]:
-    """A second user, for data isolation tests."""
-    return signup(client, "bob@example.com")
+def new_login(client: TestClient) -> Callable[[str], dict[str, str]]:
+    """`signup` as a fixture, for tests that need a third user."""
+    return lambda email: signup(client, email)
+
+
+@pytest.fixture
+def new_actor(client: TestClient) -> Callable[[str], Actor]:
+    """`actor` as a fixture, for tests that need a third user."""
+    return lambda email: actor(client, email)
+
+
+@pytest.fixture
+def join(client: TestClient, outbox: Outbox) -> Callable[[Actor, str, str], Actor]:
+    """Sign `email` up and seat them in `host`'s workspace with `role`, via an invitation."""
+
+    def join(host: Actor, email: str, role: str) -> Actor:
+        guest = actor(client, email)
+        invite = host.post("/invites", json={"email": email, "role": role})
+        assert invite.status_code == 201, invite.text
+        token = outbox[-1].text.split("/invites/")[1].split()[0]
+        accepted = client.post(f"/invites/{token}/accept", headers=guest.headers)
+        assert accepted.status_code == 200, accepted.text
+        return Actor(client, email, guest.headers, host.workspace)
+
+    return join
+
+
+@pytest.fixture
+def alice(client: TestClient) -> Actor:
+    return actor(client, "alice@example.com")
+
+
+@pytest.fixture
+def bob(client: TestClient) -> Actor:
+    """A second user with a workspace of their own, for data isolation tests."""
+    return actor(client, "bob@example.com")

@@ -50,7 +50,7 @@ export interface paths {
         put?: never;
         /**
          * Signup
-         * @description Create an account and log in.
+         * @description Create an account, a first workspace owned by it, and log in.
          */
         post: operations["auth-signup"];
         delete?: never;
@@ -153,7 +153,204 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/companies/": {
+    "/workspaces/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Workspaces
+         * @description Every workspace the caller belongs to, oldest first.
+         */
+        get: operations["workspaces-list_workspaces"];
+        put?: never;
+        /**
+         * Create Workspace Route
+         * @description The caller becomes its owner.
+         */
+        post: operations["workspaces-create_workspace_route"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Workspace */
+        get: operations["workspaces-read_workspace"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Workspace
+         * @description Owners only. Members, invitations, and every CRM record go with it.
+         */
+        delete: operations["workspaces-delete_workspace"];
+        options?: never;
+        head?: never;
+        /** Update Workspace */
+        patch: operations["workspaces-update_workspace"];
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leave Workspace
+         * @description Give up the caller's seat. The last owner cannot leave; delete the workspace or
+         *     make someone else an owner first.
+         */
+        post: operations["workspaces-leave_workspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Members
+         * @description Longest-standing first.
+         */
+        get: operations["workspaces-list_members"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Member
+         * @description Remove someone else's seat; use `leave` for your own.
+         */
+        delete: operations["workspaces-remove_member"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Member
+         * @description Change a role. The caller must outrank both the current and the new role (owners
+         *     outrank everyone), and the last owner cannot be demoted.
+         */
+        patch: operations["workspaces-update_member"];
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Invites
+         * @description Pending only: accepted, revoked, and expired invitations are not listed.
+         */
+        get: operations["workspaces-list_invites"];
+        put?: never;
+        /**
+         * Create Invite
+         * @description Email a link that grants `role`. One pending invitation per address; 409 if the
+         *     address is already a member or already invited.
+         */
+        post: operations["workspaces-create_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/invites/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Invite
+         * @description The link stops working. Only pending invitations can be revoked.
+         */
+        delete: operations["workspaces-revoke_invite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Invite
+         * @description No login needed: the page shows who invited you where before you sign up.
+         */
+        get: operations["invites-read_invite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Invite
+         * @description Take the seat. The logged-in account's email must be the invited one.
+         */
+        post: operations["invites-accept_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/companies/": {
         parameters: {
             query?: never;
             header?: never;
@@ -174,7 +371,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/companies/{company_id}": {
+    "/workspaces/{workspace_id}/companies/{company_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -196,7 +393,7 @@ export interface paths {
         patch: operations["companies-update_company"];
         trace?: never;
     };
-    "/companies/{company_id}/contacts": {
+    "/workspaces/{workspace_id}/companies/{company_id}/contacts": {
         parameters: {
             query?: never;
             header?: never;
@@ -213,7 +410,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/contacts/": {
+    "/workspaces/{workspace_id}/contacts/": {
         parameters: {
             query?: never;
             header?: never;
@@ -234,7 +431,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/contacts/{contact_id}": {
+    "/workspaces/{workspace_id}/contacts/{contact_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -256,7 +453,7 @@ export interface paths {
         patch: operations["contacts-update_contact"];
         trace?: never;
     };
-    "/contacts/{contact_id}/activities": {
+    "/workspaces/{workspace_id}/contacts/{contact_id}/activities": {
         parameters: {
             query?: never;
             header?: never;
@@ -280,7 +477,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/tasks/": {
+    "/workspaces/{workspace_id}/tasks/": {
         parameters: {
             query?: never;
             header?: never;
@@ -301,7 +498,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/tasks/{task_id}": {
+    "/workspaces/{workspace_id}/tasks/{task_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -323,7 +520,7 @@ export interface paths {
         patch: operations["tasks-update_task"];
         trace?: never;
     };
-    "/dashboard/": {
+    "/workspaces/{workspace_id}/dashboard/": {
         parameters: {
             query?: never;
             header?: never;
@@ -573,6 +770,82 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** InviteCreate */
+        InviteCreate: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** @default member */
+            role: components["schemas"]["WorkspaceRole"];
+        };
+        /**
+         * InvitePreview
+         * @description What the invitation page shows before the invitee logs in or signs up.
+         */
+        InvitePreview: {
+            /** Workspace Name */
+            workspace_name: string;
+            /** Email */
+            email: string;
+            role: components["schemas"]["WorkspaceRole"];
+            /** Invited By */
+            invited_by: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** InviteRead */
+        InviteRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+            role: components["schemas"]["WorkspaceRole"];
+            /** Invited By */
+            invited_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** MemberRead */
+        MemberRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Email */
+            email: string;
+            role: components["schemas"]["WorkspaceRole"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** MemberUpdate */
+        MemberUpdate: {
+            role: components["schemas"]["WorkspaceRole"];
+        };
         /** PasswordChange */
         PasswordChange: {
             /** Current Password */
@@ -580,6 +853,11 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /**
+         * Permission
+         * @enum {string}
+         */
+        Permission: "crm:read" | "crm:write" | "members:read" | "members:manage" | "workspace:manage" | "workspace:delete";
         /** TaskCreate */
         TaskCreate: {
             /** Title */
@@ -669,6 +947,48 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** WorkspaceCreate */
+        WorkspaceCreate: {
+            /** Name */
+            name: string;
+        };
+        /**
+         * WorkspaceRead
+         * @description A workspace as seen by one member: their role and what it allows come along.
+         */
+        WorkspaceRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            role: components["schemas"]["WorkspaceRole"];
+            /** Permissions */
+            permissions: components["schemas"]["Permission"][];
+        };
+        /**
+         * WorkspaceRole
+         * @description Ordered from most to least powerful; see permissions.py for what each may do.
+         * @enum {string}
+         */
+        WorkspaceRole: "owner" | "admin" | "member" | "viewer";
+        /** WorkspaceUpdate */
+        WorkspaceUpdate: {
+            /** Name */
+            name: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -693,13 +1013,23 @@ export type Dashboard = components['schemas']['Dashboard'];
 export type DueFilter = components['schemas']['DueFilter'];
 export type HttpValidationError = components['schemas']['HTTPValidationError'];
 export type Health = components['schemas']['Health'];
+export type InviteCreate = components['schemas']['InviteCreate'];
+export type InvitePreview = components['schemas']['InvitePreview'];
+export type InviteRead = components['schemas']['InviteRead'];
+export type MemberRead = components['schemas']['MemberRead'];
+export type MemberUpdate = components['schemas']['MemberUpdate'];
 export type PasswordChange = components['schemas']['PasswordChange'];
+export type Permission = components['schemas']['Permission'];
 export type TaskCreate = components['schemas']['TaskCreate'];
 export type TaskRead = components['schemas']['TaskRead'];
 export type TaskStatus = components['schemas']['TaskStatus'];
 export type TaskUpdate = components['schemas']['TaskUpdate'];
 export type UserRead = components['schemas']['UserRead'];
 export type ValidationError = components['schemas']['ValidationError'];
+export type WorkspaceCreate = components['schemas']['WorkspaceCreate'];
+export type WorkspaceRead = components['schemas']['WorkspaceRead'];
+export type WorkspaceRole = components['schemas']['WorkspaceRole'];
+export type WorkspaceUpdate = components['schemas']['WorkspaceUpdate'];
 export type $defs = Record<string, never>;
 export interface operations {
     "health-read_health": {
@@ -895,6 +1225,438 @@ export interface operations {
             };
         };
     };
+    "workspaces-list_workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceRead"][];
+                };
+            };
+        };
+    };
+    "workspaces-create_workspace_route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-read_workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-delete_workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-update_workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-leave_workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-list_members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-remove_member": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-update_member": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-list_invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-create_invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-revoke_invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "invites-read_invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitePreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "invites-accept_invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     "companies-list_companies": {
         parameters: {
             query?: {
@@ -904,7 +1666,9 @@ export interface operations {
                 q?: string | null;
             };
             header?: never;
-            path?: never;
+            path: {
+                workspace_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -933,7 +1697,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspace_id: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -968,6 +1734,7 @@ export interface operations {
             header?: never;
             path: {
                 company_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -999,6 +1766,7 @@ export interface operations {
             header?: never;
             path: {
                 company_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1028,6 +1796,7 @@ export interface operations {
             header?: never;
             path: {
                 company_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1063,6 +1832,7 @@ export interface operations {
             header?: never;
             path: {
                 company_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1099,7 +1869,9 @@ export interface operations {
                 company_id?: string | null;
             };
             header?: never;
-            path?: never;
+            path: {
+                workspace_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1128,7 +1900,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspace_id: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -1163,6 +1937,7 @@ export interface operations {
             header?: never;
             path: {
                 contact_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1194,6 +1969,7 @@ export interface operations {
             header?: never;
             path: {
                 contact_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1223,6 +1999,7 @@ export interface operations {
             header?: never;
             path: {
                 contact_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1261,6 +2038,7 @@ export interface operations {
             header?: never;
             path: {
                 contact_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1292,6 +2070,7 @@ export interface operations {
             header?: never;
             path: {
                 contact_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1334,7 +2113,9 @@ export interface operations {
                 company_id?: string | null;
             };
             header?: never;
-            path?: never;
+            path: {
+                workspace_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1363,7 +2144,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspace_id: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -1398,6 +2181,7 @@ export interface operations {
             header?: never;
             path: {
                 task_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1429,6 +2213,7 @@ export interface operations {
             header?: never;
             path: {
                 task_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1458,6 +2243,7 @@ export interface operations {
             header?: never;
             path: {
                 task_id: string;
+                workspace_id: string;
             };
             cookie?: never;
         };
@@ -1498,7 +2284,9 @@ export interface operations {
                 limit?: number;
             };
             header?: never;
-            path?: never;
+            path: {
+                workspace_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

@@ -2,10 +2,10 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from alloy_api.models import Base, Timestamps, UUIDPrimaryKey
+from alloy_api.models import Base, Timestamps, UUIDPrimaryKey, string_enum
 
 
 class ContactStatus(StrEnum):
@@ -34,28 +34,15 @@ CONTACT_ACTIVITY_TYPES = frozenset(
 )
 
 
-def string_enum[E: StrEnum](enum_type: type[E]) -> Enum:
-    """A VARCHAR holding the member values (not names), so adding a member needs no migration.
+class OwnedByWorkspace(UUIDPrimaryKey):
+    """Every CRM row belongs to one workspace, and every query filters on it."""
 
-    No PostgreSQL enum type and no CHECK constraint: the API validates the values.
-    """
-    return Enum(
-        enum_type,
-        native_enum=False,
-        length=32,
-        values_callable=lambda members: [member.value for member in members],
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True, sort_order=-99
     )
 
 
-class OwnedByUser(UUIDPrimaryKey):
-    """Every CRM row belongs to one user, and every query filters on it."""
-
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True, sort_order=-99
-    )
-
-
-class Company(OwnedByUser, Timestamps, Base):
+class Company(OwnedByWorkspace, Timestamps, Base):
     __tablename__ = "companies"
 
     name: Mapped[str] = mapped_column(String(200))
@@ -66,7 +53,7 @@ class Company(OwnedByUser, Timestamps, Base):
     contacts: Mapped[list["Contact"]] = relationship(back_populates="company")
 
 
-class Contact(OwnedByUser, Timestamps, Base):
+class Contact(OwnedByWorkspace, Timestamps, Base):
     __tablename__ = "contacts"
 
     company_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -102,7 +89,7 @@ class Activity(UUIDPrimaryKey, Base):
     contact: Mapped[Contact] = relationship(back_populates="activities")
 
 
-class Task(OwnedByUser, Timestamps, Base):
+class Task(OwnedByWorkspace, Timestamps, Base):
     __tablename__ = "tasks"
 
     contact_id: Mapped[uuid.UUID | None] = mapped_column(

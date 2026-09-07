@@ -6,12 +6,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from alloy_api.auth.deps import CurrentUserDep
 from alloy_api.crm.dates import UTC_ZONE, DueFilter, TimeZoneField, due_clause
 from alloy_api.crm.models import Contact, Task, TaskStatus
 from alloy_api.crm.schemas import ContactRead, Dashboard
 from alloy_api.db import SessionDep
 from alloy_api.models import utcnow
+from alloy_api.workspaces.deps import CanReadCrm
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -24,12 +24,12 @@ class DashboardOptions(BaseModel):
 
 @router.get("/")
 async def read_dashboard(
-    session: SessionDep, user: CurrentUserDep, options: Annotated[DashboardOptions, Query()]
+    session: SessionDep, membership: CanReadCrm, options: Annotated[DashboardOptions, Query()]
 ) -> Dashboard:
     """Counts of open tasks due today and overdue, plus who was and was not contacted lately."""
-    own_contacts = select(Contact).where(Contact.user_id == user.id)
+    own_contacts = select(Contact).where(Contact.workspace_id == membership.workspace.id)
     open_tasks = select(func.count(Task.id)).where(
-        Task.user_id == user.id, Task.status == TaskStatus.OPEN
+        Task.workspace_id == membership.workspace.id, Task.status == TaskStatus.OPEN
     )
     stale_before = utcnow() - timedelta(days=options.stale_days)
 

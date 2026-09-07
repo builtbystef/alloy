@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from alloy_api.crm.models import OwnedByUser
+from alloy_api.crm.models import OwnedByWorkspace
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.orm.interfaces import ORMOption
 
-    from alloy_api.auth.models import User
+    from alloy_api.workspaces.deps import Membership
 
 
 class Page(BaseModel):
@@ -22,20 +22,24 @@ class Page(BaseModel):
     offset: int = Field(0, ge=0)
 
 
-def not_found(model: type[OwnedByUser]) -> HTTPException:
+def not_found(model: type[OwnedByWorkspace]) -> HTTPException:
     return HTTPException(status.HTTP_404_NOT_FOUND, f"{model.__name__} not found")
 
 
-async def fetch_owned[T: OwnedByUser](
+async def fetch_owned[T: OwnedByWorkspace](
     session: AsyncSession,
     model: type[T],
     object_id: UUID,
-    user: User,
+    membership: Membership,
     *options: ORMOption,
 ) -> T:
-    """The row with this id, if it belongs to `user`; 404 otherwise, so ids leak nothing."""
+    """The row with this id, if it is in the caller's workspace; 404 otherwise, so ids
+    leak nothing."""
     row = await session.scalar(
-        select(model).options(*options).where(model.id == object_id).where(model.user_id == user.id)
+        select(model)
+        .options(*options)
+        .where(model.id == object_id)
+        .where(model.workspace_id == membership.workspace.id)
     )
     if row is None:
         raise not_found(model)
@@ -43,8 +47,11 @@ async def fetch_owned[T: OwnedByUser](
 
 
 async def check_owned(
-    session: AsyncSession, model: type[OwnedByUser], object_id: UUID | None, user: User
+    session: AsyncSession,
+    model: type[OwnedByWorkspace],
+    object_id: UUID | None,
+    membership: Membership,
 ) -> None:
-    """A referenced id in a body (`company_id`, ...) must be the caller's own row."""
+    """A referenced id in a body (`company_id`, ...) must be in the same workspace."""
     if object_id is not None:
-        await fetch_owned(session, model, object_id, user)
+        await fetch_owned(session, model, object_id, membership)
