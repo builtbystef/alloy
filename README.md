@@ -199,13 +199,16 @@ package `@alloy/web`:
 
 ```text
 apps/web/
-├── package.json              # next, react, react-dom; @alloy/api-client; babel-plugin-react-compiler
+├── package.json              # next, react, react-dom; @alloy/api-client; tailwindcss; @base-ui/react, cn, lucide-react
 ├── next.config.ts            # cacheComponents, typedRoutes, reactCompiler
+├── postcss.config.mjs        # @tailwindcss/postcss
+├── components.json           # shadcn/ui config: base-nova style, zinc, src/app/globals.css
 ├── tsconfig.json             # tsconfig/browser.json + jsx, paths (@/*), next plugin
 ├── .env.example              # API_URL
 └── src/
-    ├── app/                  # routes: layout.tsx, page.tsx, globals.css
+    ├── app/                  # routes: layout.tsx, page.tsx, globals.css (Tailwind + theme tokens)
     │   └── api-status.tsx    # awaits api.GET("/health/") behind <Suspense>
+    ├── components/ui/        # shadcn/ui components, added with `pnpm dlx shadcn@latest add`
     └── lib/api.ts            # createApiClient({ baseUrl: process.env.API_URL })
 ```
 
@@ -235,6 +238,9 @@ Choices worth knowing, all from the Next.js 16 docs:
   `babel-plugin-react-compiler` on files with JSX or hooks only. The
   Babel-free `experimental.turbopackRustReactCompiler` exists but is not yet
   recommended for production.
+- Tailwind CSS v4 through `@tailwindcss/postcss`, configured in CSS only, and
+  shadcn/ui (`base-nova` style on Base UI primitives) initialized from a preset.
+  See `apps/web/README.md` for the theme layout and how to add components.
 - No ESLint. Next 16 no longer lints during `next build`; oxlint via `vp check`
   covers the app like every other package.
 - TypeScript 7 from the catalog: `next build` runs the project-local `tsc` CLI
@@ -254,7 +260,10 @@ Defined in `pnpm-workspace.yaml`:
 - `strictDepBuilds` + `allowBuilds: {}`: no dependency runs lifecycle scripts
   until explicitly reviewed and listed
 - `blockExoticSubdeps`: transitive deps must come from the registry
-- `trustPolicy: no-downgrade`: publisher trust levels may not regress
+- `trustPolicy: no-downgrade`: publisher trust levels may not regress.
+  `trustPolicyExclude` lists the exact versions that are known false positives
+  (currently `semver@6.3.1`, an old major that `@babel/core` still needs,
+  published without provenance days after a 7.x release that had it)
 - `verifyDepsBeforeRun`: scripts never run against a stale tree
 - `engineStrict`: Node version mismatch fails instead of warning
 
