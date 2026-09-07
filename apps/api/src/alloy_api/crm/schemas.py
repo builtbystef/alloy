@@ -6,7 +6,15 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, HttpUrl, StringConstraints
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    HttpUrl,
+    StringConstraints,
+)
 
 from alloy_api.crm.models import ActivityType, ContactStatus, TaskStatus
 
@@ -145,3 +153,43 @@ class Dashboard(BaseModel):
     overdue_tasks: int
     recently_contacted: list[ContactRead]
     not_recently_contacted: list[ContactRead]
+
+
+Filename = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
+# `type/subtype`, as the browser reports it. The store pins the upload to it.
+ContentType = Annotated[str, StringConstraints(max_length=255, pattern=r"^[\w.+-]+/[\w.+-]+$")]
+
+
+class AttachmentCreate(BaseModel):
+    """What the client knows before uploading. `size` is checked against the limit
+    here and again against the stored object on completion."""
+
+    filename: Filename
+    content_type: ContentType
+    size: int = Field(ge=1, description="Bytes.")
+
+
+class UploaderRef(ReadModel):
+    id: UUID
+    email: str
+
+
+class AttachmentRead(ReadModel):
+    id: UUID
+    contact_id: UUID | None
+    company_id: UUID | None
+    filename: str
+    content_type: str
+    size: int
+    uploaded_by: UploaderRef | None
+    uploaded_at: datetime | None
+    created_at: datetime
+
+
+class AttachmentUpload(BaseModel):
+    """Step one of an upload: `PUT` the file to `upload_url` with the `Content-Type`
+    given at creation, then `POST .../attachments/{id}/complete`."""
+
+    attachment: AttachmentRead
+    upload_url: str
+    expires_at: datetime

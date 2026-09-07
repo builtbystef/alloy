@@ -17,6 +17,8 @@ from alloy_api.db import get_session
 from alloy_api.mail import Email, get_mailer
 from alloy_api.main import app
 from alloy_api.models import Base
+from alloy_api.storage import get_object_store
+from alloy_api.storage.memory import MemoryObjectStore
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
@@ -48,10 +50,18 @@ def outbox() -> Outbox:
 
 
 @pytest.fixture
-def app_client(settings: Settings, outbox: Outbox) -> Iterator[TestClient]:
-    """Settings and mailer overridden, real database wiring."""
+def object_store() -> MemoryObjectStore:
+    return MemoryObjectStore()
+
+
+@pytest.fixture
+def app_client(
+    settings: Settings, outbox: Outbox, object_store: MemoryObjectStore
+) -> Iterator[TestClient]:
+    """Settings, mailer, and object store overridden, real database wiring."""
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_mailer] = lambda: outbox
+    app.dependency_overrides[get_object_store] = lambda: object_store
     # https: the session cookie is `Secure`, and httpx's jar only sends it over https.
     with TestClient(app, base_url="https://testserver") as client:
         yield client
@@ -159,8 +169,16 @@ class Actor:
     def ws(self, path: str = "") -> str:
         return f"/workspaces/{self.workspace}{path}"
 
-    def get(self, path: str, *, params: Mapping[str, str | int] | None = None):
-        return self.client.get(self.ws(path), params=params, headers=self.headers)
+    def get(
+        self,
+        path: str,
+        *,
+        params: Mapping[str, str | int] | None = None,
+        follow_redirects: bool = True,
+    ):
+        return self.client.get(
+            self.ws(path), params=params, headers=self.headers, follow_redirects=follow_redirects
+        )
 
     def post(self, path: str, *, json: object = None):
         return self.client.post(self.ws(path), json=json, headers=self.headers)

@@ -22,7 +22,8 @@ dependencies, formatting, linting, type checking, and tests:
 - Node ≥ 24 (pinned in `.node-version`, enforced at install)
 - Python ≥ 3.14 (pinned in `.python-version`; uv downloads it on demand)
 - uv ≥ 0.12 (`required-version` in `pyproject.toml`)
-- Docker with Compose, for the local PostgreSQL that `apps/api` and its tests use
+- Docker with Compose, for the local PostgreSQL and RustFS object storage that
+  `apps/api` and its tests use
 
 ## Commands
 
@@ -34,7 +35,7 @@ vp run check:fix
 vp run test         # Vitest + pytest
 vp run build
 vp run ci           # everything CI runs
-vp run db:up        # PostgreSQL in Docker, waits until it accepts connections
+vp run db:up        # PostgreSQL and RustFS in Docker, waits until they accept connections
 vp run db:migrate   # apply pending Alembic migrations
 vp run db:down      # stop PostgreSQL (data is kept; add --volumes to wipe it)
 vp run dev:api      # FastAPI with reload, http://127.0.0.1:8000
@@ -115,7 +116,7 @@ A [FastAPI](https://fastapi.tiangolo.com) service, package `alloy_api`:
 ```text
 apps/api/
 ├── pyproject.toml            # fastapi, pydantic-settings, sqlalchemy, psycopg, alembic, pwdlib; [tool.alembic]
-├── compose.yaml              # local PostgreSQL 18
+├── compose.yaml              # local PostgreSQL 18 and RustFS (S3-compatible object storage)
 ├── alembic.ini               # Alembic logging only
 ├── alembic/                  # env.py (async, URL from Settings), script.py.mako, versions/
 ├── .env.example
@@ -128,7 +129,8 @@ apps/api/
 │   ├── auth/                 # sign up, log in, log out; cookie sessions in Postgres; CurrentUserDep
 │   ├── workspaces/           # workspaces, members, roles and permissions, invitations; CurrentMembership
 │   ├── mail/                 # Mailer protocol + ConsoleMailer; MailerDep
-│   └── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, dashboard
+│   ├── storage/              # ObjectStore protocol + S3ObjectStore (aiobotocore); ObjectStoreDep
+│   └── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, attachments, dashboard
 └── tests/                    # TestClient fixture: settings overridden, one rolled-back transaction
 ```
 
@@ -164,7 +166,7 @@ PostgreSQL 18 runs in Docker from `apps/api/compose.yaml`, with
 [Alembic](https://alembic.sqlalchemy.org) for migrations:
 
 ```sh
-vp run db:up                  # start PostgreSQL, waits until healthy (127.0.0.1:5432, alloy/alloy)
+vp run db:up                  # start PostgreSQL and RustFS, waits until healthy (127.0.0.1:5432, alloy/alloy)
 vp run db:migrate             # alembic upgrade head
 cd apps/api && uv run alembic revision --autogenerate -m "add widget"   # after changing models.py
 cd apps/api && uv run alembic downgrade -1
@@ -311,6 +313,43 @@ provider: write a class with the same `send` method, add its name to
 `Settings`. Nothing else changes. Tests override `get_mailer` with an
 in-memory outbox and read the invitation token out of the message body.
 
+### Object storage
+
+`storage/` keeps the app one step away from any storage service, the way
+`mail/` does for email. `ObjectStore` (`storage/base.py`) is a protocol with
+`put`, `get`, `head`, `delete`, `delete_prefix`, `upload_url`, and
+`download_url`. `S3ObjectStore` (`storage/s3.py`) implements it over
+[aiobotocore](https://github.com/aio-libs/aiobotocore) and is the only
+implementation, because every candidate speaks S3: [RustFS](https://rustfs.com)
+locally (Apache 2.0, from `compose.yaml`), and AWS S3, Cloudflare R2, Garage,
+or SeaweedFS when hosted. Switching is configuration:
+
+```sh
+ALLOY_STORAGE_ENDPOINT_URL=null          # AWS itself; a URL for anything S3-compatible
+ALLOY_STORAGE_PUBLIC_ENDPOINT_URL=...    # only when the browser reaches storage at another address than the API does
+ALLOY_STORAGE_PATH_STYLE=false           # AWS; true (default) for RustFS and MinIO
+ALLOY_STORAGE_REGION / _BUCKET / _ACCESS_KEY / _SECRET_KEY
+```
+
+`create_object_store(settings)` builds the store, the lifespan enters it,
+and handlers take an `ObjectStoreDep`. To add a backend that does not speak
+S3: write a class with the same methods, add its name to `StorageProvider`,
+return it from `create_object_store`. `tests/test_storage.py` is the contract:
+the same tests run against `MemoryObjectStore` (`storage/memory.py`, the
+test double the route tests use) and against the RustFS from Compose, plus
+presigned-URL tests that need the real server.
+
+Bytes never pass through the API. The browser uploads with a presigned `PUT`
+and downloads through a presigned `GET`, both signed by the store for
+`ALLOY_STORAGE_URL_TTL` (default 15 minutes). A presigned `PUT` pins the
+`Content-Type`, so storage refuses a body of another type, and the object key
+never comes from the client. Keys are `workspaces/{id}/attachments/{id}`, so
+deleting a workspace clears its files with one `delete_prefix`. The `storage-init`
+Compose service creates the bucket and sets its CORS rule for
+`http://localhost:3000`; a hosted bucket needs the same rule for the web
+app's origin. The RustFS console is at http://localhost:9001 (`rustfsadmin` /
+`rustfsadmin`).
+
 ### Tiny CRM (demo)
 
 `crm/` is a sample application on top of the template: contacts, companies,
@@ -340,6 +379,11 @@ GET/POST          .../tasks/                     ?due=overdue|today|upcoming &tz
 GET/PATCH/DELETE  .../tasks/{id}
 
 GET               .../dashboard/                 ?tz= &stale_days=30 &limit=5
+GET/POST          .../contacts/{id}/attachments                  uploaded files, newest first / start an upload
+GET/POST          .../companies/{id}/attachments
+POST              .../attachments/{id}/complete                 after the PUT; 409 until the object is in the store
+GET               .../attachments/{id}/download                 307 to a short-lived storage URL
+DELETE            .../attachments/{id}                          removes the object, then the row
 ```
 
 - Contact `status`: `lead`, `active`, `inactive`. Task `status`: `open`,
@@ -355,6 +399,13 @@ GET               .../dashboard/                 ?tz= &stale_days=30 &limit=5
   dashboard counts only open tasks.
 - The dashboard lists the most recently contacted people and those not
   contacted in `stale_days` (never-contacted last).
+- Attachments are files on a contact or a company, at most
+  `ALLOY_ATTACHMENT_MAX_BYTES` (default 25 MB). An upload is a handshake: `POST`
+  the filename, type, and size to get an upload URL (413 when too big), `PUT`
+  the file there, `POST .../complete` so the API confirms the object is in the
+  store, records the size storage actually received, and marks the row
+  uploaded. Rows whose upload never completed stay hidden. Deleting a contact,
+  company, or workspace deletes its files from storage first.
 
 ## packages/api-client
 

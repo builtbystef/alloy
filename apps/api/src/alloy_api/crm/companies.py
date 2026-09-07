@@ -6,10 +6,12 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from alloy_api.crm.attachments import delete_objects
 from alloy_api.crm.common import Page, fetch_owned
 from alloy_api.crm.models import Company, Contact
 from alloy_api.crm.schemas import CompanyCreate, CompanyRead, CompanyUpdate, ContactRead
 from alloy_api.db import SessionDep
+from alloy_api.storage import ObjectStoreDep
 from alloy_api.workspaces.deps import CanReadCrm, CanWriteCrm
 
 router = APIRouter(prefix="/companies", tags=["companies"])
@@ -66,10 +68,12 @@ async def update_company(
 
 @router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_company(
-    company_id: UUID, session: SessionDep, membership: CanWriteCrm
+    company_id: UUID, session: SessionDep, store: ObjectStoreDep, membership: CanWriteCrm
 ) -> Response:
-    """Contacts and tasks at the company are kept, with the link cleared."""
+    """Contacts and tasks at the company are kept, with the link cleared; its
+    attachments go with it."""
     company = await fetch_owned(session, Company, company_id, membership)
+    await delete_objects(session, store, company)
     await session.delete(company)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

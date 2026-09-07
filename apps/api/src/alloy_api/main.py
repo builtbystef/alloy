@@ -11,6 +11,7 @@ from alloy_api.crm.router import router as crm_router
 from alloy_api.db import DatabaseState, create_database_state
 from alloy_api.mail import Mailer, create_mailer
 from alloy_api.routers import health
+from alloy_api.storage import ObjectStore, create_object_store
 from alloy_api.workspaces.invites import router as invites_router
 from alloy_api.workspaces.router import router as workspaces_router
 
@@ -29,6 +30,7 @@ class AppState(DatabaseState):
     """What the lifespan puts on `request.state`."""
 
     mailer: Mailer
+    object_store: ObjectStore
 
 
 def generate_unique_id(route: APIRoute) -> str:
@@ -44,10 +46,16 @@ def generate_unique_id(route: APIRoute) -> str:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[AppState]:
-    """The yielded dict becomes `request.state`. The engine connects lazily."""
-    state = AppState(**create_database_state(settings), mailer=create_mailer(settings))
-    yield state
-    await state["engine"].dispose()
+    """The yielded dict becomes `request.state`. The engine and the object store
+    connect lazily."""
+    async with create_object_store(settings) as object_store:
+        state = AppState(
+            **create_database_state(settings),
+            mailer=create_mailer(settings),
+            object_store=object_store,
+        )
+        yield state
+        await state["engine"].dispose()
 
 
 app = FastAPI(

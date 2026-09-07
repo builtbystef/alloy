@@ -5,7 +5,12 @@ import { Suspense } from "react";
 
 import { DetailSkeleton } from "@/components/skeletons";
 import { ApiError } from "@/lib/api-error";
-import { contactActivitiesQuery, contactQuery, taskListQuery } from "@/lib/queries";
+import {
+  contactActivitiesQuery,
+  attachmentsQuery,
+  contactQuery,
+  taskListQuery,
+} from "@/lib/queries";
 import { getQueryClient } from "@/lib/query-client";
 import { getSessionApi, requireWorkspace } from "@/lib/session";
 import { getTimeZone } from "@/lib/time-zone";
@@ -30,12 +35,14 @@ async function ContactContent({ params }: { params: Params }) {
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
 
-  // The contact itself must exist for the page to make sense; the feed and
-  // tasks are prefetched alongside so the client renders without a waterfall.
+  // The contact itself must exist for the page to make sense; the feed, tasks,
+  // and attachments are prefetched alongside so the client renders without a
+  // waterfall.
   try {
     await Promise.all([
       queryClient.fetchQuery(contactQuery(api, workspaceId, id)),
       queryClient.prefetchQuery(contactActivitiesQuery(api, workspaceId, id)),
+      queryClient.prefetchQuery(attachmentsQuery(api, workspaceId, { contactId: id })),
       queryClient.prefetchQuery(taskListQuery(api, workspaceId, { contact_id: id, tz: timeZone })),
     ]);
   } catch (error) {

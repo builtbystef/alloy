@@ -52,6 +52,8 @@ export interface paths {
          * Signup
          * @description Create an account, a first workspace owned by it, log in, and email a
          *     verification link. Until it is followed, the account can only use `/auth/*`.
+         *
+         *     An invitee gets no link: accepting the invitation verifies the address instead.
          */
         post: operations["auth-signup"];
         delete?: never;
@@ -233,7 +235,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Workspace
-         * @description Owners only. Members, invitations, and every CRM record go with it.
+         * @description Owners only. Members, invitations, every CRM record, and every stored file go
+         *     with it.
          */
         delete: operations["workspaces-delete_workspace"];
         options?: never;
@@ -430,7 +433,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Company
-         * @description Contacts and tasks at the company are kept, with the link cleared.
+         * @description Contacts and tasks at the company are kept, with the link cleared; its
+         *     attachments go with it.
          */
         delete: operations["companies-delete_company"];
         options?: never;
@@ -490,7 +494,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Contact
-         * @description The contact's activities go with it; tasks are kept, with the link cleared.
+         * @description The contact's activities and attachments go with it; tasks are kept, with the
+         *     link cleared.
          */
         delete: operations["contacts-delete_contact"];
         options?: never;
@@ -586,6 +591,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workspaces/{workspace_id}/contacts/{contact_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Contact Attachments
+         * @description Newest first. Files whose upload never completed are left out.
+         */
+        get: operations["attachments-list_contact_attachments"];
+        put?: never;
+        /**
+         * Create Contact Attachment
+         * @description Start an upload: the row is created and an upload URL returned. 413 when
+         *     `size` is over the limit.
+         */
+        post: operations["attachments-create_contact_attachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/companies/{company_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Company Attachments
+         * @description Newest first. Files whose upload never completed are left out.
+         */
+        get: operations["attachments-list_company_attachments"];
+        put?: never;
+        /**
+         * Create Company Attachment
+         * @description Start an upload: the row is created and an upload URL returned. 413 when
+         *     `size` is over the limit.
+         */
+        post: operations["attachments-create_company_attachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/attachments/{attachment_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Attachment
+         * @description Called after the `PUT`. 409 when the object is not in the store yet; 413, and
+         *     the object is removed, when it is bigger than allowed. Repeating it is harmless.
+         */
+        post: operations["attachments-complete_attachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/attachments/{attachment_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Attachment
+         * @description Redirects to a short-lived URL that serves the file as a download.
+         */
+        get: operations["attachments-download_attachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Attachment
+         * @description Removes the file from the store, then the row.
+         */
+        delete: operations["attachments-delete_attachment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -639,6 +755,63 @@ export interface components {
          * @enum {string}
          */
         ActivityType: "note" | "call" | "email" | "meeting" | "follow_up" | "task_completed";
+        /**
+         * AttachmentCreate
+         * @description What the client knows before uploading. `size` is checked against the limit
+         *     here and again against the stored object on completion.
+         */
+        AttachmentCreate: {
+            /** Filename */
+            filename: string;
+            /** Content Type */
+            content_type: string;
+            /**
+             * Size
+             * @description Bytes.
+             */
+            size: number;
+        };
+        /** AttachmentRead */
+        AttachmentRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Contact Id */
+            contact_id: string | null;
+            /** Company Id */
+            company_id: string | null;
+            /** Filename */
+            filename: string;
+            /** Content Type */
+            content_type: string;
+            /** Size */
+            size: number;
+            uploaded_by: components["schemas"]["UploaderRef"] | null;
+            /** Uploaded At */
+            uploaded_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * AttachmentUpload
+         * @description Step one of an upload: `PUT` the file to `upload_url` with the `Content-Type`
+         *     given at creation, then `POST .../attachments/{id}/complete`.
+         */
+        AttachmentUpload: {
+            attachment: components["schemas"]["AttachmentRead"];
+            /** Upload Url */
+            upload_url: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
         /** CompanyCreate */
         CompanyCreate: {
             /** Name */
@@ -973,6 +1146,16 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** UploaderRef */
+        UploaderRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+        };
         /** UserRead */
         UserRead: {
             /**
@@ -1055,6 +1238,9 @@ export interface components {
 export type ActivityCreate = components['schemas']['ActivityCreate'];
 export type ActivityRead = components['schemas']['ActivityRead'];
 export type ActivityType = components['schemas']['ActivityType'];
+export type AttachmentCreate = components['schemas']['AttachmentCreate'];
+export type AttachmentRead = components['schemas']['AttachmentRead'];
+export type AttachmentUpload = components['schemas']['AttachmentUpload'];
 export type CompanyCreate = components['schemas']['CompanyCreate'];
 export type CompanyRead = components['schemas']['CompanyRead'];
 export type CompanyRef = components['schemas']['CompanyRef'];
@@ -1081,6 +1267,7 @@ export type TaskCreate = components['schemas']['TaskCreate'];
 export type TaskRead = components['schemas']['TaskRead'];
 export type TaskStatus = components['schemas']['TaskStatus'];
 export type TaskUpdate = components['schemas']['TaskUpdate'];
+export type UploaderRef = components['schemas']['UploaderRef'];
 export type UserRead = components['schemas']['UserRead'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type WorkspaceCreate = components['schemas']['WorkspaceCreate'];
@@ -2407,6 +2594,242 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Dashboard"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "attachments-list_contact_attachments": {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                contact_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "attachments-create_contact_attachment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contact_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUpload"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "attachments-list_company_attachments": {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "attachments-create_company_attachment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUpload"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "attachments-complete_attachment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "attachments-download_attachment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            307: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "attachments-delete_attachment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

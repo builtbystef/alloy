@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 const SESSION_COOKIE = "__Host-session";
 const AUTH_PATHS = ["/login", "/signup"];
-const OPEN_PATHS = ["/verify-email"];
+const OPEN_PATHS = ["/verify-email", "/logout"];
 
 const matches = (paths: string[], pathname: string) =>
   paths.some((path) => pathname === path || pathname === `${path}/`);

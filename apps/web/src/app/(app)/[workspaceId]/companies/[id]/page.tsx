@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { DetailSkeleton } from "@/components/skeletons";
 import { ApiError } from "@/lib/api-error";
-import { companyContactsQuery, companyQuery, taskListQuery } from "@/lib/queries";
+import { attachmentsQuery, companyContactsQuery, companyQuery, taskListQuery } from "@/lib/queries";
 import { getQueryClient } from "@/lib/query-client";
 import { getSessionApi, requireWorkspace } from "@/lib/session";
 import { getTimeZone } from "@/lib/time-zone";
@@ -34,6 +34,7 @@ async function CompanyContent({ params }: { params: Params }) {
     await Promise.all([
       queryClient.fetchQuery(companyQuery(api, workspaceId, id)),
       queryClient.prefetchQuery(companyContactsQuery(api, workspaceId, id)),
+      queryClient.prefetchQuery(attachmentsQuery(api, workspaceId, { companyId: id })),
       queryClient.prefetchQuery(taskListQuery(api, workspaceId, { company_id: id, tz: timeZone })),
     ]);
   } catch (error) {

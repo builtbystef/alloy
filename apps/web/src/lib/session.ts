@@ -29,10 +29,14 @@ export const getCurrentUser = cache(async (): Promise<UserRead | null> => {
   throw ApiError.fromResult(result);
 });
 
-/** Logged in and verified: what every app page needs. */
+/**
+ * Logged in and verified: what every app page needs. A cookie the API rejects
+ * goes through `/logout`, which clears it; `/login` alone would bounce back
+ * here for as long as the cookie is present.
+ */
 export async function requireUser(): Promise<UserRead> {
   const user = await getCurrentUser();
-  if (user === null) redirect("/login");
+  if (user === null) redirect("/logout");
   if (user.email_verified_at === null) redirect("/verify-email");
   return user;
 }
@@ -52,7 +56,7 @@ export const getWorkspace = cache(async (workspaceId: string): Promise<Workspace
     params: { path: { workspace_id: workspaceId } },
   });
   if (result.data) return result.data;
-  if (result.response.status === 401) redirect("/login");
+  if (result.response.status === 401) redirect("/logout");
   // The API answers 403 here only for an unverified email; roles produce 404.
   if (result.response.status === 403) redirect("/verify-email");
   if (result.response.status === 404 || result.response.status === 422) return null;

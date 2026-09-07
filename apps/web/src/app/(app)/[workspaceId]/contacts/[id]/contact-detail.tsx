@@ -15,6 +15,7 @@ import { formatDateTime, formatRelativeDays } from "@/lib/dates";
 import { contactQuery } from "@/lib/queries";
 import { useCan, useWorkspace } from "@/lib/workspace";
 
+import { AttachmentsCard } from "../../attachments/attachments-card";
 import { TaskList } from "../../tasks/task-list";
 import { useDeleteContact } from "../use-delete-contact";
 import { ActivityFeed } from "./activity-feed";
@@ -107,8 +108,9 @@ export function ContactDetail({ id, timeZone }: { id: string; timeZone: string }
           </Card>
           <TaskList timeZone={timeZone} contact={contact} />
         </div>
-        <div className="lg:col-span-2">
+        <div className="flex flex-col gap-6 lg:col-span-2">
           <ActivityFeed contactId={contact.id} timeZone={timeZone} />
+          <AttachmentsCard parent={{ contactId: contact.id }} timeZone={timeZone} />
         </div>
       </div>
       {dialog}

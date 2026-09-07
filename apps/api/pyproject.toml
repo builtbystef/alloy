@@ -6,6 +6,7 @@ requires-python = ">=3.14"
 license = "MIT"
 authors = [{ name = "builtbystef" }]
 dependencies = [
+  "aiobotocore>=3.9,<4",
   "alembic>=1.19.1,<1.20",
   # 0.x: minor bumps can break, so pin the minor. Starlette is left to FastAPI.
   "fastapi[standard-no-fastapi-cloud-cli]>=0.141.1,<0.142",
@@ -18,7 +19,7 @@ dependencies = [
 
 [dependency-groups]
 # Starlette >= 1.6 TestClient warns unless httpx2 is installed.
-dev = ["httpx2>=2.12,<3"]
+dev = ["httpx2>=2.12,<3", "types-aiobotocore-s3>=3.9,<4"]
 
 [tool.fastapi]
 entrypoint = "alloy_api.main:app"

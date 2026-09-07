@@ -15,6 +15,7 @@ import { formatDateTime } from "@/lib/dates";
 import { companyContactsQuery, companyQuery } from "@/lib/queries";
 import { useCan, useWorkspace } from "@/lib/workspace";
 
+import { AttachmentsCard } from "../../attachments/attachments-card";
 import { contactColumns } from "../../contacts/contact-columns";
 import { useDeleteContact } from "../../contacts/use-delete-contact";
 import { TaskList } from "../../tasks/task-list";
@@ -78,6 +79,7 @@ export function CompanyDetail({ id, timeZone }: { id: string; timeZone: string }
                   <Button
                     variant="outline"
                     size="sm"
+                    nativeButton={false}
                     render={<Link href={`${paths.contactNew}?company_id=${company.id}`} />}
                   >
                     <PlusIcon /> Add contact
@@ -110,7 +112,10 @@ export function CompanyDetail({ id, timeZone }: { id: string; timeZone: string }
             </Card>
           )}
         </div>
-        <TaskList timeZone={timeZone} company={company} />
+        <div className="flex flex-col gap-6">
+          <TaskList timeZone={timeZone} company={company} />
+          <AttachmentsCard parent={{ companyId: company.id }} timeZone={timeZone} />
+        </div>
       </div>
       {deleteCompany.dialog}
       {deleteContact.dialog}

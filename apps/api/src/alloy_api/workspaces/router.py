@@ -11,6 +11,7 @@ from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
 from alloy_api.mail import MailerDep
 from alloy_api.models import utcnow
+from alloy_api.storage import ObjectStoreDep
 from alloy_api.workspaces.deps import (
     CanDeleteWorkspace,
     CanManageMembers,
@@ -126,8 +127,12 @@ async def update_workspace(
 
 
 @scoped.delete("", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_workspace(membership: CanDeleteWorkspace, session: SessionDep) -> Response:
-    """Owners only. Members, invitations, and every CRM record go with it."""
+async def delete_workspace(
+    membership: CanDeleteWorkspace, session: SessionDep, store: ObjectStoreDep
+) -> Response:
+    """Owners only. Members, invitations, every CRM record, and every stored file go
+    with it."""
+    await store.delete_prefix(f"workspaces/{membership.workspace.id}/")
     await session.delete(membership.workspace)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
