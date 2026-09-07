@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from alloy_api.auth.deps import CurrentUserDep
+from alloy_api.auth.deps import VerifiedUserDep
 from alloy_api.db import SessionDep
 from alloy_api.workspaces.models import Workspace, WorkspaceMember, WorkspaceRole
 from alloy_api.workspaces.permissions import Permission, permissions_for
@@ -49,7 +49,7 @@ class Membership:
 
 
 async def get_current_membership(
-    workspace_id: UUID, session: SessionDep, user: CurrentUserDep
+    workspace_id: UUID, session: SessionDep, user: VerifiedUserDep
 ) -> Membership:
     """The caller's membership of `{workspace_id}`; 404 when there is none, so workspace
     ids leak nothing to outsiders."""

@@ -25,6 +25,9 @@ import { authFormSchema, type AuthFormInput } from "@/lib/schemas";
  * shape, a different endpoint. The API's Set-Cookie comes back through the
  * proxy route, so after success a refresh is enough for Server Components to
  * see the session.
+ *
+ * A new account goes to /verify-email, unless it came from an invitation:
+ * accepting one verifies the address, so the invite page is the shorter path.
  */
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
@@ -46,7 +49,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       ),
     onSuccess: () => {
       queryClient.clear();
-      router.push(next?.startsWith("/") ? (next as "/") : "/");
+      if (isSignup && !isInvite) {
+        router.push("/verify-email");
+      } else {
+        router.push(next?.startsWith("/") ? (next as "/") : "/");
+      }
       router.refresh();
     },
     onError: (error) => {

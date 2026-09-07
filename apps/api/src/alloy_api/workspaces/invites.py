@@ -44,12 +44,20 @@ async def read_invite(token: str, session: SessionDep) -> InvitePreview:
 
 @router.post("/{token}/accept")
 async def accept_invite(token: str, session: SessionDep, user: CurrentUserDep) -> WorkspaceRead:
-    """Take the seat. The logged-in account's email must be the invited one."""
+    """Take the seat. The logged-in account's email must be the invited one.
+
+    The token reached the invitee's inbox, so accepting also proves the account
+    owns that address: an unverified account is marked verified here.
+    """
     invite = await fetch_pending_invite(session, token)
     if user.email != invite.email:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "This invitation was sent to a different email address"
         )
+    if not user.email_verified:
+        user.email_verified_at = utcnow()
+        user.verification_token_hash = None
+        user.verification_sent_at = None
     member = await session.scalar(
         select(WorkspaceMember)
         .where(WorkspaceMember.workspace_id == invite.workspace_id)

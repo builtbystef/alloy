@@ -16,9 +16,16 @@ class PasswordChange(BaseModel):
     new_password: str = Password
 
 
+class EmailVerification(BaseModel):
+    """The token from the verification link."""
+
+    token: str = Field(min_length=1, max_length=128)
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     email: str
+    email_verified_at: datetime | None
     created_at: datetime

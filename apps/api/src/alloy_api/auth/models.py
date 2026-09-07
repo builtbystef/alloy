@@ -14,6 +14,18 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     email: Mapped[str] = mapped_column(String(320), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
 
+    # Null until the user follows the link emailed at signup (or accepts an
+    # invitation sent to this address, which proves the same thing).
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The pending verification link, at most one at a time: a resend replaces it.
+    # The email holds a random token; only its SHA-256 is stored here.
+    verification_token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @property
+    def email_verified(self) -> bool:
+        return self.email_verified_at is not None
+
     sessions: Mapped[list["UserSession"]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )

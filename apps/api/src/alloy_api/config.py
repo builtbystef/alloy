@@ -25,8 +25,9 @@ class Settings(BaseSettings):
     # How long a login stays valid. Env: seconds or ISO 8601 (`P30D`).
     session_ttl: timedelta = timedelta(days=30)
     invite_ttl: timedelta = timedelta(days=7)
+    verification_ttl: timedelta = timedelta(days=1)
 
-    # Invitation links point here.
+    # Invitation and email verification links point here.
     frontend_url: HttpUrl = HttpUrl("http://localhost:3000")
 
     mail_provider: MailProvider = "console"

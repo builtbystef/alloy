@@ -6,13 +6,16 @@ from sqlalchemy.exc import IntegrityError
 
 from alloy_api.auth.cookies import clear_session_cookie, set_session_cookie
 from alloy_api.auth.deps import CurrentPrincipal, CurrentUserDep, unauthorized
+from alloy_api.auth.emails import verification_email
 from alloy_api.auth.models import User, UserSession
 from alloy_api.auth.passwords import hash_password, verify_password
-from alloy_api.auth.schemas import Credentials, PasswordChange, UserRead
+from alloy_api.auth.schemas import Credentials, EmailVerification, PasswordChange, UserRead
 from alloy_api.auth.tokens import hash_token, new_token
 from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
+from alloy_api.mail import MailerDep
 from alloy_api.models import utcnow
+from alloy_api.workspaces.models import WorkspaceInvite
 from alloy_api.workspaces.service import DEFAULT_WORKSPACE_NAME, create_workspace
 
 if TYPE_CHECKING:
@@ -21,6 +24,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from alloy_api.config import Settings
+    from alloy_api.mail import Mailer
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,6 +48,31 @@ async def start_session(
     return UserRead.model_validate(user)
 
 
+async def send_verification(
+    session: AsyncSession, settings: Settings, mailer: Mailer, user: User
+) -> None:
+    """Issue a fresh verification token, replacing any pending one, and email it."""
+    token = new_token()
+    user.verification_token_hash = hash_token(token)
+    user.verification_sent_at = utcnow()
+    await session.commit()
+    await mailer.send(verification_email(user, token, str(settings.frontend_url)))
+
+
+async def has_pending_invite(session: AsyncSession, email: str) -> bool:
+    """Whether an invitation is waiting for this address. Accepting it verifies the
+    email, so such a signup gets no verification email of its own."""
+    invite_id = await session.scalar(
+        select(WorkspaceInvite.id)
+        .where(WorkspaceInvite.email == email)
+        .where(WorkspaceInvite.accepted_at.is_(None))
+        .where(WorkspaceInvite.revoked_at.is_(None))
+        .where(WorkspaceInvite.expires_at > utcnow())
+        .limit(1)
+    )
+    return invite_id is not None
+
+
 async def revoke_sessions(session: AsyncSession, user_id: UUID, *, keep: UUID | None) -> None:
     statement = (
         update(UserSession)
@@ -58,9 +87,17 @@ async def revoke_sessions(session: AsyncSession, user_id: UUID, *, keep: UUID | 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(
-    credentials: Credentials, session: SessionDep, settings: SettingsDep, response: Response
+    credentials: Credentials,
+    session: SessionDep,
+    settings: SettingsDep,
+    mailer: MailerDep,
+    response: Response,
 ) -> UserRead:
-    """Create an account, a first workspace owned by it, and log in."""
+    """Create an account, a first workspace owned by it, log in, and email a
+    verification link. Until it is followed, the account can only use `/auth/*`.
+
+    An invitee gets no link: accepting the invitation verifies the address instead.
+    """
     user = User(
         email=credentials.email.lower(), password_hash=await hash_password(credentials.password)
     )
@@ -70,7 +107,44 @@ async def signup(
     except IntegrityError:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
     create_workspace(session, DEFAULT_WORKSPACE_NAME, user)
-    return await start_session(session, settings, user, response)
+    read = await start_session(session, settings, user, response)
+    if not await has_pending_invite(session, user.email):
+        await send_verification(session, settings, mailer, user)
+    return read
+
+
+@router.post("/verify-email")
+async def verify_email(
+    body: EmailVerification, session: SessionDep, settings: SettingsDep
+) -> UserRead:
+    """Follow the emailed link. No login needed: the link may be opened anywhere.
+
+    404 for an unknown or already used token; 410 for an expired one.
+    """
+    user = await session.scalar(
+        select(User).where(User.verification_token_hash == hash_token(body.token))
+    )
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Verification link not found")
+    sent_at = user.verification_sent_at
+    if sent_at is None or sent_at + settings.verification_ttl <= utcnow():
+        raise HTTPException(status.HTTP_410_GONE, "Verification link has expired")
+    user.email_verified_at = utcnow()
+    user.verification_token_hash = None
+    user.verification_sent_at = None
+    await session.commit()
+    return UserRead.model_validate(user)
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+async def resend_verification(
+    user: CurrentUserDep, session: SessionDep, settings: SettingsDep, mailer: MailerDep
+) -> Response:
+    """Email a new verification link; the previous one stops working."""
+    if user.email_verified:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already verified")
+    await send_verification(session, settings, mailer, user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/login")

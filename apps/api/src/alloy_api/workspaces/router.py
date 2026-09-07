@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from alloy_api.auth.deps import CurrentUserDep
+from alloy_api.auth.deps import VerifiedUserDep
 from alloy_api.auth.tokens import hash_token, new_token
 from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
@@ -89,7 +89,7 @@ def pending_invites(workspace_id: UUID):  # noqa: ANN201 - a Select[tuple[Worksp
 
 
 @router.get("/")
-async def list_workspaces(session: SessionDep, user: CurrentUserDep) -> list[WorkspaceRead]:
+async def list_workspaces(session: SessionDep, user: VerifiedUserDep) -> list[WorkspaceRead]:
     """Every workspace the caller belongs to, oldest first."""
     members = await session.scalars(
         select(WorkspaceMember)
@@ -103,7 +103,7 @@ async def list_workspaces(session: SessionDep, user: CurrentUserDep) -> list[Wor
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_workspace_route(
-    body: WorkspaceCreate, session: SessionDep, user: CurrentUserDep
+    body: WorkspaceCreate, session: SessionDep, user: VerifiedUserDep
 ) -> WorkspaceRead:
     """The caller becomes its owner."""
     member = create_workspace(session, body.name, user)

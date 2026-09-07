@@ -65,3 +65,22 @@ async def get_current_user(principal: CurrentPrincipal) -> User:
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+def email_not_verified() -> HTTPException:
+    return HTTPException(status.HTTP_403_FORBIDDEN, "Email not verified")
+
+
+async def get_verified_user(user: CurrentUserDep) -> User:
+    """The logged-in user, who must have verified their email address.
+
+    Everything past login (workspaces, the CRM) asks for this. The auth routes
+    themselves take `CurrentUserDep`, so an unverified user can still read
+    `/auth/me`, ask for a new verification email, and log out.
+    """
+    if not user.email_verified:
+        raise email_not_verified()
+    return user
+
+
+VerifiedUserDep = Annotated[User, Depends(get_verified_user)]

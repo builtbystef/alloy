@@ -1,8 +1,8 @@
-"""add users, workspaces, and tiny crm
+"""initial schema
 
-Revision ID: 19a9de9056b0
+Revision ID: c7ce67509d36
 Revises:
-Create Date: 2026-09-07 15:05:43.288103
+Create Date: 2026-09-07 17:15:16.082979
 """
 
 from typing import TYPE_CHECKING
@@ -13,7 +13,7 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = "19a9de9056b0"
+revision: str = "c7ce67509d36"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -25,10 +25,16 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("email", sa.String(length=320), nullable=False),
         sa.Column("password_hash", sa.String(length=255), nullable=False),
+        sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("verification_token_hash", sa.String(length=64), nullable=True),
+        sa.Column("verification_sent_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
         sa.UniqueConstraint("email", name=op.f("uq_users_email")),
+        sa.UniqueConstraint(
+            "verification_token_hash", name=op.f("uq_users_verification_token_hash")
+        ),
     )
     op.create_table(
         "workspaces",

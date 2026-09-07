@@ -118,16 +118,29 @@ def client(app_client: TestClient, db: Database) -> TestClient:  # noqa: ARG001
 PASSWORD = "correct horse battery"  # noqa: S105 - a fixture, not a secret
 
 
-def signup(client: TestClient, email: str) -> dict[str, str]:
-    """Create a user and return a `Cookie` header for them.
+def verification_token(outbox: Outbox) -> str:
+    return outbox[-1].text.split("/verify-email?token=")[1].split()[0]
+
+
+def signup(client: TestClient, outbox: Outbox, email: str) -> dict[str, str]:
+    """Create a user, verify their email, and return a `Cookie` header for them.
 
     Explicit headers, not the client's cookie jar, so two users can share one client.
+    The verification email is taken out of `outbox`, so tests see only their own mail.
     """
     response = client.post("/auth/signup", json={"email": email, "password": PASSWORD})
     assert response.status_code == 201, response.text
     token = response.cookies[SESSION_COOKIE]
     client.cookies.clear()
-    return {"Cookie": f"{SESSION_COOKIE}={token}"}
+    headers = {"Cookie": f"{SESSION_COOKIE}={token}"}
+    if not outbox or outbox[-1].subject != "Verify your email":
+        # An invitee gets no link at signup; ask for one, as the page would.
+        assert client.post("/auth/resend-verification", headers=headers).status_code == 204
+    assert outbox[-1].to == email.lower()
+    verified = client.post("/auth/verify-email", json={"token": verification_token(outbox)})
+    assert verified.status_code == 200, verified.text
+    outbox.pop()
+    return headers
 
 
 @dataclass
@@ -159,24 +172,24 @@ class Actor:
         return self.client.delete(self.ws(path), headers=self.headers)
 
 
-def actor(client: TestClient, email: str) -> Actor:
+def actor(client: TestClient, outbox: Outbox, email: str) -> Actor:
     """Sign up and act in the workspace signup created."""
-    headers = signup(client, email)
+    headers = signup(client, outbox, email)
     workspaces = client.get("/workspaces/", headers=headers).json()
     assert len(workspaces) == 1
     return Actor(client, email, headers, workspaces[0]["id"])
 
 
 @pytest.fixture
-def new_login(client: TestClient) -> Callable[[str], dict[str, str]]:
+def new_login(client: TestClient, outbox: Outbox) -> Callable[[str], dict[str, str]]:
     """`signup` as a fixture, for tests that need a third user."""
-    return lambda email: signup(client, email)
+    return lambda email: signup(client, outbox, email)
 
 
 @pytest.fixture
-def new_actor(client: TestClient) -> Callable[[str], Actor]:
+def new_actor(client: TestClient, outbox: Outbox) -> Callable[[str], Actor]:
     """`actor` as a fixture, for tests that need a third user."""
-    return lambda email: actor(client, email)
+    return lambda email: actor(client, outbox, email)
 
 
 @pytest.fixture
@@ -184,7 +197,7 @@ def join(client: TestClient, outbox: Outbox) -> Callable[[Actor, str, str], Acto
     """Sign `email` up and seat them in `host`'s workspace with `role`, via an invitation."""
 
     def join(host: Actor, email: str, role: str) -> Actor:
-        guest = actor(client, email)
+        guest = actor(client, outbox, email)
         invite = host.post("/invites", json={"email": email, "role": role})
         assert invite.status_code == 201, invite.text
         token = outbox[-1].text.split("/invites/")[1].split()[0]
@@ -196,11 +209,11 @@ def join(client: TestClient, outbox: Outbox) -> Callable[[Actor, str, str], Acto
 
 
 @pytest.fixture
-def alice(client: TestClient) -> Actor:
-    return actor(client, "alice@example.com")
+def alice(client: TestClient, outbox: Outbox) -> Actor:
+    return actor(client, outbox, "alice@example.com")
 
 
 @pytest.fixture
-def bob(client: TestClient) -> Actor:
+def bob(client: TestClient, outbox: Outbox) -> Actor:
     """A second user with a workspace of their own, for data isolation tests."""
-    return actor(client, "bob@example.com")
+    return actor(client, outbox, "bob@example.com")

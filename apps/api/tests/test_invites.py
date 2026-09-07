@@ -96,6 +96,32 @@ def test_one_pending_invitation_per_address(alice: Actor, bob: Actor):
     assert bob.post("/invites", json={"email": "grace@example.com"}).status_code == 201
 
 
+def test_accepting_an_invitation_verifies_the_email(
+    client: TestClient, alice: Actor, outbox: Outbox
+):
+    """The token reached the invitee's inbox, so no separate verification is needed."""
+    alice.post("/invites", json={"email": "grace@example.com"})
+    token = token_from(outbox)
+    signup = client.post(
+        "/auth/signup", json={"email": "Grace@example.com", "password": "correct horse battery"}
+    )
+    assert signup.status_code == 201
+    assert signup.json()["email_verified_at"] is None
+    assert len(outbox) == 1  # the invitation; no verification email for an invitee
+    assert client.get("/workspaces/").status_code == 403
+    # Until they accept, a link is still available on request.
+    assert client.post("/auth/resend-verification").status_code == 204
+    assert outbox[-1].subject == "Verify your email"
+
+    accepted = client.post(f"/invites/{token}/accept")
+    assert accepted.status_code == 200, accepted.text
+    assert client.get("/auth/me").json()["email_verified_at"] is not None
+    assert client.get("/workspaces/").status_code == 200
+    # The requested verification link is spent.
+    stale = outbox[-1].text.split("/verify-email?token=")[1].split()[0]
+    assert client.post("/auth/verify-email", json={"token": stale}).status_code == 404
+
+
 def test_invitation_role_defaults_to_member_and_is_validated(alice: Actor):
     assert alice.post("/invites", json={"email": "a@example.com"}).json()["role"] == "member"
     assert alice.post("/invites", json={"email": "b@example.com", "role": "god"}).status_code == 422

@@ -55,7 +55,7 @@
           "auth"
         ],
         "summary": "Signup",
-        "description": "Create an account, a first workspace owned by it, and log in.",
+        "description": "Create an account, a first workspace owned by it, log in, and email a\nverification link. Until it is followed, the account can only use `/auth/*`.",
         "operationId": "auth-signup",
         "requestBody": {
           "content": {
@@ -89,6 +89,68 @@
             }
           }
         }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Verify Email",
+        "description": "Follow the emailed link. No login needed: the link may be opened anywhere.\n\n404 for an unknown or already used token; 410 for an expired one.",
+        "operationId": "auth-verify_email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/resend-verification": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Resend Verification",
+        "description": "Email a new verification link; the previous one stops working.",
+        "operationId": "auth-resend_verification",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ]
       }
     },
     "/auth/login": {
@@ -883,7 +945,7 @@
           "invites"
         ],
         "summary": "Accept Invite",
-        "description": "Take the seat. The logged-in account's email must be the invited one.",
+        "description": "Take the seat. The logged-in account's email must be the invited one.\n\nThe token reached the invitee's inbox, so accepting also proves the account\nowns that address: an unverified account is marked verified here.",
         "operationId": "invites-accept_invite",
         "security": [
           {
@@ -2946,6 +3008,22 @@
         ],
         "title": "DueFilter"
       },
+      "EmailVerification": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "EmailVerification",
+        "description": "The token from the verification link."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3400,6 +3478,18 @@
             "type": "string",
             "title": "Email"
           },
+          "email_verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Verified At"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3410,6 +3500,7 @@
         "required": [
           "id",
           "email",
+          "email_verified_at",
           "created_at"
         ],
         "title": "UserRead"

@@ -50,9 +50,52 @@ export interface paths {
         put?: never;
         /**
          * Signup
-         * @description Create an account, a first workspace owned by it, and log in.
+         * @description Create an account, a first workspace owned by it, log in, and email a
+         *     verification link. Until it is followed, the account can only use `/auth/*`.
          */
         post: operations["auth-signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Email
+         * @description Follow the emailed link. No login needed: the link may be opened anywhere.
+         *
+         *     404 for an unknown or already used token; 410 for an expired one.
+         */
+        post: operations["auth-verify_email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Verification
+         * @description Email a new verification link; the previous one stops working.
+         */
+        post: operations["auth-resend_verification"];
         delete?: never;
         options?: never;
         head?: never;
@@ -342,6 +385,9 @@ export interface paths {
         /**
          * Accept Invite
          * @description Take the seat. The logged-in account's email must be the invited one.
+         *
+         *     The token reached the invitee's inbox, so accepting also proves the account
+         *     owns that address: an unverified account is marked verified here.
          */
         post: operations["invites-accept_invite"];
         delete?: never;
@@ -760,6 +806,14 @@ export interface components {
          * @enum {string}
          */
         DueFilter: "overdue" | "today" | "upcoming";
+        /**
+         * EmailVerification
+         * @description The token from the verification link.
+         */
+        EmailVerification: {
+            /** Token */
+            token: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -928,6 +982,8 @@ export interface components {
             id: string;
             /** Email */
             email: string;
+            /** Email Verified At */
+            email_verified_at: string | null;
             /**
              * Created At
              * Format: date-time
@@ -1011,6 +1067,7 @@ export type ContactUpdate = components['schemas']['ContactUpdate'];
 export type Credentials = components['schemas']['Credentials'];
 export type Dashboard = components['schemas']['Dashboard'];
 export type DueFilter = components['schemas']['DueFilter'];
+export type EmailVerification = components['schemas']['EmailVerification'];
 export type HttpValidationError = components['schemas']['HTTPValidationError'];
 export type Health = components['schemas']['Health'];
 export type InviteCreate = components['schemas']['InviteCreate'];
@@ -1102,6 +1159,57 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    "auth-verify_email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerification"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "auth-resend_verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

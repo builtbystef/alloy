@@ -1,11 +1,20 @@
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
+import pytest
+
 from alloy_api.auth.cookies import SESSION_COOKIE
+from alloy_api.config import Settings
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+    from tests.conftest import Outbox
 
 CREDENTIALS = {"email": "ada@example.com", "password": "correct horse battery"}
+
+
+def verification_token(outbox: Outbox) -> str:
+    return outbox[-1].text.split("/verify-email?token=")[1].split()[0]
 
 
 def test_signup_sets_a_session_cookie_and_returns_the_user(client: TestClient):
@@ -13,6 +22,7 @@ def test_signup_sets_a_session_cookie_and_returns_the_user(client: TestClient):
     assert response.status_code == 201
     body = response.json()
     assert body["email"] == "ada@example.com"
+    assert body["email_verified_at"] is None
     assert "password" not in body
     assert "password_hash" not in body
     cookie = response.headers["set-cookie"]
@@ -120,3 +130,69 @@ def test_password_change_keeps_this_session_and_revokes_the_others(client: TestC
     new = client.post("/auth/login", json={**CREDENTIALS, "password": "a brand new passphrase"})
     assert old.status_code == 401
     assert new.status_code == 200
+
+
+def test_signup_emails_a_verification_link_that_unlocks_the_app(client: TestClient, outbox: Outbox):
+    client.post("/auth/signup", json=CREDENTIALS)
+    assert len(outbox) == 1
+    email = outbox[0]
+    assert email.to == "ada@example.com"
+    assert email.subject == "Verify your email"
+    token = verification_token(outbox)
+    assert f"http://localhost:3000/verify-email?token={token}" in email.text
+    assert email.html is not None
+    assert token in email.html
+
+    # Logged in, but only the auth routes work until the link is followed.
+    assert client.get("/auth/me").status_code == 200
+    assert client.get("/workspaces/").status_code == 403
+    assert client.get("/workspaces/").json()["detail"] == "Email not verified"
+    assert client.post("/workspaces/", json={"name": "Nope"}).status_code == 403
+
+    # The link needs no login and works once.
+    client.cookies.clear()
+    verified = client.post("/auth/verify-email", json={"token": token})
+    assert verified.status_code == 200, verified.text
+    assert verified.json()["email"] == "ada@example.com"
+    assert verified.json()["email_verified_at"] is not None
+    assert client.post("/auth/verify-email", json={"token": token}).status_code == 404
+    assert client.post("/auth/verify-email", json={"token": "nope"}).status_code == 404
+
+    client.post("/auth/login", json=CREDENTIALS)
+    assert client.get("/auth/me").json()["email_verified_at"] is not None
+    assert client.get("/workspaces/").status_code == 200
+
+
+def test_resend_replaces_the_pending_link(client: TestClient, outbox: Outbox):
+    client.post("/auth/signup", json=CREDENTIALS)
+    first = verification_token(outbox)
+    client.cookies.clear()
+    assert client.post("/auth/resend-verification").status_code == 401
+
+    client.post("/auth/login", json=CREDENTIALS)
+    assert client.post("/auth/resend-verification").status_code == 204
+    assert len(outbox) == 2
+    second = verification_token(outbox)
+    assert second != first
+    assert client.post("/auth/verify-email", json={"token": first}).status_code == 404
+    assert client.post("/auth/verify-email", json={"token": second}).status_code == 200
+
+    # Nothing left to verify.
+    assert client.post("/auth/resend-verification").status_code == 409
+    assert len(outbox) == 2
+
+
+class TestExpired:
+    @pytest.fixture
+    def settings(self) -> Settings:
+        """Verification links expire at once. Scoped to this class, not the module."""
+        return Settings(app_name="Test API", verification_ttl=timedelta(seconds=-1))
+
+    def test_expired_verification_link(self, client: TestClient, outbox: Outbox):
+        client.post("/auth/signup", json=CREDENTIALS)
+        token = verification_token(outbox)
+        assert client.post("/auth/verify-email", json={"token": token}).status_code == 410
+        assert client.get("/workspaces/").status_code == 403
+        # A new link is the way out.
+        assert client.post("/auth/resend-verification").status_code == 204
+        assert client.post("/auth/verify-email", json={"token": token}).status_code == 404
