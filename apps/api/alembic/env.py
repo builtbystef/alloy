@@ -1,10 +1,3 @@
-"""Alembic environment: how migrations connect to the database.
-
-The URL comes from `Settings` (ALLOY_DATABASE_URL or `.env`), not alembic.ini,
-so the app and its migrations always target the same database. alembic.ini only
-holds logging config.
-"""
-
 import asyncio
 from logging.config import fileConfig
 from typing import TYPE_CHECKING
@@ -28,7 +21,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Emit SQL to stdout instead of running it (`alembic upgrade head --sql`)."""
+    """`--sql`: print the SQL instead of running it."""
     context.configure(
         url=str(get_settings().database_url),
         target_metadata=target_metadata,
@@ -57,9 +50,7 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    # Callers can hand over an open connection through `config.attributes`, so
-    # the migrations join its transaction. The tests do this to run and roll
-    # back the whole migration chain.
+    # Tests pass an open connection so the migrations join its transaction.
     connection = config.attributes.get("connection")
     if connection is None:
         asyncio.run(run_async_migrations())

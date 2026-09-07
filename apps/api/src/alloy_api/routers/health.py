@@ -19,6 +19,6 @@ async def read_health() -> Health:
 
 @router.get("/db")
 async def read_health_db(session: SessionDep) -> Health:
-    """Readiness: the database answers a query. 500 if it does not."""
+    """Readiness: the database answers."""
     await session.execute(text("SELECT 1"))
     return Health(status="ok")

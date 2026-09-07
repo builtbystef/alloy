@@ -1,10 +1,5 @@
-"""Shared fixtures.
-
-Tests run against the real PostgreSQL from compose.yaml (or ALLOY_DATABASE_URL).
-Each test gets one connection with an open transaction that is rolled back at
-the end, so tests never see each other's rows and leave the database as they
-found it. Table creation happens inside that transaction too: PostgreSQL DDL is
-transactional, so it is rolled back as well.
+"""Tests use the real PostgreSQL. Each test runs in one transaction that is rolled
+back at the end, DDL included, so the database is left as it was found.
 """
 
 from dataclasses import dataclass
@@ -34,13 +29,13 @@ def settings() -> Settings:
 
 @pytest.fixture
 def engine(settings: Settings) -> AsyncEngine:
-    # NullPool: no pooled connections to leak between event loops.
+    # NullPool: nothing pooled across event loops.
     return create_async_engine(str(settings.database_url), poolclass=NullPool)
 
 
 @pytest.fixture
 def app_client(settings: Settings) -> Iterator[TestClient]:
-    """TestClient with settings overridden but the real database wiring."""
+    """Settings overridden, real database wiring."""
     app.dependency_overrides[get_settings] = lambda: settings
     with TestClient(app) as client:
         yield client
@@ -49,12 +44,7 @@ def app_client(settings: Settings) -> Iterator[TestClient]:
 
 @dataclass
 class Database:
-    """The test's transaction, on the event loop the app runs on.
-
-    TestClient runs the app on its own loop (`client.portal`). Async
-    connections are bound to the loop that created them, so async code that
-    touches `connection` must go through `run`.
-    """
+    """The test transaction. It lives on the app's event loop, so use `run` to reach it."""
 
     portal: BlockingPortal
     connection: AsyncConnection
@@ -63,8 +53,7 @@ class Database:
         return self.portal.call(func, *args)
 
     def session(self) -> AsyncSession:
-        # create_savepoint: commit() releases a savepoint instead of committing
-        # the outer transaction, which the fixture rolls back.
+        # commit() releases a savepoint; the fixture rolls back the outer transaction.
         return AsyncSession(
             bind=self.connection, join_transaction_mode="create_savepoint", expire_on_commit=False
         )
@@ -93,7 +82,7 @@ async def _end(connection: AsyncConnection, engine: AsyncEngine) -> None:
 
 @pytest.fixture
 def db(app_client: TestClient, engine: AsyncEngine) -> Iterator[Database]:
-    """One rolled-back transaction; the app's sessions join it."""
+    """The app's sessions join this transaction."""
     assert app_client.portal is not None
     connection = app_client.portal.call(_begin, engine)
     database = Database(app_client.portal, connection)
@@ -106,5 +95,5 @@ def db(app_client: TestClient, engine: AsyncEngine) -> Iterator[Database]:
 
 @pytest.fixture
 def client(app_client: TestClient, db: Database) -> TestClient:  # noqa: ARG001
-    """App client whose database work happens in the `db` transaction."""
+    """`app_client` with the `db` transaction."""
     return app_client

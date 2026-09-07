@@ -39,8 +39,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.flake8-type-checking]
-# FastAPI evaluates the annotations of route handlers at import time, so their
-# imports (`SessionDep` etc.) must stay at runtime.
+# FastAPI reads route handler annotations at import time; keep those imports.
 runtime-evaluated-decorators = [
   "fastapi.FastAPI.get",
   "fastapi.FastAPI.post",
@@ -63,7 +62,7 @@ runtime-evaluated-decorators = [
 ]
 "**/test_*.py" = ["S101", "PLR2004", "ANN", "INP001"]
 "**/conftest.py" = ["INP001"]
-# Alembic scripts are run by Alembic, not imported as a package.
+# Run by Alembic, not a package.
 "**/alembic/env.py" = ["INP001"]
 "**/alembic/versions/*.py" = [
   "INP001",

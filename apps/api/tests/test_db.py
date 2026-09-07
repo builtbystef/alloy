@@ -27,7 +27,7 @@ def test_read_health_db(client: TestClient):
 
 
 def test_health_db_without_override_uses_lifespan_engine():
-    """The real `get_session` path: engine from the lifespan state, not the test override."""
+    """The real `get_session`, not the test override."""
     with TestClient(app) as client:
         response = client.get("/health/db")
     assert response.status_code == 200
@@ -35,7 +35,7 @@ def test_health_db_without_override_uses_lifespan_engine():
 
 def _upgrade_and_compare(connection: Connection) -> list[object]:
     config = Config(file_=API_ROOT / "alembic.ini", toml_file=API_ROOT / "pyproject.toml")
-    # env.py runs the migrations on this connection instead of opening its own.
+    # env.py migrates on this connection instead of opening its own.
     config.attributes["connection"] = connection
     command.upgrade(config, "head")
     diff = compare_metadata(MigrationContext.configure(connection), Base.metadata)
@@ -44,12 +44,7 @@ def _upgrade_and_compare(connection: Connection) -> list[object]:
 
 
 def test_migrations_match_models(engine: AsyncEngine):
-    """`alembic upgrade head` produces exactly the schema in `Base.metadata`.
-
-    Fails when a model changed without `alembic revision --autogenerate`, or a
-    migration was edited by hand and drifted. Runs inside a transaction that is
-    rolled back, so the development database is untouched.
-    """
+    """Catches a model change without a migration, or a migration that drifted."""
 
     async def run() -> list[object]:
         async with engine.connect() as connection:
@@ -66,7 +61,7 @@ PROBE = "SELECT to_regclass('public.rollback_probe')"
 
 
 def test_committed_writes_stay_inside_the_test_transaction(db: Database, engine: AsyncEngine):
-    """A committed session is a released savepoint: visible in the test, invisible outside."""
+    """A commit is a released savepoint: visible in the test, invisible outside."""
 
     async def create_probe_table() -> str | None:
         async with db.session() as session:

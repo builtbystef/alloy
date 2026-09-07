@@ -17,8 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # apps/api tests run against this service. Same credentials as
-      # apps/api/compose.yaml; the job runs on the runner, so localhost.
+      # Same database as apps/api/compose.yaml; the job runs on the runner.
       ALLOY_DATABASE_URL: postgresql+psycopg://alloy:alloy@localhost:5432/alloy
     services:
       postgres:

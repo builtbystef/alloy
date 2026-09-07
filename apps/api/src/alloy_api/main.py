@@ -29,11 +29,7 @@ def generate_unique_id(route: APIRoute) -> str:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[DatabaseState]:
-    """Open the database engine for the life of the app.
-
-    The yielded dict becomes `request.state` for every request. The engine
-    connects lazily, so startup does not need the database to be reachable.
-    """
+    """The yielded dict becomes `request.state`. The engine connects lazily."""
     state = create_database_state(settings)
     yield state
     await state["engine"].dispose()

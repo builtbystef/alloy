@@ -27,13 +27,12 @@ build-backend = "uv_build"
 
 
 [tool.alembic]
-# Run from apps/api: `uv run alembic upgrade head`, or `vp run db:migrate` from
-# the repo root. The database URL is not here; alembic/env.py reads Settings.
+# `uv run alembic ...` from apps/api, or `vp run db:migrate`. URL: alembic/env.py.
 script_location = "%(here)s/alembic"
-# Date-prefixed file names, so `ls versions/` is in migration order.
+# Date prefix keeps versions/ in order.
 file_template = "%%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s"
 
-# Lint and format each new migration the same way the pre-commit hook would.
+# Lint and format new migrations.
 [[tool.alembic.post_write_hooks]]
 name = "ruff-check"
 type = "module"
