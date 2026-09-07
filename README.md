@@ -96,11 +96,45 @@ root `pyproject.toml`:
 members = ["apps/api", "packages/core-py"]
 ```
 
-`uv init --lib packages/core-py` (or `--app`) scaffolds a member with a
-`src/<package>/` layout and the `uv_build` backend. Put tests in `tests/`.
-Ruff, ty, and pytest read their settings from the root `pyproject.toml`, and
-the tools themselves are a root-level dependency group, so a member declares
-only its own metadata and runtime dependencies.
+`uv init --app --package apps/<name>` (or `--lib packages/<name>`) scaffolds a
+member with a `src/<package>/` layout and the `uv_build` backend. Put tests in
+`tests/`. Ruff, ty, and pytest read their settings from the root
+`pyproject.toml`, and the tools themselves are a root-level dependency group,
+so a member declares only its own metadata and runtime dependencies.
+
+## apps/api
+
+A [FastAPI](https://fastapi.tiangolo.com) service, package `alloy_api`:
+
+```text
+apps/api/
+├── pyproject.toml            # fastapi[standard-no-fastapi-cloud-cli], pydantic-settings
+├── .env.example
+├── src/alloy_api/
+│   ├── main.py               # app, CORS, router includes
+│   ├── config.py             # Settings (pydantic-settings) + get_settings dependency
+│   └── routers/health.py     # GET /health/
+└── tests/                    # TestClient fixture with settings overridden
+```
+
+```sh
+vp run dev:api                # fastapi dev, reloads on change, http://127.0.0.1:8000/docs
+cd apps/api && uv run fastapi run   # production server, no reload, 0.0.0.0
+```
+
+`[tool.fastapi] entrypoint` in `apps/api/pyproject.toml` tells the CLI where
+the app is, so `fastapi dev` and `fastapi run` take no arguments (the CLI reads
+it from the current directory, hence the `cd`). Settings come from environment
+variables prefixed `ALLOY_` or a local `.env`; see `.env.example`. Tests override
+`get_settings` through `app.dependency_overrides`, so the host environment never
+leaks in.
+
+FastAPI is pinned to a minor range (`>=0.141.1,<0.142`) because it is still
+0.x and minor releases can break; Dependabot proposes the bump. Starlette is
+not pinned, as the FastAPI docs advise. The `standard` extra without
+`fastapi-cloud-cli` is used, since the template does not target FastAPI Cloud.
+`httpx2` is a dev dependency because Starlette ≥ 1.6 prefers it for
+`TestClient` and warns on `httpx`, which pytest treats as an error here.
 
 ## Supply-chain policy
 

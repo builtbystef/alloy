@@ -18,7 +18,7 @@ exclude-newer = "4 days"
 # uv rejects a glob that matches a directory without a pyproject.toml, and the
 # TypeScript packages in apps/, packages/, and tools/ have none. List Python
 # projects explicitly instead.
-members = []
+members = ["apps/api"]
 
 [tool.ruff]
 line-length = 100
@@ -61,4 +61,8 @@ addopts = ["-ra", "--import-mode=importlib"]
 # Unknown markers, unknown config keys, passing xfails, and duplicate
 # parametrize ids are errors.
 strict = true
-filterwarnings = ["error"]
+filterwarnings = [
+  "error",
+  # Starlette's TestClient bug; drop once it stops using anyio.abc.BlockingPortal.
+  "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]

@@ -14,6 +14,7 @@
     "test:ts": "vp test",
     "test:py": "uv run pytest",
     "build": "vp run -r build",
+    "dev:api": "cd apps/api && uv run fastapi dev",
     "ci": "vp run check && vp run test && vp run -r build"
   },
   "devDependencies": {
