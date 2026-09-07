@@ -16,6 +16,24 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # apps/api tests run against this service. Same credentials as
+      # apps/api/compose.yaml; the job runs on the runner, so localhost.
+      ALLOY_DATABASE_URL: postgresql+psycopg://alloy:alloy@localhost:5432/alloy
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: alloy
+          POSTGRES_PASSWORD: alloy
+          POSTGRES_DB: alloy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username alloy --dbname alloy"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

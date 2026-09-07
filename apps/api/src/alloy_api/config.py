@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
+from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +11,8 @@ class Settings(BaseSettings):
 
     app_name: str = "Alloy API"
     cors_origins: list[str] = ["http://localhost:3000"]
+    database_url: PostgresDsn = PostgresDsn("postgresql+psycopg://alloy:alloy@localhost:5432/alloy")
+    database_echo: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ALLOY_")
 

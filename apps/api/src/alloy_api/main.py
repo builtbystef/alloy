@@ -1,12 +1,16 @@
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from alloy_api.config import SettingsDep, get_settings
+from alloy_api.db import DatabaseState, create_database_state
 from alloy_api.routers import health
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from fastapi.routing import APIRoute
 
 settings = get_settings()
@@ -23,7 +27,23 @@ def generate_unique_id(route: APIRoute) -> str:
     return route.name
 
 
-app = FastAPI(title=settings.app_name, generate_unique_id_function=generate_unique_id)
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[DatabaseState]:
+    """Open the database engine for the life of the app.
+
+    The yielded dict becomes `request.state` for every request. The engine
+    connects lazily, so startup does not need the database to be reachable.
+    """
+    state = create_database_state(settings)
+    yield state
+    await state["engine"].dispose()
+
+
+app = FastAPI(
+    title=settings.app_name,
+    generate_unique_id_function=generate_unique_id,
+    lifespan=lifespan,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

@@ -20,3 +20,4 @@ def test_openapi_operation_ids(client: TestClient):
     schema = client.get("/openapi.json").json()
     assert schema["paths"]["/"]["get"]["operationId"] == "read_root"
     assert schema["paths"]["/health/"]["get"]["operationId"] == "health-read_health"
+    assert schema["paths"]["/health/db"]["get"]["operationId"] == "health-read_health_db"

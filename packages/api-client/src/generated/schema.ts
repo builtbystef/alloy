@@ -6,8 +6,31 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read Health */
+        /**
+         * Read Health
+         * @description Liveness: the process is up.
+         */
         get: operations["health-read_health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/db": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Health Db
+         * @description Readiness: the database answers a query. 500 if it does not.
+         */
+        get: operations["health-read_health_db"];
         put?: never;
         post?: never;
         delete?: never;
@@ -53,6 +76,26 @@ export type Health = components['schemas']['Health'];
 export type $defs = Record<string, never>;
 export interface operations {
     "health-read_health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    "health-read_health_db": {
         parameters: {
             query?: never;
             header?: never;

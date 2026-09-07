@@ -11,7 +11,30 @@
           "health"
         ],
         "summary": "Read Health",
+        "description": "Liveness: the process is up.",
         "operationId": "health-read_health",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/db": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Read Health Db",
+        "description": "Readiness: the database answers a query. 500 if it does not.",
+        "operationId": "health-read_health_db",
         "responses": {
           "200": {
             "description": "Successful Response",

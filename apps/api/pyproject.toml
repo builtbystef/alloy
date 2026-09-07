@@ -6,9 +6,12 @@ requires-python = ">=3.14"
 license = "MIT"
 authors = [{ name = "builtbystef" }]
 dependencies = [
+  "alembic>=1.19.1,<1.20",
   # 0.x: minor bumps can break, so pin the minor. Starlette is left to FastAPI.
   "fastapi[standard-no-fastapi-cloud-cli]>=0.141.1,<0.142",
+  "psycopg[binary]>=3.3.5,<4",
   "pydantic-settings>=2.13.1,<3",
+  "sqlalchemy[asyncio]>=2.0.52,<2.1",
 ]
 
 [dependency-groups]
@@ -21,3 +24,24 @@ entrypoint = "alloy_api.main:app"
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]
 build-backend = "uv_build"
+
+
+[tool.alembic]
+# Run from apps/api: `uv run alembic upgrade head`, or `vp run db:migrate` from
+# the repo root. The database URL is not here; alembic/env.py reads Settings.
+script_location = "%(here)s/alembic"
+# Date-prefixed file names, so `ls versions/` is in migration order.
+file_template = "%%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s"
+
+# Lint and format each new migration the same way the pre-commit hook would.
+[[tool.alembic.post_write_hooks]]
+name = "ruff-check"
+type = "module"
+module = "ruff"
+options = "check --fix REVISION_SCRIPT_FILENAME"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff-format"
+type = "module"
+module = "ruff"
+options = "format REVISION_SCRIPT_FILENAME"

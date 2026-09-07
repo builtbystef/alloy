@@ -1,0 +1,33 @@
+# Local PostgreSQL for apps/api. Start with `vp run db:up` from the repo root
+# (or `docker compose up --detach --wait` here). Data lives in a named volume,
+# so it survives `docker compose down`; add `--volumes` to wipe it.
+#
+# The credentials match the default ALLOY_DATABASE_URL in
+# src/alloy_api/config.py and the CI service in .github/workflows/ci.yml.
+name: alloy
+
+services:
+  db:
+    # Major tag: picks up 18.x patch releases on pull.
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: alloy
+      POSTGRES_PASSWORD: alloy
+      POSTGRES_DB: alloy
+    ports:
+      # Bound to loopback only, so the database is not reachable from the LAN.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/<major>/docker,
+      # so the volume mounts the parent (older images used .../data).
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username alloy --dbname alloy"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  db-data:

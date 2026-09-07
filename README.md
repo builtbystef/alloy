@@ -22,6 +22,7 @@ dependencies, formatting, linting, type checking, and tests:
 - Node ≥ 24 (pinned in `.node-version`, enforced at install)
 - Python ≥ 3.14 (pinned in `.python-version`; uv downloads it on demand)
 - uv ≥ 0.12 (`required-version` in `pyproject.toml`)
+- Docker with Compose, for the local PostgreSQL that `apps/api` and its tests use
 
 ## Commands
 
@@ -33,6 +34,9 @@ vp run check:fix
 vp run test         # Vitest + pytest
 vp run build
 vp run ci           # everything CI runs
+vp run db:up        # PostgreSQL in Docker, waits until it accepts connections
+vp run db:migrate   # apply pending Alembic migrations
+vp run db:down      # stop PostgreSQL (data is kept; add --volumes to wipe it)
 vp run dev:api      # FastAPI with reload, http://127.0.0.1:8000
 vp run dev:web      # Next.js with Turbopack, http://localhost:3000
 ```
@@ -110,13 +114,18 @@ A [FastAPI](https://fastapi.tiangolo.com) service, package `alloy_api`:
 
 ```text
 apps/api/
-├── pyproject.toml            # fastapi[standard-no-fastapi-cloud-cli], pydantic-settings
+├── pyproject.toml            # fastapi, pydantic-settings, sqlalchemy, psycopg, alembic; [tool.alembic]
+├── compose.yaml              # local PostgreSQL 18
+├── alembic.ini               # Alembic logging only
+├── alembic/                  # env.py (async, URL from Settings), script.py.mako, versions/
 ├── .env.example
 ├── src/alloy_api/
-│   ├── main.py               # app, CORS, router includes
+│   ├── main.py               # app, lifespan (database engine), CORS, router includes
 │   ├── config.py             # Settings (pydantic-settings) + get_settings dependency
-│   └── routers/health.py     # GET /health/
-└── tests/                    # TestClient fixture with settings overridden
+│   ├── db.py                 # engine, session factory, get_session / SessionDep
+│   ├── models.py             # declarative Base with a naming convention; models go here
+│   └── routers/health.py     # GET /health/ (liveness), GET /health/db (readiness)
+└── tests/                    # TestClient fixture: settings overridden, one rolled-back transaction
 ```
 
 ```sh
@@ -142,6 +151,48 @@ Operation IDs are `{tag}-{function}` (`health-read_health`) via
 `generate_unique_id_function`, the form the FastAPI docs recommend for
 generated clients. `python -m alloy_api.openapi` prints the schema without
 starting a server; `packages/api-client` uses it.
+
+### Database
+
+PostgreSQL 18 runs in Docker from `apps/api/compose.yaml`, with
+[SQLAlchemy](https://docs.sqlalchemy.org) 2 in async mode over
+[psycopg 3](https://www.psycopg.org/psycopg3/docs/) and
+[Alembic](https://alembic.sqlalchemy.org) for migrations:
+
+```sh
+vp run db:up                  # start PostgreSQL, waits until healthy (127.0.0.1:5432, alloy/alloy)
+vp run db:migrate             # alembic upgrade head
+cd apps/api && uv run alembic revision --autogenerate -m "add widget"   # after changing models.py
+cd apps/api && uv run alembic downgrade -1
+vp run db:down                # stop; `docker compose down --volumes` in apps/api wipes the data
+```
+
+`psycopg[binary]` ships its own libpq, which the psycopg docs recommend for
+most users; a production image that already has `libpq` can switch to
+`psycopg[c]` to link against the system library instead. The URL scheme
+`postgresql+psycopg` serves both sync and async engines, so scripts can use
+the same driver without an event loop.
+
+`ALLOY_DATABASE_URL` (default: the Compose database) is the one place the
+connection is configured: the app reads it through `Settings`, and
+`alembic/env.py` reads the same `Settings`, so `alembic.ini` holds no URL.
+Alembic's own options live in `[tool.alembic]` in `pyproject.toml`. New
+migration files are date-prefixed and run through Ruff by post-write hooks.
+
+The engine is opened in the app lifespan and shared through `request.state`.
+Handlers take a `SessionDep` and get one `AsyncSession` per request; commit
+explicitly. `models.py` holds the `Base` (with a naming convention, so
+constraints can be dropped by name in later migrations) and must import every
+model, because autogenerate only sees what is on `Base.metadata`.
+
+Tests use the real database, never SQLite. The `client` fixture opens one
+connection, begins a transaction, runs `create_all` inside it, and hands out
+sessions that join it with savepoints; the fixture rolls everything back, so
+tests are isolated and the development database is left untouched (DDL is
+transactional in PostgreSQL). `test_migrations_match_models` upgrades to head
+inside such a transaction and diffs the result against `Base.metadata`, so a
+model change without a migration fails CI. CI runs a `postgres:18` service
+container with the same credentials.
 
 ## packages/api-client
 
