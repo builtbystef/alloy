@@ -3,6 +3,7 @@ from contextlib import AsyncExitStack
 
 from taskiq import TaskiqEvents, TaskiqState
 
+from alloy_api import telemetry
 from alloy_api.config import get_settings
 from alloy_api.jobs import create_broker, create_scheduler
 from alloy_api.jobs.deps import open_resources
@@ -29,6 +30,10 @@ async def on_worker_startup(state: TaskiqState) -> None:
     # has already put the app's own resources on the state.
     if not broker.is_worker_process:
         return
+    # Here, not at import: the API and the scheduler import this module too, and
+    # the exporter's threads must start in this child process, not before the fork.
+    if (log_handler := telemetry.configure(settings, service_name="alloy-worker")) is not None:
+        logging.getLogger().addHandler(log_handler)
     await open_resources(state, settings, _resources)
     logger.info("Worker ready: %d tasks registered", len(broker.get_all_tasks()))
 

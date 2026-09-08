@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from alloy_api import telemetry
+
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
@@ -22,7 +24,10 @@ class DatabaseState(TypedDict):
 
 
 def create_engine(settings: Settings) -> AsyncEngine:
-    return create_async_engine(str(settings.database_url), echo=settings.database_echo)
+    engine = create_async_engine(str(settings.database_url), echo=settings.database_echo)
+    if telemetry.enabled(settings):
+        telemetry.instrument_engine(engine)
+    return engine
 
 
 def create_database_state(settings: Settings) -> DatabaseState:

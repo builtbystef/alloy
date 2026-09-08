@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from taskiq import InMemoryBroker
 
+from alloy_api import telemetry
 from alloy_api.auth.router import router as auth_router
 from alloy_api.config import SettingsDep, get_settings
 from alloy_api.crm.router import router as crm_router
@@ -27,6 +28,8 @@ settings = get_settings()
 
 # Uvicorn configures only its own loggers; this gives the app's a handler and level.
 logging.basicConfig(level=settings.log_level, format="%(levelname)s [%(name)s] %(message)s")
+if (log_handler := telemetry.configure(settings, service_name="alloy-api")) is not None:
+    logging.getLogger().addHandler(log_handler)
 
 
 class AppState(DatabaseState):
@@ -77,6 +80,8 @@ app = FastAPI(
     generate_unique_id_function=generate_unique_id,
     lifespan=lifespan,
 )
+if telemetry.enabled(settings):
+    telemetry.instrument_app(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

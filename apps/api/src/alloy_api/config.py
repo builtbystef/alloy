@@ -24,6 +24,9 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    logfire_token: SecretStr | None = None
+    logfire_environment: str = "development"
+
     session_ttl: timedelta = timedelta(days=30)
     invite_ttl: timedelta = timedelta(days=7)
     verification_ttl: timedelta = timedelta(days=1)
@@ -48,8 +51,7 @@ class Settings(BaseSettings):
 
     jobs_broker: JobsBroker = "redis"
     redis_url: RedisDsn = RedisDsn("redis://localhost:6379/0")
-    # How long dead rows (revoked sessions, used invitations, abandoned uploads)
-    # stay before the purge job removes them.
+
     purge_after: timedelta = timedelta(days=7)
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ALLOY_")

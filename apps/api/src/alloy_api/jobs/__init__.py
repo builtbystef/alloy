@@ -10,6 +10,8 @@ from taskiq import (
 from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend, RedisStreamBroker
 
+from alloy_api import telemetry
+
 if TYPE_CHECKING:
     from taskiq import ScheduleSource
 
@@ -27,6 +29,13 @@ RESULT_TTL_SECONDS = 60 * 60
 
 
 def create_broker(settings: Settings) -> AsyncBroker:
+    broker = _create_broker(settings)
+    if telemetry.enabled(settings):
+        broker.add_middlewares(telemetry.TracingMiddleware())
+    return broker
+
+
+def _create_broker(settings: Settings) -> AsyncBroker:
     match settings.jobs_broker:
         case "redis":
             url = str(settings.redis_url)
