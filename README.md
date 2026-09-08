@@ -119,6 +119,7 @@ A [FastAPI](https://fastapi.tiangolo.com) service, package `alloy_api`:
 apps/api/
 ├── pyproject.toml            # fastapi, pydantic-settings, sqlalchemy, psycopg, alembic, pwdlib, taskiq, taskiq-redis, redis; [tool.alembic]
 ├── compose.yaml              # local PostgreSQL 18, Redis 8, and RustFS (S3-compatible object storage)
+├── Dockerfile                # the production image for the API, worker, and scheduler (see Deploying)
 ├── alembic.ini               # Alembic logging only
 ├── alembic/                  # env.py (async, URL from Settings), script.py.mako, versions/
 ├── .env.example
@@ -141,6 +142,9 @@ apps/api/
 vp run dev:api                # fastapi dev, reloads on change, http://127.0.0.1:8000/docs
 cd apps/api && uv run fastapi run   # production server, no reload, 0.0.0.0
 ```
+
+In production the same command runs inside the image from `apps/api/Dockerfile`;
+see [Deploying](#deploying).
 
 `[tool.fastapi] entrypoint` in `apps/api/pyproject.toml` tells the CLI where
 the app is, so `fastapi dev` and `fastapi run` take no arguments (the CLI reads
@@ -561,7 +565,8 @@ contacts, companies, tasks, and CSV imports.
 ```text
 apps/web/
 ├── package.json              # next, react; @alloy/api-client; zod; @tanstack/react-{query,form,table}; tailwindcss; @base-ui/react, lucide-react, sonner
-├── next.config.ts            # cacheComponents, typedRoutes, reactCompiler, skipTrailingSlashRedirect
+├── next.config.ts            # cacheComponents, typedRoutes, reactCompiler, skipTrailingSlashRedirect, standalone output
+├── Dockerfile                # the production image (see Deploying)
 ├── postcss.config.mjs        # @tailwindcss/postcss
 ├── components.json           # shadcn/ui config: base-nova style, zinc, src/app/globals.css
 ├── tsconfig.json             # tsconfig/browser.json + jsx, paths (@/*), next plugin
@@ -627,6 +632,101 @@ Choices worth knowing, all from the Next.js 16 docs:
 - The `vp run` task cache never hits for `@alloy/web#build` because `next build`
   writes into the project directory; the API client and other packages still
   cache.
+
+## Deploying
+
+The template does not pick a host. It ships what every host needs: an image
+per app, one command per process, settings from environment variables, and a
+migration step to run before new code starts.
+
+```text
+apps/api/Dockerfile           # API, worker, and scheduler: one image, three commands
+apps/web/Dockerfile           # Next.js standalone output
+.dockerignore                 # both build from the repository root (uv and pnpm workspaces)
+.github/workflows/images.yml  # builds and pushes ghcr.io/<owner>/<repo>/{api,web} after CI passes on main
+```
+
+### Processes
+
+| Process     | Image      | Command                                                  | Port | Instances |
+| ----------- | ---------- | -------------------------------------------------------- | ---- | --------- |
+| `api`       | `apps/api` | `fastapi run --port 8000 --proxy-headers` (the default)  | 8000 | any       |
+| `worker`    | `apps/api` | `taskiq worker alloy_api.jobs.broker:broker --workers 2` | none | any       |
+| `scheduler` | `apps/api` | `taskiq scheduler alloy_api.jobs.broker:scheduler`       | none | exactly 1 |
+| `web`       | `apps/web` | `node apps/web/server.js` (the default)                  | 3000 | any       |
+
+Plus PostgreSQL 18, Redis, and an S3-compatible bucket, which every host
+offers managed. Only `web` needs a public address: the browser talks to
+Next.js, and its proxy route forwards `/api/*` to the API over the host's
+private network, so the API stays internal and needs no CORS. The bucket must
+be reachable by the browser, since uploads and downloads use presigned URLs.
+
+### Migrations
+
+Run `alembic upgrade head` from `/app/apps/api` in the API image before the
+new `api`, `worker`, and `scheduler` start. Every host has a hook for this:
+Railway's pre-deploy command, Render's pre-deploy command, Fly's
+`release_command`, a Kubernetes init container or Job. If it fails, the deploy
+stops and the old code keeps running. Migrations are written to be safe to
+apply before the old code stops (add, backfill, drop in a later release), which
+is what makes this ordering enough.
+
+### Settings and secrets
+
+Every process reads the same `ALLOY_*` variables, documented in
+`apps/api/.env.example`; `web` reads `API_URL`. Set them in the host's
+variables store, shared across the four processes. Nothing is baked into an
+image, so one image serves staging and production. The ones that change per
+environment:
+
+```sh
+ALLOY_DATABASE_URL=postgresql+psycopg://...      # from the managed PostgreSQL
+ALLOY_REDIS_URL=redis://...                      # from the managed Redis
+ALLOY_STORAGE_ENDPOINT_URL=...                   # the bucket's S3 endpoint; null for AWS S3
+ALLOY_STORAGE_PUBLIC_ENDPOINT_URL=...            # only if the browser reaches the bucket at a different address
+ALLOY_STORAGE_ACCESS_KEY=... ALLOY_STORAGE_SECRET_KEY=... ALLOY_STORAGE_BUCKET=...
+ALLOY_STORAGE_PATH_STYLE=false                   # AWS and most hosted S3; true for MinIO and RustFS
+ALLOY_FRONTEND_URL=https://app.example.com       # links in emails
+ALLOY_CORS_ORIGINS='["https://app.example.com"]'
+ALLOY_LOGFIRE_TOKEN=...                          # optional; empty turns telemetry off
+ALLOY_LOGFIRE_ENVIRONMENT=production
+API_URL=http://api.internal:8000                 # web only: the API's private address
+```
+
+Unset optionals may arrive as `""` from a variables UI; `Settings` ignores
+empty values, so that reads as the default.
+
+### Example: Railway
+
+Four services from one repository, each with its Dockerfile path set in the
+service settings (`apps/api/Dockerfile` for `api`, `worker`, and `scheduler`,
+with the commands above as start commands; `apps/web/Dockerfile` for `web`),
+plus the PostgreSQL and Redis plugins and an external bucket (S3, R2, or any
+S3-compatible service). Set `alembic upgrade head` as the pre-deploy command
+on `api`. Give `web` the public domain; `API_URL` is
+`http://api.railway.internal:8000` on the private network. Railway builds from
+the repository, so the Images workflow is not needed; it serves hosts that
+pull from a registry instead.
+
+### Choices worth knowing
+
+- **One image for the API, worker, and scheduler.** They share code and
+  settings; only the command differs. uv installs from the lockfile in a build
+  stage, and the runtime stage is the plain `python:3.14-slim` image with the
+  virtualenv copied in, as a non-root user.
+- **Next.js standalone output.** `output: "standalone"` in `next.config.ts`
+  traces the files the server needs, so the runtime image holds no
+  `devDependencies` and no source. `API_URL` is read at runtime, so the build
+  takes no configuration.
+- **Images from CI, when a host wants them.** The Images workflow runs on
+  `workflow_run` after CI, so a red commit never gets an image, and tags
+  `latest` plus `sha-<short sha>` so a deploy can pin or roll back to an exact
+  build.
+- **Email is still the console mailer.** Invitation and verification links are
+  printed in the worker's logs until a real provider is added; see
+  [Email](#email).
+- **No Compose file, no host config.** Both would tie the template to one
+  layout. The table above is the whole wiring; each host has a place for it.
 
 ## Supply-chain policy
 

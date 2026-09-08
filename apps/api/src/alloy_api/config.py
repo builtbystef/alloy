@@ -54,7 +54,9 @@ class Settings(BaseSettings):
 
     purge_after: timedelta = timedelta(days=7)
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="ALLOY_")
+    # env_ignore_empty: hosting platforms often pass an unset variable as "",
+    # which must read as the default (None for the Logfire token), not as "".
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="ALLOY_", env_ignore_empty=True)
 
 
 @lru_cache
