@@ -1,11 +1,3 @@
-"""Outgoing email behind one small interface.
-
-`Mailer` (base.py) is the contract, `ConsoleMailer` (console.py) the only
-implementation so far. To add a provider such as Resend: write a class with the
-same `send` method, add its name to `MailProvider`, and return it from
-`create_mailer`. Handlers ask for a `MailerDep` and never see the provider.
-"""
-
 from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastapi import Depends, Request

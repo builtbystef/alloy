@@ -1,4 +1,10 @@
-import type { ApiClient, ContactStatus, DueFilter, TaskStatus } from "@alloy/api-client";
+import type {
+  ApiClient,
+  ContactStatus,
+  DueFilter,
+  ImportRead,
+  TaskStatus,
+} from "@alloy/api-client";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 
 import { unwrap } from "./api-error";
@@ -80,6 +86,11 @@ export const attachmentKeys = {
     "contactId" in parent
       ? ([...attachmentKeys.all, ws, "contact", parent.contactId] as const)
       : ([...attachmentKeys.all, ws, "company", parent.companyId] as const),
+};
+
+export const importKeys = {
+  all: ["imports"] as const,
+  list: (ws: string) => [...importKeys.all, ws, "list"] as const,
 };
 
 export function workspaceListQuery(api: ApiClient) {
@@ -215,6 +226,27 @@ export function attachmentsQuery(api: ApiClient, ws: string, parent: AttachmentP
   });
 }
 
+/** Still moving: the list polls while any import is in one of these states. */
+export function isImportActive(record: ImportRead): boolean {
+  return record.status === "queued" || record.status === "running";
+}
+
+const IMPORT_POLL_MS = 2000;
+
+/** Newest first. Refetches every couple of seconds while an import is running. */
+export function importListQuery(api: ApiClient, ws: string) {
+  return queryOptions({
+    queryKey: importKeys.list(ws),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/imports/", {
+          params: { path: { workspace_id: ws }, query: PAGE },
+        }),
+      ),
+    refetchInterval: (query) => (query.state.data?.some(isImportActive) ? IMPORT_POLL_MS : false),
+  });
+}
+
 /**
  * Where a plain link downloads an attachment. The API answers with a redirect
  * to a short-lived storage URL; through the proxy, the browser follows it as
@@ -227,7 +259,8 @@ export function attachmentDownloadHref(ws: string, id: string): string {
 /**
  * Drop every CRM query after a write. The entities reference each other
  * (a task embeds its contact, a completed task logs an activity, deleting a
- * company clears links), so anything narrower would have to know those rules.
+ * company clears links, an import creates both), so anything narrower would
+ * have to know those rules.
  */
 export async function invalidateCrm(queryClient: QueryClient): Promise<void> {
   await Promise.all(

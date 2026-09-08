@@ -2,6 +2,8 @@ import type {
   ActivityType,
   ContactStatus,
   DueFilter,
+  ImportKind,
+  ImportStatus,
   TaskStatus,
   WorkspaceRole,
 } from "@alloy/api-client";
@@ -30,6 +32,19 @@ export const activityTypeLabels: Record<ActivityType, string> = {
   meeting: "Meeting",
   follow_up: "Follow-up",
   task_completed: "Task completed",
+};
+
+export const importKindLabels: Record<ImportKind, string> = {
+  contacts: "Contacts",
+  companies: "Companies",
+};
+
+export const importStatusLabels: Record<ImportStatus, string> = {
+  pending: "Waiting for file",
+  queued: "Queued",
+  running: "Running",
+  done: "Done",
+  failed: "Failed",
 };
 
 export const roleLabels: Record<WorkspaceRole, string> = {

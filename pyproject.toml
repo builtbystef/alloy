@@ -41,6 +41,10 @@ ignore = [
   "TC",
 ]
 
+[tool.ruff.lint.flake8-bugbear]
+# `TaskiqDepends()` as a default is Taskiq's dependency injection, like FastAPI's `Depends()`.
+extend-immutable-calls = ["taskiq.TaskiqDepends"]
+
 [tool.ruff.lint.flake8-type-checking]
 # SQLAlchemy and Pydantic read model annotations at import time, so quoted
 # forward references in their subclasses are needed (UP037).

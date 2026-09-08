@@ -1,5 +1,5 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
+import { FileUpIcon, PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -34,6 +34,7 @@ export default function CompaniesPage({
       <PageHeader title="Companies" description="The organisations your contacts belong to.">
         <Can permission="crm:write">
           <Suspense>
+            <ImportButton params={params} />
             <NewCompanyButton params={params} />
           </Suspense>
         </Can>
@@ -42,6 +43,19 @@ export default function CompaniesPage({
         <CompaniesContent params={params} searchParams={searchParams} />
       </Suspense>
     </>
+  );
+}
+
+async function ImportButton({ params }: { params: Params }) {
+  const { workspaceId } = await params;
+  return (
+    <Button
+      variant="outline"
+      nativeButton={false}
+      render={<Link href={`${workspacePaths(workspaceId).imports}?kind=companies`} />}
+    >
+      <FileUpIcon /> Import CSV
+    </Button>
   );
 }
 

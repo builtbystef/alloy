@@ -1,20 +1,31 @@
 """Tests use the real PostgreSQL. Each test runs in one transaction that is rolled
 back at the end, DDL included, so the database is left as it was found.
+
+Jobs run in-process on the in-memory broker, inline, with the test transaction
+and the same doubles the handlers get, so a handler that queues an email has the
+message in `outbox` by the time it responds.
 """
 
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+
+# Before `alloy_api` is imported: the broker is chosen when its module loads.
+os.environ["ALLOY_JOBS_BROKER"] = "memory"
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
+from taskiq import InMemoryBroker
 
 from alloy_api.auth.cookies import SESSION_COOKIE
 from alloy_api.config import Settings, get_settings
 from alloy_api.db import get_session
-from alloy_api.mail import Email, get_mailer
+from alloy_api.jobs.broker import broker
+from alloy_api.jobs.deps import configure as configure_jobs
+from alloy_api.mail import Email
 from alloy_api.main import app
 from alloy_api.models import Base
 from alloy_api.storage import get_object_store
@@ -58,12 +69,21 @@ def object_store() -> MemoryObjectStore:
 def app_client(
     settings: Settings, outbox: Outbox, object_store: MemoryObjectStore
 ) -> Iterator[TestClient]:
-    """Settings, mailer, and object store overridden, real database wiring."""
+    """Settings and object store overridden, real database wiring. The jobs get the
+    same settings and store, plus `outbox` as their mailer, and run inline."""
     app.dependency_overrides[get_settings] = lambda: settings
-    app.dependency_overrides[get_mailer] = lambda: outbox
     app.dependency_overrides[get_object_store] = lambda: object_store
+    assert isinstance(broker, InMemoryBroker)
+    broker.await_inplace = True
     # https: the session cookie is `Secure`, and httpx's jar only sends it over https.
     with TestClient(app, base_url="https://testserver") as client:
+        configure_jobs(
+            broker.state,
+            settings=settings,
+            session_factory=broker.state.session_factory,
+            mailer=outbox,
+            object_store=object_store,
+        )
         yield client
     app.dependency_overrides.clear()
 
@@ -113,6 +133,7 @@ def db(app_client: TestClient, engine: AsyncEngine) -> Iterator[Database]:
     connection = app_client.portal.call(_begin, engine)
     database = Database(app_client.portal, connection)
     app.dependency_overrides[get_session] = database.get_session
+    broker.state.session_factory = database.session
     try:
         yield database
     finally:

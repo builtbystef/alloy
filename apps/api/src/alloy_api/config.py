@@ -3,9 +3,10 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
-from pydantic import Field, HttpUrl, PostgresDsn, SecretStr
+from pydantic import Field, HttpUrl, PostgresDsn, RedisDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from alloy_api.jobs import JobsBroker
 from alloy_api.mail import MailProvider
 from alloy_api.storage import StorageProvider
 
@@ -43,6 +44,13 @@ class Settings(BaseSettings):
     storage_url_ttl: timedelta = timedelta(minutes=15)
 
     attachment_max_bytes: int = Field(25 * 1024 * 1024, ge=1)
+    import_max_bytes: int = Field(10 * 1024 * 1024, ge=1)
+
+    jobs_broker: JobsBroker = "redis"
+    redis_url: RedisDsn = RedisDsn("redis://localhost:6379/0")
+    # How long dead rows (revoked sessions, used invitations, abandoned uploads)
+    # stay before the purge job removes them.
+    purge_after: timedelta = timedelta(days=7)
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ALLOY_")
 

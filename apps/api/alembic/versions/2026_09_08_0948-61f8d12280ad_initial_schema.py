@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: c7ce67509d36
+Revision ID: 61f8d12280ad
 Revises:
-Create Date: 2026-09-07 17:15:16.082979
+Create Date: 2026-09-08 09:48:43.819184
 """
 
 from typing import TYPE_CHECKING
@@ -13,7 +13,7 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = "c7ce67509d36"
+revision: str = "61f8d12280ad"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -63,6 +63,59 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_companies")),
     )
     op.create_index(op.f("ix_companies_workspace_id"), "companies", ["workspace_id"], unique=False)
+    op.create_table(
+        "imports",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(), nullable=False),
+        sa.Column(
+            "kind",
+            sa.Enum("contacts", "companies", name="importkind", native_enum=False, length=32),
+            nullable=False,
+        ),
+        sa.Column(
+            "status",
+            sa.Enum(
+                "pending",
+                "queued",
+                "running",
+                "done",
+                "failed",
+                name="importstatus",
+                native_enum=False,
+                length=32,
+            ),
+            nullable=False,
+        ),
+        sa.Column("requested_by_user_id", sa.Uuid(), nullable=True),
+        sa.Column("filename", sa.String(length=255), nullable=False),
+        sa.Column("size", sa.BigInteger(), nullable=False),
+        sa.Column("key", sa.String(length=512), nullable=False),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("total_rows", sa.Integer(), nullable=False),
+        sa.Column("created_count", sa.Integer(), nullable=False),
+        sa.Column("skipped_count", sa.Integer(), nullable=False),
+        sa.Column("failed_count", sa.Integer(), nullable=False),
+        sa.Column("errors", sa.JSON(), nullable=False),
+        sa.Column("error", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["requested_by_user_id"],
+            ["users.id"],
+            name=op.f("fk_imports_requested_by_user_id_users"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name=op.f("fk_imports_workspace_id_workspaces"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_imports")),
+        sa.UniqueConstraint("key", name=op.f("uq_imports_key")),
+    )
+    op.create_index(op.f("ix_imports_workspace_id"), "imports", ["workspace_id"], unique=False)
     op.create_table(
         "user_sessions",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -242,6 +295,55 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_activities_contact_id"), "activities", ["contact_id"], unique=False)
     op.create_table(
+        "attachments",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(), nullable=False),
+        sa.Column("contact_id", sa.Uuid(), nullable=True),
+        sa.Column("company_id", sa.Uuid(), nullable=True),
+        sa.Column("uploaded_by_user_id", sa.Uuid(), nullable=True),
+        sa.Column("filename", sa.String(length=255), nullable=False),
+        sa.Column("content_type", sa.String(length=255), nullable=False),
+        sa.Column("size", sa.BigInteger(), nullable=False),
+        sa.Column("key", sa.String(length=512), nullable=False),
+        sa.Column("uploaded_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.CheckConstraint(
+            "(contact_id IS NULL) <> (company_id IS NULL)", name=op.f("ck_attachments_one_parent")
+        ),
+        sa.ForeignKeyConstraint(
+            ["company_id"],
+            ["companies.id"],
+            name=op.f("fk_attachments_company_id_companies"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["contact_id"],
+            ["contacts.id"],
+            name=op.f("fk_attachments_contact_id_contacts"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["uploaded_by_user_id"],
+            ["users.id"],
+            name=op.f("fk_attachments_uploaded_by_user_id_users"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name=op.f("fk_attachments_workspace_id_workspaces"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_attachments")),
+        sa.UniqueConstraint("key", name=op.f("uq_attachments_key")),
+    )
+    op.create_index(op.f("ix_attachments_company_id"), "attachments", ["company_id"], unique=False)
+    op.create_index(op.f("ix_attachments_contact_id"), "attachments", ["contact_id"], unique=False)
+    op.create_index(
+        op.f("ix_attachments_workspace_id"), "attachments", ["workspace_id"], unique=False
+    )
+    op.create_table(
         "tasks",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("workspace_id", sa.Uuid(), nullable=False),
@@ -289,6 +391,10 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_tasks_contact_id"), table_name="tasks")
     op.drop_index(op.f("ix_tasks_company_id"), table_name="tasks")
     op.drop_table("tasks")
+    op.drop_index(op.f("ix_attachments_workspace_id"), table_name="attachments")
+    op.drop_index(op.f("ix_attachments_contact_id"), table_name="attachments")
+    op.drop_index(op.f("ix_attachments_company_id"), table_name="attachments")
+    op.drop_table("attachments")
     op.drop_index(op.f("ix_activities_contact_id"), table_name="activities")
     op.drop_table("activities")
     op.drop_index(op.f("ix_contacts_workspace_id"), table_name="contacts")
@@ -302,6 +408,8 @@ def downgrade() -> None:
     op.drop_table("workspace_invites")
     op.drop_index(op.f("ix_user_sessions_user_id"), table_name="user_sessions")
     op.drop_table("user_sessions")
+    op.drop_index(op.f("ix_imports_workspace_id"), table_name="imports")
+    op.drop_table("imports")
     op.drop_index(op.f("ix_companies_workspace_id"), table_name="companies")
     op.drop_table("companies")
     op.drop_table("workspaces")

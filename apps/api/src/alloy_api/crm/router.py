@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from alloy_api.crm import attachments, companies, contacts, dashboard, tasks
+from alloy_api.crm import attachments, companies, contacts, dashboard, imports, tasks
 
 # Every CRM route lives under a workspace; `{workspace_id}` is consumed by the
 # membership dependency in alloy_api.workspaces.deps.
@@ -10,3 +10,4 @@ router.include_router(contacts.router)
 router.include_router(tasks.router)
 router.include_router(dashboard.router)
 router.include_router(attachments.router)
+router.include_router(imports.router)

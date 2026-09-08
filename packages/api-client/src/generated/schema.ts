@@ -39,6 +39,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/redis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Health Redis
+         * @description Readiness: the Redis behind the job queue answers. Always ok on the in-memory
+         *     broker, which needs no Redis.
+         */
+        get: operations["health-read_health_redis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/signup": {
         parameters: {
             query?: never;
@@ -702,6 +723,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workspaces/{workspace_id}/imports/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Imports
+         * @description Newest first, whatever their state.
+         */
+        get: operations["imports-list_imports"];
+        put?: never;
+        /**
+         * Create Import
+         * @description Start an import: the row is created and an upload URL for the CSV returned.
+         *     413 when `size` is over the limit.
+         */
+        post: operations["imports-create_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/imports/{import_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Import */
+        get: operations["imports-read_import"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/imports/{import_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Import
+         * @description Called after the `PUT`: sends the job. 409 when the file is not in the store
+         *     yet or the import was already started; 413, and the file is removed, when it is
+         *     bigger than allowed.
+         */
+        post: operations["imports-start_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -998,6 +1083,86 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * ImportCreate
+         * @description What the client knows before uploading the CSV.
+         */
+        ImportCreate: {
+            kind: components["schemas"]["ImportKind"];
+            /** Filename */
+            filename: string;
+            /**
+             * Size
+             * @description Bytes.
+             */
+            size: number;
+        };
+        /**
+         * ImportKind
+         * @enum {string}
+         */
+        ImportKind: "contacts" | "companies";
+        /** ImportRead */
+        ImportRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["ImportKind"];
+            status: components["schemas"]["ImportStatus"];
+            /** Filename */
+            filename: string;
+            /** Size */
+            size: number;
+            requested_by: components["schemas"]["UploaderRef"] | null;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Total Rows */
+            total_rows: number;
+            /** Created Count */
+            created_count: number;
+            /** Skipped Count */
+            skipped_count: number;
+            /** Failed Count */
+            failed_count: number;
+            /** Errors */
+            errors: components["schemas"]["RowError"][];
+            /**
+             * Error
+             * @description Why the import could not finish, if it could not.
+             */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ImportStatus
+         * @description `pending` until the client reports the CSV uploaded, `queued` once the job is
+         *     sent, `running` while the worker reads the file, then `done` or `failed`.
+         * @enum {string}
+         */
+        ImportStatus: "pending" | "queued" | "running" | "done" | "failed";
+        /**
+         * ImportUpload
+         * @description Step one of an import: `PUT` the CSV to `upload_url` as `text/csv` with the
+         *     `size` given at creation, then `POST .../imports/{id}/start`.
+         */
+        ImportUpload: {
+            import: components["schemas"]["ImportRead"];
+            /** Upload Url */
+            upload_url: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
         /** InviteCreate */
         InviteCreate: {
             /**
@@ -1086,6 +1251,16 @@ export interface components {
          * @enum {string}
          */
         Permission: "crm:read" | "crm:write" | "members:read" | "members:manage" | "workspace:manage" | "workspace:delete";
+        /** RowError */
+        RowError: {
+            /**
+             * Row
+             * @description Line number in the file; the header is line 1.
+             */
+            row: number;
+            /** Message */
+            message: string;
+        };
         /** TaskCreate */
         TaskCreate: {
             /** Title */
@@ -1257,6 +1432,11 @@ export type DueFilter = components['schemas']['DueFilter'];
 export type EmailVerification = components['schemas']['EmailVerification'];
 export type HttpValidationError = components['schemas']['HTTPValidationError'];
 export type Health = components['schemas']['Health'];
+export type ImportCreate = components['schemas']['ImportCreate'];
+export type ImportKind = components['schemas']['ImportKind'];
+export type ImportRead = components['schemas']['ImportRead'];
+export type ImportStatus = components['schemas']['ImportStatus'];
+export type ImportUpload = components['schemas']['ImportUpload'];
 export type InviteCreate = components['schemas']['InviteCreate'];
 export type InvitePreview = components['schemas']['InvitePreview'];
 export type InviteRead = components['schemas']['InviteRead'];
@@ -1264,6 +1444,7 @@ export type MemberRead = components['schemas']['MemberRead'];
 export type MemberUpdate = components['schemas']['MemberUpdate'];
 export type PasswordChange = components['schemas']['PasswordChange'];
 export type Permission = components['schemas']['Permission'];
+export type RowError = components['schemas']['RowError'];
 export type TaskCreate = components['schemas']['TaskCreate'];
 export type TaskRead = components['schemas']['TaskRead'];
 export type TaskStatus = components['schemas']['TaskStatus'];
@@ -1298,6 +1479,26 @@ export interface operations {
         };
     };
     "health-read_health_db": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    "health-read_health_redis": {
         parameters: {
             query?: never;
             header?: never;
@@ -2831,6 +3032,139 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "imports-list_imports": {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "imports-create_import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportUpload"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "imports-read_import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                import_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "imports-start_import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                import_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRead"];
+                };
             };
             /** @description Validation Error */
             422: {

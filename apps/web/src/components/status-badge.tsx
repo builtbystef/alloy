@@ -1,7 +1,7 @@
-import type { ContactStatus, TaskStatus } from "@alloy/api-client";
+import type { ContactStatus, ImportStatus, TaskStatus } from "@alloy/api-client";
 
 import { Badge } from "@/components/ui/badge";
-import { contactStatusLabels, taskStatusLabels } from "@/lib/labels";
+import { contactStatusLabels, importStatusLabels, taskStatusLabels } from "@/lib/labels";
 
 const contactVariants = {
   lead: "secondary",
@@ -17,4 +17,16 @@ export function TaskStatusBadge({ status }: { status: TaskStatus }) {
   return (
     <Badge variant={status === "done" ? "outline" : "secondary"}>{taskStatusLabels[status]}</Badge>
   );
+}
+
+const importVariants = {
+  pending: "outline",
+  queued: "secondary",
+  running: "secondary",
+  done: "default",
+  failed: "destructive",
+} as const;
+
+export function ImportStatusBadge({ status }: { status: ImportStatus }) {
+  return <Badge variant={importVariants[status]}>{importStatusLabels[status]}</Badge>;
 }

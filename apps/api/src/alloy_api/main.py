@@ -4,11 +4,14 @@ from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from taskiq import InMemoryBroker
 
 from alloy_api.auth.router import router as auth_router
 from alloy_api.config import SettingsDep, get_settings
 from alloy_api.crm.router import router as crm_router
 from alloy_api.db import DatabaseState, create_database_state
+from alloy_api.jobs.broker import broker
+from alloy_api.jobs.deps import configure as configure_jobs
 from alloy_api.mail import Mailer, create_mailer
 from alloy_api.routers import health
 from alloy_api.storage import ObjectStore, create_object_store
@@ -54,7 +57,18 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[AppState]:
             mailer=create_mailer(settings),
             object_store=object_store,
         )
+        if isinstance(broker, InMemoryBroker):
+            # No worker: this process runs the jobs, with the app's own resources.
+            configure_jobs(
+                broker.state,
+                settings=settings,
+                session_factory=state["session_factory"],
+                mailer=state["mailer"],
+                object_store=object_store,
+            )
+        await broker.startup()
         yield state
+        await broker.shutdown()
         await state["engine"].dispose()
 
 

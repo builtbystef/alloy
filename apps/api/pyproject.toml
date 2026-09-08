@@ -14,12 +14,15 @@ dependencies = [
   # Password hashing. 0.x: pin the minor.
   "pwdlib[argon2]>=0.3.1,<0.4",
   "pydantic-settings>=2.13.1,<3",
+  "redis[hiredis]>=8.1,<9",
   "sqlalchemy[asyncio]>=2.0.52,<2.1",
+  "taskiq>=0.12.6,<0.13",
+  "taskiq-redis>=1.2.3,<2",
 ]
 
 [dependency-groups]
 # Starlette >= 1.6 TestClient warns unless httpx2 is installed.
-dev = ["httpx2>=2.12,<3", "types-aiobotocore-s3>=3.9,<4"]
+dev = ["httpx2>=2.12,<3", "taskiq[reload]>=0.12.6,<0.13", "types-aiobotocore-s3>=3.9,<4"]
 
 [tool.fastapi]
 entrypoint = "alloy_api.main:app"

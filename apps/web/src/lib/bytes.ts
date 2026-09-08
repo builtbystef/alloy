@@ -4,6 +4,9 @@
  */
 export const ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
 
+/** The API's default `ALLOY_IMPORT_MAX_BYTES`, checked the same way. */
+export const IMPORT_MAX_BYTES = 10 * 1024 * 1024;
+
 const UNITS = ["B", "KB", "MB", "GB"] as const;
 
 /** "12 B", "3.4 KB", "25 MB": one decimal above bytes, none when it would be ".0". */

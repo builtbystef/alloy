@@ -16,7 +16,7 @@ from pydantic import (
     StringConstraints,
 )
 
-from alloy_api.crm.models import ActivityType, ContactStatus, TaskStatus
+from alloy_api.crm.models import ActivityType, ContactStatus, ImportKind, ImportStatus, TaskStatus
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 Short = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)]
@@ -194,3 +194,45 @@ class AttachmentUpload(BaseModel):
     attachment: AttachmentRead
     upload_url: str
     expires_at: datetime
+
+
+class ImportCreate(BaseModel):
+    """What the client knows before uploading the CSV."""
+
+    kind: ImportKind
+    filename: Filename
+    size: int = Field(ge=1, description="Bytes.")
+
+
+class RowError(BaseModel):
+    row: int = Field(description="Line number in the file; the header is line 1.")
+    message: str
+
+
+class ImportRead(ReadModel):
+    id: UUID
+    kind: ImportKind
+    status: ImportStatus
+    filename: str
+    size: int
+    requested_by: UploaderRef | None
+    started_at: datetime | None
+    finished_at: datetime | None
+    total_rows: int
+    created_count: int
+    skipped_count: int
+    failed_count: int
+    errors: list[RowError]
+    error: str | None = Field(description="Why the import could not finish, if it could not.")
+    created_at: datetime
+
+
+class ImportUpload(BaseModel):
+    """Step one of an import: `PUT` the CSV to `upload_url` as `text/csv` with the
+    `size` given at creation, then `POST .../imports/{id}/start`."""
+
+    import_: ImportRead = Field(alias="import")
+    upload_url: str
+    expires_at: datetime
+
+    model_config = ConfigDict(populate_by_name=True)

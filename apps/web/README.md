@@ -31,6 +31,7 @@ apps/web/
     │           ├── contacts/         # page, contacts-table, contact-columns, contact-form, [id]/ (detail, activity feed), new/, [id]/edit/
     │           ├── companies/        # same shape as contacts
     │           ├── tasks/            # page, tasks-table, task-dialog + task-form, task-list (used on detail pages)
+    │           ├── imports/          # CSV import card (kind, file, upload progress), history table polling while a job runs, details dialog
     │           ├── members/          # members table (roles, remove), invitations card (invite, revoke)
     │           ├── settings/         # rename, leave, delete the workspace
     │           └── account/          # change password, log out everywhere

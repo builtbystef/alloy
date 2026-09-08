@@ -33,6 +33,16 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+      # Same Redis as apps/api/compose.yaml; the readiness check test pings it.
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
       # Same object storage as apps/api/compose.yaml; the storage contract
       # tests run against it.
       storage:

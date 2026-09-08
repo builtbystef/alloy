@@ -2,6 +2,7 @@ import type {
   ActivityType,
   ContactStatus,
   DueFilter,
+  ImportKind,
   TaskStatus,
   WorkspaceRole,
 } from "@alloy/api-client";
@@ -28,6 +29,7 @@ export const workspaceRoles = [
   "viewer",
 ] as const satisfies readonly WorkspaceRole[];
 export const dueFilters = ["overdue", "today", "upcoming"] as const satisfies readonly DueFilter[];
+export const importKinds = ["contacts", "companies"] as const satisfies readonly ImportKind[];
 /** The types a user logs by hand; `task_completed` is written by the API. */
 export const loggableActivityTypes = [
   "note",
@@ -183,9 +185,15 @@ const taskSearchSchema = z.object({
   status: optionalParam(z.enum(taskStatuses)),
 });
 
+/** `?kind=` preselects the import kind; anything else means contacts. */
+const importSearchSchema = z.object({
+  kind: z.enum(importKinds).catch("contacts"),
+});
+
 export type ContactSearch = z.output<typeof contactSearchSchema>;
 export type CompanySearch = z.output<typeof companySearchSchema>;
 export type TaskSearch = z.output<typeof taskSearchSchema>;
+export type ImportSearch = z.output<typeof importSearchSchema>;
 
 export function parseContactSearch(params: SearchParams | URLSearchParams): ContactSearch {
   return compact(contactSearchSchema.parse(toRecord(params)));
@@ -197,6 +205,10 @@ export function parseCompanySearch(params: SearchParams | URLSearchParams): Comp
 
 export function parseTaskSearch(params: SearchParams | URLSearchParams): TaskSearch {
   return compact(taskSearchSchema.parse(toRecord(params)));
+}
+
+export function parseImportSearch(params: SearchParams | URLSearchParams): ImportSearch {
+  return importSearchSchema.parse(toRecord(params));
 }
 
 /** The query string for a filter object, without empty values. */

@@ -9,7 +9,7 @@ from alloy_api.auth.deps import VerifiedUserDep
 from alloy_api.auth.tokens import hash_token, new_token
 from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
-from alloy_api.mail import MailerDep
+from alloy_api.jobs.emails import send_email
 from alloy_api.models import utcnow
 from alloy_api.storage import ObjectStoreDep
 from alloy_api.workspaces.deps import (
@@ -226,7 +226,6 @@ async def create_invite(
     membership: CanManageMembers,
     session: SessionDep,
     settings: SettingsDep,
-    mailer: MailerDep,
 ) -> InviteRead:
     """Email a link that grants `role`. One pending invitation per address; 409 if the
     address is already a member or already invited."""
@@ -264,7 +263,7 @@ async def create_invite(
     )
     session.add(invite)
     await session.commit()
-    await mailer.send(invite_email(invite, token, str(settings.frontend_url)))
+    await send_email.kiq(invite_email(invite, token, str(settings.frontend_url)))
     return invite_read(invite)
 
 

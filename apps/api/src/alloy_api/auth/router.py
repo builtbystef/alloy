@@ -13,7 +13,7 @@ from alloy_api.auth.schemas import Credentials, EmailVerification, PasswordChang
 from alloy_api.auth.tokens import hash_token, new_token
 from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
-from alloy_api.mail import MailerDep
+from alloy_api.jobs.emails import send_email
 from alloy_api.models import utcnow
 from alloy_api.workspaces.models import WorkspaceInvite
 from alloy_api.workspaces.service import DEFAULT_WORKSPACE_NAME, create_workspace
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from alloy_api.config import Settings
-    from alloy_api.mail import Mailer
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -48,15 +47,13 @@ async def start_session(
     return UserRead.model_validate(user)
 
 
-async def send_verification(
-    session: AsyncSession, settings: Settings, mailer: Mailer, user: User
-) -> None:
-    """Issue a fresh verification token, replacing any pending one, and email it."""
+async def send_verification(session: AsyncSession, settings: Settings, user: User) -> None:
+    """Issue a fresh verification token, replacing any pending one, and queue the email."""
     token = new_token()
     user.verification_token_hash = hash_token(token)
     user.verification_sent_at = utcnow()
     await session.commit()
-    await mailer.send(verification_email(user, token, str(settings.frontend_url)))
+    await send_email.kiq(verification_email(user, token, str(settings.frontend_url)))
 
 
 async def has_pending_invite(session: AsyncSession, email: str) -> bool:
@@ -90,7 +87,6 @@ async def signup(
     credentials: Credentials,
     session: SessionDep,
     settings: SettingsDep,
-    mailer: MailerDep,
     response: Response,
 ) -> UserRead:
     """Create an account, a first workspace owned by it, log in, and email a
@@ -109,7 +105,7 @@ async def signup(
     create_workspace(session, DEFAULT_WORKSPACE_NAME, user)
     read = await start_session(session, settings, user, response)
     if not await has_pending_invite(session, user.email):
-        await send_verification(session, settings, mailer, user)
+        await send_verification(session, settings, user)
     return read
 
 
@@ -138,12 +134,12 @@ async def verify_email(
 
 @router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
 async def resend_verification(
-    user: CurrentUserDep, session: SessionDep, settings: SettingsDep, mailer: MailerDep
+    user: CurrentUserDep, session: SessionDep, settings: SettingsDep
 ) -> Response:
     """Email a new verification link; the previous one stops working."""
     if user.email_verified:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already verified")
-    await send_verification(session, settings, mailer, user)
+    await send_verification(session, settings, user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

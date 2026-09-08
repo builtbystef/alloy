@@ -2,6 +2,7 @@
 
 import {
   Building2Icon,
+  FileUpIcon,
   LayoutDashboardIcon,
   ListTodoIcon,
   SettingsIcon,
@@ -16,7 +17,7 @@ import type { WorkspacePaths } from "@/lib/routes";
 import { useWorkspace } from "@/lib/workspace";
 
 type Section = "crm" | "workspace";
-type NavKey = "home" | "contacts" | "companies" | "tasks" | "members" | "settings";
+type NavKey = "home" | "contacts" | "companies" | "tasks" | "imports" | "members" | "settings";
 
 const sections: Record<Section, readonly { key: NavKey; label: string; icon: typeof UsersIcon }[]> =
   {
@@ -25,6 +26,7 @@ const sections: Record<Section, readonly { key: NavKey; label: string; icon: typ
       { key: "contacts", label: "Contacts", icon: UsersIcon },
       { key: "companies", label: "Companies", icon: Building2Icon },
       { key: "tasks", label: "Tasks", icon: ListTodoIcon },
+      { key: "imports", label: "Imports", icon: FileUpIcon },
     ],
     workspace: [
       { key: "members", label: "Members", icon: UsersRoundIcon },

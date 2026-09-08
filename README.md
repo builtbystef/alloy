@@ -22,8 +22,8 @@ dependencies, formatting, linting, type checking, and tests:
 - Node ≥ 24 (pinned in `.node-version`, enforced at install)
 - Python ≥ 3.14 (pinned in `.python-version`; uv downloads it on demand)
 - uv ≥ 0.12 (`required-version` in `pyproject.toml`)
-- Docker with Compose, for the local PostgreSQL and RustFS object storage that
-  `apps/api` and its tests use
+- Docker with Compose, for the local PostgreSQL, Redis, and RustFS object
+  storage that `apps/api` and its tests use
 
 ## Commands
 
@@ -35,10 +35,12 @@ vp run check:fix
 vp run test         # Vitest + pytest
 vp run build
 vp run ci           # everything CI runs
-vp run db:up        # PostgreSQL and RustFS in Docker, waits until they accept connections
+vp run db:up        # PostgreSQL, Redis, and RustFS in Docker, waits until they accept connections
 vp run db:migrate   # apply pending Alembic migrations
 vp run db:down      # stop PostgreSQL (data is kept; add --volumes to wipe it)
 vp run dev:api      # FastAPI with reload, http://127.0.0.1:8000
+vp run dev:worker   # Taskiq worker with reload: runs the background jobs
+vp run dev:scheduler # Taskiq scheduler: fires the hourly purge (run one)
 vp run dev:web      # Next.js with Turbopack, http://localhost:3000
 ```
 
@@ -115,8 +117,8 @@ A [FastAPI](https://fastapi.tiangolo.com) service, package `alloy_api`:
 
 ```text
 apps/api/
-├── pyproject.toml            # fastapi, pydantic-settings, sqlalchemy, psycopg, alembic, pwdlib; [tool.alembic]
-├── compose.yaml              # local PostgreSQL 18 and RustFS (S3-compatible object storage)
+├── pyproject.toml            # fastapi, pydantic-settings, sqlalchemy, psycopg, alembic, pwdlib, taskiq, taskiq-redis, redis; [tool.alembic]
+├── compose.yaml              # local PostgreSQL 18, Redis 8, and RustFS (S3-compatible object storage)
 ├── alembic.ini               # Alembic logging only
 ├── alembic/                  # env.py (async, URL from Settings), script.py.mako, versions/
 ├── .env.example
@@ -125,12 +127,13 @@ apps/api/
 │   ├── config.py             # Settings (pydantic-settings) + get_settings dependency
 │   ├── db.py                 # engine, session factory, get_session / SessionDep
 │   ├── models.py             # declarative Base, naming convention, id/timestamp mixins; imports every model
-│   ├── routers/health.py     # GET /health/ (liveness), GET /health/db (readiness)
+│   ├── routers/health.py     # GET /health/ (liveness), GET /health/db and /health/redis (readiness)
 │   ├── auth/                 # sign up, log in, log out; cookie sessions in Postgres; CurrentUserDep
 │   ├── workspaces/           # workspaces, members, roles and permissions, invitations; CurrentMembership
-│   ├── mail/                 # Mailer protocol + ConsoleMailer; MailerDep
+│   ├── mail/                 # Mailer protocol + ConsoleMailer
 │   ├── storage/              # ObjectStore protocol + S3ObjectStore (aiobotocore); ObjectStoreDep
-│   └── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, attachments, dashboard
+│   ├── jobs/                 # Taskiq broker (Redis streams or in-memory), worker deps; tasks: emails, purge, imports
+│   └── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, attachments, imports, dashboard
 └── tests/                    # TestClient fixture: settings overridden, one rolled-back transaction
 ```
 
@@ -166,7 +169,7 @@ PostgreSQL 18 runs in Docker from `apps/api/compose.yaml`, with
 [Alembic](https://alembic.sqlalchemy.org) for migrations:
 
 ```sh
-vp run db:up                  # start PostgreSQL and RustFS, waits until healthy (127.0.0.1:5432, alloy/alloy)
+vp run db:up                  # start PostgreSQL, Redis, and RustFS, waits until healthy (127.0.0.1:5432, alloy/alloy)
 vp run db:migrate             # alembic upgrade head
 cd apps/api && uv run alembic revision --autogenerate -m "add widget"   # after changing models.py
 cd apps/api && uv run alembic downgrade -1
@@ -236,8 +239,8 @@ row (not revoked, not expired) → user → `Principal`. `CurrentUserDep` in
 gives the session, which logout needs. A missing, unknown, revoked, or
 expired cookie is a 401. Logout sets `revoked_at` rather than deleting the
 row, and `last_used_at` is refreshed at most every five minutes. Rows for
-old sessions are kept until you prune them
-(`DELETE FROM user_sessions WHERE revoked_at IS NOT NULL OR expires_at < now()`).
+old sessions stay for `ALLOY_PURGE_AFTER` and are then removed by the purge
+job (see Background jobs).
 
 The cookie name's `__Host-` prefix makes browsers refuse it unless it is
 `Secure`, has `Path=/`, and has no `Domain`, so it cannot be planted by a
@@ -306,12 +309,14 @@ points at `ALLOY_FRONTEND_URL/invites/{token}`.
 (`mail/base.py`) is a protocol with a single `send(Email)` method;
 `ConsoleMailer` implements it by logging the message at INFO, which is what
 `fastapi dev` and the tests use. `create_mailer(settings)` picks the
-implementation from `ALLOY_MAIL_PROVIDER`, the lifespan puts it on
-`request.state`, and handlers take a `MailerDep`. To add Resend or another
-provider: write a class with the same `send` method, add its name to
-`MailProvider`, return it from `create_mailer`, and read its credentials from
-`Settings`. Nothing else changes. Tests override `get_mailer` with an
-in-memory outbox and read the invitation token out of the message body.
+implementation from `ALLOY_MAIL_PROVIDER`. Handlers never call it: they build
+the `Email` and queue it with `send_email.kiq(email)` (see Background jobs),
+so a slow or failing provider never delays a response, and the worker is the
+only process that holds the mailer. To add Resend or another provider: write
+a class with the same `send` method, add its name to `MailProvider`, return it
+from `create_mailer`, and read its credentials from `Settings`. Nothing else
+changes. Tests give the in-memory broker an outbox as its mailer and read the
+invitation token out of the message body.
 
 ### Object storage
 
@@ -351,6 +356,95 @@ Compose service creates the bucket and sets its CORS rule for
 app's origin. The RustFS console is at http://localhost:9001 (`rustfsadmin` /
 `rustfsadmin`).
 
+### Background jobs
+
+`jobs/` runs work outside the request on [Taskiq](https://taskiq-python.github.io)
+with [taskiq-redis](https://github.com/taskiq-python/taskiq-redis). There
+are three tasks, one per module:
+
+| Task            | Module            | Trigger                                  | What it does                                                                                            |
+| --------------- | ----------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `mail.send`     | `jobs/emails.py`  | signup, resend verification, invitations | Hands the `Email` to the mailer; retried up to 5 times with backoff                                     |
+| `purge.expired` | `jobs/purge.py`   | hourly (`schedule` label), or by hand    | Deletes revoked/expired sessions, used/expired invitations, spent verification links, abandoned uploads |
+| `imports.run`   | `jobs/imports.py` | `POST .../imports/{id}/start`            | Loads a CSV of contacts or companies (`crm/importing.py`); records counts and per-row errors            |
+
+```sh
+vp run dev:worker             # taskiq worker alloy_api.jobs.broker:broker --reload
+vp run dev:scheduler          # taskiq scheduler alloy_api.jobs.broker:scheduler --skip-first-run
+cd apps/api && uv run taskiq worker alloy_api.jobs.broker:broker --workers 4   # production
+```
+
+`ALLOY_JOBS_BROKER` picks the broker in `create_broker(settings)`:
+
+- `redis` (default): `RedisStreamBroker` on `ALLOY_REDIS_URL`. Streams, not
+  lists or pub/sub, because they have acknowledgements: a message is removed
+  only when a worker has finished it, so a crashed worker's message is
+  redelivered. Results go to a `RedisAsyncResultBackend` with a one-hour
+  expiry. `SmartRetryMiddleware` retries tasks labelled `retry_on_error`
+  with exponential backoff and jitter; the stream broker cannot delay a
+  message itself, so a retry is put on a `ListRedisScheduleSource` and the
+  scheduler sends it when due.
+- `memory`: Taskiq's `InMemoryBroker`. The API process runs each task in the
+  background with its own engine, mailer, and store; no Redis, no worker, no
+  scheduler. Good for a laptop without Docker, and what the tests use.
+
+The worker and the scheduler are separate processes that import the same
+`jobs/broker.py`. The worker opens a database engine, a mailer, and an object
+store per process at `WORKER_STARTUP` and puts them on `TaskiqState`; tasks
+declare what they need as defaults (`session: AsyncSession =
+TaskiqDepends(get_session)`, from `jobs/deps.py`), never a request. The
+scheduler reads the `schedule` labels (`purge.expired` is
+`{"cron": "0 * * * *"}`) and the delayed retries; run exactly one, as the
+Taskiq docs say, or periodic tasks fire twice. `--skip-first-run` stops it
+from firing every cron task the moment it starts. `GET /health/redis` pings
+the Redis behind the queue for readiness probes.
+
+Tasks are ordinary async functions and stay callable as such. In tests the
+broker is in-memory with `await_inplace`, so `kiq()` runs the task before it
+returns, on the test transaction and with the same doubles the handlers get:
+a handler that queues an email has the message in `outbox` when it responds.
+`tests/test_jobs.py` also checks the Redis wiring against the Compose Redis.
+
+The purge job removes rows the app stamps rather than deletes, once they have
+been dead for `ALLOY_PURGE_AFTER` (default 7 days): sessions revoked or
+expired, invitations accepted, revoked, or expired, verification links past
+their TTL, and attachment or import rows whose upload URL expired without a
+completion, along with any object that did land in storage.
+
+### CSV imports
+
+`POST .../imports` starts an import of contacts or companies the way an
+attachment upload does: the API returns an upload URL for the CSV
+(`text/csv`, at most `ALLOY_IMPORT_MAX_BYTES`, default 10 MB), the browser
+`PUT`s the file there, and `POST .../imports/{id}/start` confirms it is in the
+store and queues `imports.run`. `GET .../imports/{id}` shows the row move
+through `pending → queued → running → done | failed`, with counts of rows
+created, skipped, and failed, the first 100 row errors as `{row, message}`
+(`row` is the line in the file), and `error` when the file could not be read
+at all. The CSV is removed from storage when the job ends.
+
+```text
+GET/POST          .../imports/                   newest first / start an import {kind, filename, size} → upload URL
+GET               .../imports/{id}               progress and outcome
+POST              .../imports/{id}/start         after the PUT; 409 until the file is in the store or if already started
+```
+
+The file is UTF-8 (a BOM is fine) with a header row; headers match
+case-insensitively with spaces as underscores, and unknown columns are
+ignored. Contacts take `name, email, phone, job_title, status, company`;
+companies take `name, website, industry, notes`. Each row is validated as a
+`POST` body would be, so the rules match the forms. A contact whose email is
+already in the workspace and a company whose name is (case-insensitively) are
+skipped, not duplicated; a contact's `company` links an existing company or
+creates it once for the file. The rows are written in one transaction with
+the final status, so a run that dies halfway leaves nothing behind and is
+simply run again when the broker redelivers it.
+
+The web app's Imports page (`apps/web/src/app/(app)/[workspaceId]/imports/`)
+drives this handshake: pick the kind and a file, watch the upload, then the
+history table polls every two seconds while a job is queued or running and
+opens the row errors in a dialog once it is done.
+
 ### Tiny CRM (demo)
 
 `crm/` is a sample application on top of the template: contacts, companies,
@@ -385,6 +479,7 @@ GET/POST          .../companies/{id}/attachments
 POST              .../attachments/{id}/complete                 after the PUT; 409 until the object is in the store
 GET               .../attachments/{id}/download                 307 to a short-lived storage URL
 DELETE            .../attachments/{id}                          removes the object, then the row
+GET/POST          .../imports/                                  CSV imports of contacts or companies (see above)
 ```
 
 - Contact `status`: `lead`, `active`, `inactive`. Task `status`: `open`,
@@ -461,7 +556,7 @@ including `vp check` and `vp pack`, stays on TypeScript 7.
 
 A [Next.js](https://nextjs.org/docs) 16 app (App Router, Turbopack, TypeScript),
 package `@alloy/web`: the front end for the Tiny CRM, with login, a dashboard,
-and contacts, companies, and tasks.
+contacts, companies, tasks, and CSV imports.
 
 ```text
 apps/web/
@@ -477,7 +572,7 @@ apps/web/
     │   ├── layout.tsx, providers.tsx   # font, QueryClientProvider, next-themes, toasts
     │   ├── api/[...path]/route.ts      # forwards /api/* to the FastAPI service with the cookie
     │   ├── (auth)/login, signup        # one shared client form
-    │   └── (app)/                      # sidebar layout with nav + user menu; dashboard, contacts, companies, tasks, settings
+    │   └── (app)/                      # sidebar layout with nav + user menu; dashboard, contacts, companies, tasks, imports, settings
     ├── components/
     │   ├── ui/               # shadcn/ui components, added with `pnpm dlx shadcn@latest add`
     │   ├── form/             # TanStack Form hook bound to shadcn Field components
