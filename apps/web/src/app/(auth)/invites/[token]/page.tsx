@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
-import { ApiError } from "@/lib/api-error";
+import { ApiError, tooManyAttempts } from "@/lib/api-error";
 import { getCurrentUser } from "@/lib/session";
 
 import { AcceptInvite } from "./accept-invite";
@@ -36,16 +36,13 @@ async function InviteContent({ params }: { params: Params }) {
 
   if (!preview.data) {
     const status = preview.response.status;
-    if (status !== 404 && status !== 410) throw ApiError.fromResult(preview);
+    if (status !== 404 && status !== 410 && status !== 429) throw ApiError.fromResult(preview);
+    const { title, description } = previewFailure(preview);
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{status === 410 ? "Invitation expired" : "Invitation not found"}</CardTitle>
-          <CardDescription>
-            {status === 410
-              ? "This link has expired. Ask for a new invitation."
-              : "This link was already used, revoked, or never existed."}
-          </CardDescription>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="outline" nativeButton={false} render={<Link href="/" />}>
@@ -57,4 +54,24 @@ async function InviteContent({ params }: { params: Params }) {
   }
 
   return <AcceptInvite token={token} invite={preview.data} userEmail={user?.email ?? null} />;
+}
+
+function previewFailure(preview: { response: Response }): { title: string; description: string } {
+  switch (preview.response.status) {
+    case 410:
+      return {
+        title: "Invitation expired",
+        description: "This link has expired. Ask for a new invitation.",
+      };
+    case 429:
+      return {
+        title: "Too many attempts",
+        description: tooManyAttempts(ApiError.fromResult(preview).retryAfter),
+      };
+    default:
+      return {
+        title: "Invitation not found",
+        description: "This link was already used, revoked, or never existed.",
+      };
+  }
 }

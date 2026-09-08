@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
@@ -22,6 +22,17 @@ from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
 from alloy_api.jobs.emails import send_email
 from alloy_api.models import utcnow
+from alloy_api.ratelimit import (
+    FORGOT_PASSWORD_PER_EMAIL,
+    FORGOT_PASSWORD_PER_IP,
+    LOGIN_PER_EMAIL,
+    LOGIN_PER_IP,
+    RESEND_VERIFICATION_PER_USER,
+    SIGNUP_PER_IP,
+    TOKEN_PER_IP,
+    LimiterDep,
+    per_ip,
+)
 from alloy_api.workspaces.models import WorkspaceInvite
 from alloy_api.workspaces.service import DEFAULT_WORKSPACE_NAME, create_workspace
 
@@ -105,7 +116,11 @@ async def revoke_sessions(session: AsyncSession, user_id: UUID, *, keep: UUID | 
     await session.commit()
 
 
-@router.post("/signup", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/signup",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(per_ip(SIGNUP_PER_IP))],
+)
 async def signup(
     credentials: Credentials,
     session: SessionDep,
@@ -132,7 +147,7 @@ async def signup(
     return read
 
 
-@router.post("/verify-email")
+@router.post("/verify-email", dependencies=[Depends(per_ip(TOKEN_PER_IP))])
 async def verify_email(
     body: EmailVerification, session: SessionDep, settings: SettingsDep
 ) -> UserRead:
@@ -157,23 +172,34 @@ async def verify_email(
 
 @router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
 async def resend_verification(
-    user: CurrentUserDep, session: SessionDep, settings: SettingsDep
+    user: CurrentUserDep, session: SessionDep, settings: SettingsDep, limiter: LimiterDep
 ) -> Response:
     """Email a new verification link; the previous one stops working."""
     if user.email_verified:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already verified")
+    await limiter.hit(RESEND_VERIFICATION_PER_USER, str(user.id))
     await send_verification(session, settings, user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/login")
+@router.post("/login", dependencies=[Depends(per_ip(LOGIN_PER_IP))])
 async def login(
-    credentials: Credentials, session: SessionDep, settings: SettingsDep, response: Response
+    credentials: Credentials,
+    session: SessionDep,
+    settings: SettingsDep,
+    limiter: LimiterDep,
+    response: Response,
 ) -> UserRead:
-    user = await session.scalar(select(User).where(User.email == credentials.email.lower()))
+    """The email counter counts failures only, and a success clears it. Both limits
+    run before the password hash, which is slow by design."""
+    email = credentials.email.lower()
+    await limiter.check(LOGIN_PER_EMAIL, email)
+    user = await session.scalar(select(User).where(User.email == email))
     if not await verify_password(credentials.password, user.password_hash if user else None):
+        await limiter.hit(LOGIN_PER_EMAIL, email)
         raise unauthorized()
     assert user is not None  # noqa: S101 - verify_password fails on the dummy hash
+    await limiter.reset(LOGIN_PER_EMAIL, email)
     return await start_session(session, settings, user, response)
 
 
@@ -210,22 +236,29 @@ async def change_password(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(per_ip(FORGOT_PASSWORD_PER_IP))],
+)
 async def forgot_password(
-    body: PasswordResetRequest, session: SessionDep, settings: SettingsDep
+    body: PasswordResetRequest, session: SessionDep, settings: SettingsDep, limiter: LimiterDep
 ) -> Response:
     """Email a password reset link to the address, if an account has it.
 
     Always 204, so the response does not reveal whether an account exists. A new
-    request replaces the previous link.
+    request replaces the previous link. The email limit counts unknown addresses
+    too, for the same reason.
     """
-    user = await session.scalar(select(User).where(User.email == body.email.lower()))
+    email = body.email.lower()
+    await limiter.hit(FORGOT_PASSWORD_PER_EMAIL, email)
+    user = await session.scalar(select(User).where(User.email == email))
     if user is not None:
         await send_password_reset(session, settings, user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", dependencies=[Depends(per_ip(TOKEN_PER_IP))])
 async def reset_password(
     body: PasswordReset, session: SessionDep, settings: SettingsDep, response: Response
 ) -> UserRead:

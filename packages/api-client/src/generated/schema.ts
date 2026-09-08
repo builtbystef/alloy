@@ -134,7 +134,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Login */
+        /**
+         * Login
+         * @description The email counter counts failures only, and a success clears it. Both limits
+         *     run before the password hash, which is slow by design.
+         */
         post: operations["auth-login"];
         delete?: never;
         options?: never;
@@ -216,7 +220,8 @@ export interface paths {
          * @description Email a password reset link to the address, if an account has it.
          *
          *     Always 204, so the response does not reveal whether an account exists. A new
-         *     request replaces the previous link.
+         *     request replaces the previous link. The email limit counts unknown addresses
+         *     too, for the same reason.
          */
         post: operations["auth-forgot_password"];
         delete?: never;

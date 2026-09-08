@@ -129,6 +129,7 @@ apps/api/
 │   ├── db.py                 # engine, session factory, get_session / SessionDep
 │   ├── models.py             # declarative Base, naming convention, id/timestamp mixins; imports every model
 │   ├── routers/health.py     # GET /health/ (liveness), GET /health/db and /health/redis (readiness)
+│   ├── ratelimit.py          # fixed-window counters in Redis (or memory); the auth and invitation limits; per_ip / LimiterDep
 │   ├── auth/                 # sign up, log in, log out; cookie sessions in Postgres; CurrentUserDep
 │   ├── workspaces/           # workspaces, members, roles and permissions, invitations; CurrentMembership
 │   ├── mail/                 # Mailer protocol + ConsoleMailer
@@ -285,8 +286,46 @@ following the link proves the address, so it also counts as verification. A
 new request replaces the pending link, and changing the password while logged
 in voids it. Links point at `ALLOY_FRONTEND_URL/verify-email?token=` and
 `/reset-password?token=`; the pages confirm with a click, so a mail scanner
-that prefetches the link does not spend it. There is no rate limit on either
-request endpoint yet; put one at the edge before exposing the API.
+that prefetches the link does not spend it.
+
+### Rate limits
+
+`ratelimit.py` guards what can be called without a login, plus the two
+logged-in endpoints that send mail or take a token. Fixed-window counters:
+the first hit starts a window, each hit adds one, and past the limit the
+answer is 429 with `Retry-After` set to what is left of the window. A
+`Limit` names the policy; the subject (client address, email, user id) picks
+the counter. Routes attach `per_ip(limit)` as a dependency, or call the
+`Limiter` themselves when the subject is in the body or only failures should
+count.
+
+| Endpoint                                                             | Subject         | Limit         |
+| -------------------------------------------------------------------- | --------------- | ------------- |
+| `POST /auth/login`                                                   | address         | 20 per 15 min |
+| `POST /auth/login`                                                   | email, failures | 10 per 15 min |
+| `POST /auth/signup`                                                  | address         | 10 per hour   |
+| `POST /auth/forgot-password`                                         | address         | 10 per hour   |
+| `POST /auth/forgot-password`                                         | email           | 3 per hour    |
+| `POST /auth/resend-verification`                                     | user            | 3 per hour    |
+| `POST /auth/verify-email`, `/reset-password`, `GET /invites/{token}` | address         | 10 per minute |
+| `POST /invites/{token}/accept`                                       | user            | 10 per minute |
+
+Login checks both counters before the password hash, which is slow by design,
+so a blocked attempt costs nothing; the email counter counts wrong passwords
+only and is cleared by a right one, so a botnet working on one account is
+stopped without locking the real user out for good. `forgot-password` counts
+per address whether or not the account exists, so the limit reveals nothing
+the 204 hides. Every trip is logged at WARNING with the limit's name and the
+subject.
+
+The counters live in Redis (`ALLOY_RATE_LIMIT_STORE=redis`, the default, on
+`ALLOY_REDIS_URL`), so every API instance shares them; `memory` keeps them in
+the process for development without Redis, and the tests use a fresh
+in-memory store per test. The address is `request.client`, which Uvicorn
+fills from `X-Forwarded-For` when the peer is in `FORWARDED_ALLOW_IPS`: the
+web app's proxy route sets that header to the visitor's address, and the API
+image trusts every peer because only that route can reach it (see Deploying).
+Unset the trust and every request counts against the proxy's one address.
 
 ### Workspaces, roles, and invitations
 
@@ -681,6 +720,13 @@ offers managed. Only `web` needs a public address: the browser talks to
 Next.js, and its proxy route forwards `/api/*` to the API over the host's
 private network, so the API stays internal and needs no CORS. The bucket must
 be reachable by the browser, since uploads and downloads use presigned URLs.
+
+The proxy route passes the visitor's address upstream as `X-Forwarded-For`,
+read from the platform's own header (`CF-Connecting-IP`, `X-Real-IP`, or the
+last entry of `X-Forwarded-For`), and the API image sets
+`FORWARDED_ALLOW_IPS=*` so Uvicorn believes it from any peer. That is safe
+while the API is reachable only from `web`; if it ever gets a public address,
+set `FORWARDED_ALLOW_IPS` to the web service's address or network instead.
 
 ### Migrations
 

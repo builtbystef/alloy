@@ -21,7 +21,7 @@ apps/web/
     │   ├── providers.tsx # QueryClientProvider, next-themes, sonner <Toaster>
     │   ├── globals.css   # Tailwind import, shadcn theme tokens
     │   ├── icon.svg, favicon.ico, apple-icon.png   # the logo, in the formats browsers ask for
-    │   ├── api/[...path]/route.ts   # the proxy to the API
+    │   ├── api/[...path]/route.ts   # the proxy to the API; forwards the visitor's address
     │   ├── (auth)/       # centered layout with the logo; login and signup share auth-form.tsx; verify-email/, forgot-password/, reset-password/ follow emailed links; invites/[token]/ accepts an invitation
     │   └── (app)/
     │       ├── page.tsx              # `/`: opens the last-used (cookie) or first workspace; offers to create one if none
@@ -115,7 +115,10 @@ this) rather than relying on `prefers-color-scheme`.
 
 The browser never sees `API_URL`. Every request goes through
 `src/app/api/[...path]/route.ts`, a Route Handler that forwards the method,
-path, query, body, `Cookie`, and `Set-Cookie` between the browser and the API.
+path, query, body, `Cookie`, and `Set-Cookie` between the browser and the API,
+and passes the visitor's address along as `X-Forwarded-For` for the API's
+rate limits (from `CF-Connecting-IP`, `X-Real-IP`, or the last entry of the
+incoming `X-Forwarded-For`, whichever the platform in front sets).
 The API's login response sets its `__Host-session` cookie for the Next.js
 origin; the browser sends it back on the next `/api/...` call by itself, and
 Server Components read it with `cookies()` and forward it through

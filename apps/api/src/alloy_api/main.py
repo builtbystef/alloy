@@ -14,6 +14,7 @@ from alloy_api.db import DatabaseState, create_database_state
 from alloy_api.jobs.broker import broker
 from alloy_api.jobs.deps import configure as configure_jobs
 from alloy_api.mail import Mailer, create_mailer
+from alloy_api.ratelimit import RateLimitStoreProtocol, create_rate_limit_store
 from alloy_api.routers import health
 from alloy_api.storage import ObjectStore, create_object_store
 from alloy_api.workspaces.invites import router as invites_router
@@ -37,6 +38,7 @@ class AppState(DatabaseState):
 
     mailer: Mailer
     object_store: ObjectStore
+    rate_limit_store: RateLimitStoreProtocol
 
 
 def generate_unique_id(route: APIRoute) -> str:
@@ -55,10 +57,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[AppState]:
     """The yielded dict becomes `request.state`. The engine and the object store
     connect lazily."""
     async with create_object_store(settings) as object_store:
+        rate_limit_store = create_rate_limit_store(settings)
         state = AppState(
             **create_database_state(settings),
             mailer=create_mailer(settings),
             object_store=object_store,
+            rate_limit_store=rate_limit_store,
         )
         if isinstance(broker, InMemoryBroker):
             # No worker: this process runs the jobs, with the app's own resources.
@@ -72,6 +76,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[AppState]:
         await broker.startup()
         yield state
         await broker.shutdown()
+        await rate_limit_store.aclose()
         await state["engine"].dispose()
 
 

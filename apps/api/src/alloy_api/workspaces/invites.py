@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -6,6 +6,7 @@ from alloy_api.auth.deps import CurrentUserDep
 from alloy_api.auth.tokens import hash_token
 from alloy_api.db import SessionDep
 from alloy_api.models import utcnow
+from alloy_api.ratelimit import INVITE_ACCEPT_PER_USER, TOKEN_PER_IP, LimiterDep, per_ip
 from alloy_api.workspaces.models import WorkspaceInvite, WorkspaceMember
 from alloy_api.workspaces.schemas import InvitePreview, WorkspaceRead
 from alloy_api.workspaces.service import workspace_read
@@ -29,7 +30,7 @@ async def fetch_pending_invite(session: SessionDep, token: str) -> WorkspaceInvi
     return invite
 
 
-@router.get("/{token}")
+@router.get("/{token}", dependencies=[Depends(per_ip(TOKEN_PER_IP))])
 async def read_invite(token: str, session: SessionDep) -> InvitePreview:
     """No login needed: the page shows who invited you where before you sign up."""
     invite = await fetch_pending_invite(session, token)
@@ -43,12 +44,15 @@ async def read_invite(token: str, session: SessionDep) -> InvitePreview:
 
 
 @router.post("/{token}/accept")
-async def accept_invite(token: str, session: SessionDep, user: CurrentUserDep) -> WorkspaceRead:
+async def accept_invite(
+    token: str, session: SessionDep, user: CurrentUserDep, limiter: LimiterDep
+) -> WorkspaceRead:
     """Take the seat. The logged-in account's email must be the invited one.
 
     The token reached the invitee's inbox, so accepting also proves the account
     owns that address: an unverified account is marked verified here.
     """
+    await limiter.hit(INVITE_ACCEPT_PER_USER, str(user.id))
     invite = await fetch_pending_invite(session, token)
     if user.email != invite.email:
         raise HTTPException(

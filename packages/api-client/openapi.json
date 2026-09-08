@@ -181,6 +181,7 @@
           "auth"
         ],
         "summary": "Login",
+        "description": "The email counter counts failures only, and a success clears it. Both limits\nrun before the password hash, which is slow by design.",
         "operationId": "auth-login",
         "requestBody": {
           "content": {
@@ -302,7 +303,7 @@
           "auth"
         ],
         "summary": "Forgot Password",
-        "description": "Email a password reset link to the address, if an account has it.\n\nAlways 204, so the response does not reveal whether an account exists. A new\nrequest replaces the previous link.",
+        "description": "Email a password reset link to the address, if an account has it.\n\nAlways 204, so the response does not reveal whether an account exists. A new\nrequest replaces the previous link. The email limit counts unknown addresses\ntoo, for the same reason.",
         "operationId": "auth-forgot_password",
         "requestBody": {
           "content": {

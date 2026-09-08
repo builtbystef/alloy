@@ -14,6 +14,7 @@ import pytest
 
 # Before `alloy_api` is imported: the broker is chosen when its module loads.
 os.environ["ALLOY_JOBS_BROKER"] = "memory"
+os.environ["ALLOY_RATE_LIMIT_STORE"] = "memory"
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
@@ -28,6 +29,7 @@ from alloy_api.jobs.deps import configure as configure_jobs
 from alloy_api.mail import Email
 from alloy_api.main import app
 from alloy_api.models import Base
+from alloy_api.ratelimit import Limiter, MemoryRateLimitStore, get_limiter
 from alloy_api.storage import get_object_store
 from alloy_api.storage.memory import MemoryObjectStore
 
@@ -66,13 +68,25 @@ def object_store() -> MemoryObjectStore:
 
 
 @pytest.fixture
+def rate_limits() -> MemoryRateLimitStore:
+    """Per test: every request has the same client address, so shared counters
+    would leak attempts between tests."""
+    return MemoryRateLimitStore()
+
+
+@pytest.fixture
 def app_client(
-    settings: Settings, outbox: Outbox, object_store: MemoryObjectStore
+    settings: Settings,
+    outbox: Outbox,
+    object_store: MemoryObjectStore,
+    rate_limits: MemoryRateLimitStore,
 ) -> Iterator[TestClient]:
-    """Settings and object store overridden, real database wiring. The jobs get the
-    same settings and store, plus `outbox` as their mailer, and run inline."""
+    """Settings, object store, and rate limit counters overridden, real database
+    wiring. The jobs get the same settings and store, plus `outbox` as their
+    mailer, and run inline."""
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_object_store] = lambda: object_store
+    app.dependency_overrides[get_limiter] = lambda: Limiter(rate_limits)
     assert isinstance(broker, InMemoryBroker)
     broker.await_inplace = True
     # https: the session cookie is `Secure`, and httpx's jar only sends it over https.

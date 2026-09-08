@@ -16,6 +16,8 @@ export class ApiError extends Error {
     message: string,
     /** Per-field messages from a 422, keyed by the body field name. */
     readonly fields: Readonly<Record<string, string>> = {},
+    /** Seconds to wait, from a 429's `Retry-After` header. */
+    readonly retryAfter: number | null = null,
   ) {
     super(message);
   }
@@ -23,6 +25,10 @@ export class ApiError extends Error {
   static fromResult(result: ApiResult<unknown>): ApiError {
     const { response, error } = result;
     const detail = isRecord(error) ? error["detail"] : undefined;
+    if (response.status === 429) {
+      const retryAfter = retryAfterSeconds(response);
+      return new ApiError(response.status, tooManyAttempts(retryAfter), {}, retryAfter);
+    }
     if (typeof detail === "string") {
       return new ApiError(response.status, detail);
     }
@@ -62,4 +68,17 @@ export function errorMessage(error: unknown): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function retryAfterSeconds(response: Response): number | null {
+  const seconds = Number(response.headers.get("retry-after"));
+  return Number.isInteger(seconds) && seconds > 0 ? seconds : null;
+}
+
+export function tooManyAttempts(seconds: number | null): string {
+  if (seconds === null) return "Too many attempts. Try again later.";
+  if (seconds < 60)
+    return `Too many attempts. Try again in ${seconds} second${seconds === 1 ? "" : "s"}.`;
+  const minutes = Math.ceil(seconds / 60);
+  return `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
 }

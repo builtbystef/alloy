@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from alloy_api.jobs import JobsBroker
 from alloy_api.mail import MailProvider
+from alloy_api.ratelimit import RateLimitStore
 from alloy_api.storage import StorageProvider
 
 
@@ -52,6 +53,8 @@ class Settings(BaseSettings):
 
     jobs_broker: JobsBroker = "redis"
     redis_url: RedisDsn = RedisDsn("redis://localhost:6379/0")
+
+    rate_limit_store: RateLimitStore = "redis"
 
     purge_after: timedelta = timedelta(days=7)
 
