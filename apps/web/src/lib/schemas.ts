@@ -99,6 +99,20 @@ export const signupSchema = z
 export const authFormSchema = (mode: "login" | "signup") =>
   mode === "signup" ? signupSchema : loginSchema.extend({ confirm: z.string() });
 
+export const forgotPasswordSchema = z.object({
+  email: z.email("Enter a valid email address"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    new_password: password,
+    confirm: z.string(),
+  })
+  .refine((value) => value.new_password === value.confirm, {
+    error: "Passwords do not match",
+    path: ["confirm"],
+  });
+
 export const passwordChangeSchema = z
   .object({
     current_password: z.string().min(1, "Current password is required"),
@@ -155,6 +169,8 @@ export const activitySchema = z.object({
 export type LoginInput = z.input<typeof loginSchema>;
 export type SignupInput = z.input<typeof signupSchema>;
 export type AuthFormInput = z.input<ReturnType<typeof authFormSchema>>;
+export type ForgotPasswordInput = z.input<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.input<typeof resetPasswordSchema>;
 export type PasswordChangeInput = z.input<typeof passwordChangeSchema>;
 export type WorkspaceInput = z.input<typeof workspaceSchema>;
 export type InviteInput = z.input<typeof inviteSchema>;

@@ -113,6 +113,9 @@ def test_purge_removes_only_what_has_been_dead_long_enough(  # noqa: PLR0913, PL
     assert signup.status_code == 201
     client.cookies.clear()
     verification = outbox[-1].text.split("/verify-email?token=")[1].split()[0]
+    # A password reset link that was never followed.
+    assert client.post("/auth/forgot-password", json={"email": alice.email}).status_code == 204
+    reset = outbox[-1].text.split("/reset-password?token=")[1].split()[0]
     # An attachment and an import whose files were never uploaded, plus one
     # attachment whose file did land but was never reported complete.
     contact = alice.post("/contacts/", json={"name": "Grace"}).json()
@@ -136,11 +139,18 @@ def test_purge_removes_only_what_has_been_dead_long_enough(  # noqa: PLR0913, PL
 
     later = utcnow() + settings.purge_after + settings.verification_ttl + timedelta(hours=1)
     assert db.run(run, later) == PurgeReport(
-        sessions=1, invites=1, verification_tokens=1, attachments=2, imports=1
+        sessions=1,
+        invites=1,
+        verification_tokens=1,
+        password_reset_tokens=1,
+        attachments=2,
+        imports=1,
     )
     assert object_store.objects == {}
     # The spent link is gone, not merely expired.
     assert client.post("/auth/verify-email", json={"token": verification}).status_code == 404
+    reset_body = {"token": reset, "new_password": "new horse battery"}
+    assert client.post("/auth/reset-password", json=reset_body).status_code == 404
     # Live logins and completed rows are untouched.
     assert alice.get("/members").status_code == 200
     assert [c["name"] for c in alice.get("/contacts/").json()] == ["Grace"]
@@ -158,6 +168,7 @@ def test_the_purge_task_runs_with_the_worker_resources(db: Database):
         "sessions": 0,
         "invites": 0,
         "verification_tokens": 0,
+        "password_reset_tokens": 0,
         "attachments": 0,
         "imports": 0,
     }

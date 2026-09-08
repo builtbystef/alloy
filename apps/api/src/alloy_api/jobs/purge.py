@@ -34,6 +34,7 @@ class PurgeReport:
     sessions: int = 0
     invites: int = 0
     verification_tokens: int = 0
+    password_reset_tokens: int = 0
     attachments: int = 0
     imports: int = 0
 
@@ -69,6 +70,14 @@ async def purge(
         .values(verification_token_hash=None, verification_sent_at=None)
     )
     report.verification_tokens = affected(result)
+
+    result = await session.execute(
+        update(User)
+        .where(User.password_reset_token_hash.is_not(None))
+        .where(User.password_reset_sent_at < cutoff - settings.password_reset_ttl)
+        .values(password_reset_token_hash=None, password_reset_sent_at=None)
+    )
+    report.password_reset_tokens = affected(result)
 
     # An upload URL outlives its row's creation by `storage_url_ttl`; after that,
     # a row still not completed will never be.

@@ -5,6 +5,7 @@ import {
   contactSchema,
   parseContactSearch,
   parseTaskSearch,
+  resetPasswordSchema,
   signupSchema,
   taskSchema,
   toSearchString,
@@ -99,4 +100,13 @@ test("search params keep valid filters and drop the rest", () => {
     status: "done",
   });
   expect(toSearchString({ q: "ada", status: undefined })).toBe("q=ada");
+});
+
+test("a reset password form needs matching passwords", () => {
+  const result = resetPasswordSchema.safeParse({ new_password: "long enough", confirm: "nope" });
+  expect(result.success).toBe(false);
+  expect(result.error?.issues.map((issue) => issue.path)).toEqual([["confirm"]]);
+  expect(
+    resetPasswordSchema.safeParse({ new_password: "long enough", confirm: "long enough" }).success,
+  ).toBe(true);
 });

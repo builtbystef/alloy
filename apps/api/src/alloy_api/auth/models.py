@@ -21,6 +21,10 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     # The email holds a random token; only its SHA-256 is stored here.
     verification_token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
     verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The pending "forgot password" link, kept the same way. Using it, or changing
+    # the password while logged in, clears it.
+    password_reset_token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    password_reset_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def email_verified(self) -> bool:

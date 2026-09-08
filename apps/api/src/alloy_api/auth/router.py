@@ -6,10 +6,17 @@ from sqlalchemy.exc import IntegrityError
 
 from alloy_api.auth.cookies import clear_session_cookie, set_session_cookie
 from alloy_api.auth.deps import CurrentPrincipal, CurrentUserDep, unauthorized
-from alloy_api.auth.emails import verification_email
+from alloy_api.auth.emails import password_reset_email, verification_email
 from alloy_api.auth.models import User, UserSession
 from alloy_api.auth.passwords import hash_password, verify_password
-from alloy_api.auth.schemas import Credentials, EmailVerification, PasswordChange, UserRead
+from alloy_api.auth.schemas import (
+    Credentials,
+    EmailVerification,
+    PasswordChange,
+    PasswordReset,
+    PasswordResetRequest,
+    UserRead,
+)
 from alloy_api.auth.tokens import hash_token, new_token
 from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
@@ -54,6 +61,22 @@ async def send_verification(session: AsyncSession, settings: Settings, user: Use
     user.verification_sent_at = utcnow()
     await session.commit()
     await send_email.kiq(verification_email(user, token, str(settings.frontend_url)))
+
+
+async def send_password_reset(session: AsyncSession, settings: Settings, user: User) -> None:
+    """Issue a fresh reset token, replacing any pending one, and queue the email."""
+    token = new_token()
+    user.password_reset_token_hash = hash_token(token)
+    user.password_reset_sent_at = utcnow()
+    await session.commit()
+    await send_email.kiq(
+        password_reset_email(user, token, str(settings.frontend_url), settings.password_reset_ttl)
+    )
+
+
+def clear_password_reset(user: User) -> None:
+    user.password_reset_token_hash = None
+    user.password_reset_sent_at = None
 
 
 async def has_pending_invite(session: AsyncSession, email: str) -> bool:
@@ -181,8 +204,54 @@ async def change_password(
     if not await verify_password(body.current_password, principal.user.password_hash):
         raise unauthorized()
     principal.user.password_hash = await hash_password(body.new_password)
+    # A reset link that was asked for earlier must not undo this change.
+    clear_password_reset(principal.user)
     await revoke_sessions(session, principal.user.id, keep=principal.session.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+async def forgot_password(
+    body: PasswordResetRequest, session: SessionDep, settings: SettingsDep
+) -> Response:
+    """Email a password reset link to the address, if an account has it.
+
+    Always 204, so the response does not reveal whether an account exists. A new
+    request replaces the previous link.
+    """
+    user = await session.scalar(select(User).where(User.email == body.email.lower()))
+    if user is not None:
+        await send_password_reset(session, settings, user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/reset-password")
+async def reset_password(
+    body: PasswordReset, session: SessionDep, settings: SettingsDep, response: Response
+) -> UserRead:
+    """Follow the emailed link: set the password and log in here.
+
+    Every existing session is revoked, since whoever asked may have lost control of
+    one. Following the link proves the address is the user's, so it also counts as
+    email verification. 404 for an unknown or already used token; 410 for an expired
+    one.
+    """
+    user = await session.scalar(
+        select(User).where(User.password_reset_token_hash == hash_token(body.token))
+    )
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Reset link not found")
+    sent_at = user.password_reset_sent_at
+    if sent_at is None or sent_at + settings.password_reset_ttl <= utcnow():
+        raise HTTPException(status.HTTP_410_GONE, "Reset link has expired")
+    user.password_hash = await hash_password(body.new_password)
+    clear_password_reset(user)
+    if not user.email_verified:
+        user.email_verified_at = utcnow()
+        user.verification_token_hash = None
+        user.verification_sent_at = None
+    await revoke_sessions(session, user.id, keep=None)
+    return await start_session(session, settings, user, response)
 
 
 @router.get("/me")

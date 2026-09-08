@@ -28,12 +28,17 @@ def upgrade() -> None:
         sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("verification_token_hash", sa.String(length=64), nullable=True),
         sa.Column("verification_sent_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("password_reset_token_hash", sa.String(length=64), nullable=True),
+        sa.Column("password_reset_sent_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
         sa.UniqueConstraint("email", name=op.f("uq_users_email")),
         sa.UniqueConstraint(
             "verification_token_hash", name=op.f("uq_users_verification_token_hash")
+        ),
+        sa.UniqueConstraint(
+            "password_reset_token_hash", name=op.f("uq_users_password_reset_token_hash")
         ),
     )
     op.create_table(

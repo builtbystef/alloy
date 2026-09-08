@@ -22,7 +22,7 @@ apps/web/
     │   ├── globals.css   # Tailwind import, shadcn theme tokens
     │   ├── icon.svg, favicon.ico, apple-icon.png   # the logo, in the formats browsers ask for
     │   ├── api/[...path]/route.ts   # the proxy to the API
-    │   ├── (auth)/       # centered layout with the logo; login and signup share auth-form.tsx; invites/[token]/ accepts an invitation
+    │   ├── (auth)/       # centered layout with the logo; login and signup share auth-form.tsx; verify-email/, forgot-password/, reset-password/ follow emailed links; invites/[token]/ accepts an invitation
     │   └── (app)/
     │       ├── page.tsx              # `/`: opens the last-used (cookie) or first workspace; offers to create one if none
     │       ├── workspace-form.tsx    # create a workspace (first sign-in and the switcher's dialog)

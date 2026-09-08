@@ -226,6 +226,11 @@ POST /auth/logout      cookie                             → 204, cookie cleare
 POST /auth/logout-all  cookie                             → 204, cookie cleared         (revokes every session of the user)
 POST /auth/password    cookie {current_password, new_password} → 204                    (revokes every other session)
 GET  /auth/me          cookie                             → 200 UserRead
+
+POST /auth/verify-email         {token}                   → 200 UserRead                (404 unknown/used, 410 expired)
+POST /auth/resend-verification  cookie                    → 204                         (409 if already verified)
+POST /auth/forgot-password      {email}                   → 204, always                 (emails a reset link if the account exists)
+POST /auth/reset-password       {token, new_password}     → 200 UserRead + Set-Cookie   (404 unknown/used, 410 expired)
 ```
 
 Logging in runs:
@@ -266,6 +271,22 @@ never blocks the event loop. An unknown email is verified against a dummy
 hash so both failures take about as long. Emails are stored lower-cased and
 must be unique (409 on signup). The `APIKeyCookie` scheme is in the OpenAPI
 schema, so the generated client knows which endpoints are protected.
+
+Two flows run through an emailed link, and both work the same way as a
+session token: the email carries `secrets.token_urlsafe(32)`, the `users` row
+holds its SHA-256 plus a `*_sent_at` timestamp, and the link is spent by
+clearing both. Signup emails a verification link (`ALLOY_VERIFICATION_TTL`,
+default 1 day); until it is followed, everything past `/auth/*` answers 403.
+`/auth/forgot-password` emails a reset link (`ALLOY_PASSWORD_RESET_TTL`,
+default 1 hour) and answers 204 whether or not the address has an account, so
+it does not reveal who is registered. `/auth/reset-password` sets the
+password, revokes every session, and logs the browser in with a fresh one;
+following the link proves the address, so it also counts as verification. A
+new request replaces the pending link, and changing the password while logged
+in voids it. Links point at `ALLOY_FRONTEND_URL/verify-email?token=` and
+`/reset-password?token=`; the pages confirm with a click, so a mail scanner
+that prefetches the link does not spend it. There is no rate limit on either
+request endpoint yet; put one at the edge before exposing the API.
 
 ### Workspaces, roles, and invitations
 
@@ -366,11 +387,11 @@ app's origin. The RustFS console is at http://localhost:9001 (`rustfsadmin` /
 with [taskiq-redis](https://github.com/taskiq-python/taskiq-redis). There
 are three tasks, one per module:
 
-| Task            | Module            | Trigger                                  | What it does                                                                                            |
-| --------------- | ----------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `mail.send`     | `jobs/emails.py`  | signup, resend verification, invitations | Hands the `Email` to the mailer; retried up to 5 times with backoff                                     |
-| `purge.expired` | `jobs/purge.py`   | hourly (`schedule` label), or by hand    | Deletes revoked/expired sessions, used/expired invitations, spent verification links, abandoned uploads |
-| `imports.run`   | `jobs/imports.py` | `POST .../imports/{id}/start`            | Loads a CSV of contacts or companies (`crm/importing.py`); records counts and per-row errors            |
+| Task            | Module            | Trigger                                                   | What it does                                                                                                        |
+| --------------- | ----------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `mail.send`     | `jobs/emails.py`  | signup, resend verification, forgot password, invitations | Hands the `Email` to the mailer; retried up to 5 times with backoff                                                 |
+| `purge.expired` | `jobs/purge.py`   | hourly (`schedule` label), or by hand                     | Deletes revoked/expired sessions, used/expired invitations, expired verification and reset links, abandoned uploads |
+| `imports.run`   | `jobs/imports.py` | `POST .../imports/{id}/start`                             | Loads a CSV of contacts or companies (`crm/importing.py`); records counts and per-row errors                        |
 
 ```sh
 vp run dev:worker             # taskiq worker alloy_api.jobs.broker:broker --reload
@@ -411,8 +432,8 @@ a handler that queues an email has the message in `outbox` when it responds.
 
 The purge job removes rows the app stamps rather than deletes, once they have
 been dead for `ALLOY_PURGE_AFTER` (default 7 days): sessions revoked or
-expired, invitations accepted, revoked, or expired, verification links past
-their TTL, and attachment or import rows whose upload URL expired without a
+expired, invitations accepted, revoked, or expired, verification and password
+reset links past their TTL, and attachment or import rows whose upload URL expired without a
 completion, along with any object that did land in storage.
 
 ### CSV imports
@@ -722,8 +743,8 @@ pull from a registry instead.
   `workflow_run` after CI, so a red commit never gets an image, and tags
   `latest` plus `sha-<short sha>` so a deploy can pin or roll back to an exact
   build.
-- **Email is still the console mailer.** Invitation and verification links are
-  printed in the worker's logs until a real provider is added; see
+- **Email is still the console mailer.** Invitation, verification, and password
+  reset links are printed in the worker's logs until a real provider is added; see
   [Email](#email).
 - **No Compose file, no host config.** Both would tie the template to one
   layout. The table above is the whole wiring; each host has a place for it.

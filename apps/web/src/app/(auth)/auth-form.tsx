@@ -114,6 +114,16 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
                 />
               )}
             </form.AppField>
+            {!isSignup && (
+              <p className="-mt-2 text-sm">
+                <Link
+                  href="/forgot-password"
+                  className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                >
+                  Forgot your password?
+                </Link>
+              </p>
+            )}
             {isSignup && (
               <form.AppField name="confirm">
                 {(field) => (

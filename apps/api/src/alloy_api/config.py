@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     session_ttl: timedelta = timedelta(days=30)
     invite_ttl: timedelta = timedelta(days=7)
     verification_ttl: timedelta = timedelta(days=1)
+    password_reset_ttl: timedelta = timedelta(hours=1)
 
     frontend_url: HttpUrl = HttpUrl("http://localhost:3000")
 

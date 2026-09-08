@@ -196,3 +196,116 @@ class TestExpired:
         # A new link is the way out.
         assert client.post("/auth/resend-verification").status_code == 204
         assert client.post("/auth/verify-email", json={"token": token}).status_code == 404
+
+
+def reset_token(outbox: Outbox) -> str:
+    return outbox[-1].text.split("/reset-password?token=")[1].split()[0]
+
+
+class TestPasswordReset:
+    def test_the_link_sets_a_new_password_and_logs_in(self, client: TestClient, outbox: Outbox):
+        client.post("/auth/signup", json=CREDENTIALS)
+        # A second login elsewhere, to be revoked by the reset.
+        other = client.post("/auth/login", json=CREDENTIALS).cookies[SESSION_COOKIE]
+        client.cookies.clear()
+
+        response = client.post("/auth/forgot-password", json={"email": "ADA@example.com"})
+        assert response.status_code == 204
+        assert len(outbox) == 2
+        email = outbox[-1]
+        assert email.to == "ada@example.com"
+        assert email.subject == "Reset your password"
+        assert "1 hour" in email.text
+        token = reset_token(outbox)
+
+        response = client.post(
+            "/auth/reset-password", json={"token": token, "new_password": "new horse battery"}
+        )
+        assert response.status_code == 200
+        assert response.json()["email"] == "ada@example.com"
+        # Following the link proved the address.
+        assert response.json()["email_verified_at"] is not None
+        assert response.cookies[SESSION_COOKIE]
+        assert client.get("/auth/me").status_code == 200
+        assert client.get("/workspaces/").status_code == 200
+        # The earlier login is out; the new password is in.
+        client.cookies.clear()
+        assert (
+            client.get("/auth/me", headers={"Cookie": f"{SESSION_COOKIE}={other}"}).status_code
+            == 401
+        )
+        assert client.post("/auth/login", json=CREDENTIALS).status_code == 401
+        login = client.post("/auth/login", json={**CREDENTIALS, "password": "new horse battery"})
+        assert login.status_code == 200
+        # The link worked once.
+        response = client.post(
+            "/auth/reset-password", json={"token": token, "new_password": "third horse battery"}
+        )
+        assert response.status_code == 404
+
+    def test_an_unknown_email_gets_the_same_answer_and_no_email(
+        self, client: TestClient, outbox: Outbox
+    ):
+        response = client.post("/auth/forgot-password", json={"email": "nobody@example.com"})
+        assert response.status_code == 204
+        assert outbox == []
+
+    def test_a_new_request_replaces_the_previous_link(self, client: TestClient, outbox: Outbox):
+        client.post("/auth/signup", json=CREDENTIALS)
+        client.cookies.clear()
+        client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
+        first = reset_token(outbox)
+        client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
+        second = reset_token(outbox)
+        assert first != second
+        body = {"token": first, "new_password": "new horse battery"}
+        assert client.post("/auth/reset-password", json=body).status_code == 404
+        body["token"] = second
+        assert client.post("/auth/reset-password", json=body).status_code == 200
+
+    def test_changing_the_password_while_logged_in_voids_the_link(
+        self, client: TestClient, outbox: Outbox
+    ):
+        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
+        token = reset_token(outbox)
+        change = {"current_password": CREDENTIALS["password"], "new_password": "new horse battery"}
+        assert client.post("/auth/password", json=change).status_code == 204
+        body = {"token": token, "new_password": "third horse battery"}
+        assert client.post("/auth/reset-password", json=body).status_code == 404
+
+    def test_the_link_rejects_a_short_password_without_spending_the_token(
+        self, client: TestClient, outbox: Outbox
+    ):
+        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
+        token = reset_token(outbox)
+        body = {"token": token, "new_password": "short"}
+        assert client.post("/auth/reset-password", json=body).status_code == 422
+        body = {"token": token, "new_password": "new horse battery"}
+        assert client.post("/auth/reset-password", json=body).status_code == 200
+
+    def test_a_reset_needs_no_login_and_ignores_a_stale_cookie(
+        self, client: TestClient, outbox: Outbox
+    ):
+        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
+        token = reset_token(outbox)
+        client.post("/auth/logout-all")  # the cookie in the jar is now dead
+        body = {"token": token, "new_password": "new horse battery"}
+        assert client.post("/auth/reset-password", json=body).status_code == 200
+
+
+class TestExpiredReset:
+    @pytest.fixture
+    def settings(self) -> Settings:
+        return Settings(app_name="Test API", password_reset_ttl=timedelta(seconds=-1))
+
+    def test_expired_reset_link(self, client: TestClient, outbox: Outbox):
+        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
+        token = reset_token(outbox)
+        body = {"token": token, "new_password": "new horse battery"}
+        assert client.post("/auth/reset-password", json=body).status_code == 410
+        # The password is unchanged and the old login still works.
+        assert client.post("/auth/login", json=CREDENTIALS).status_code == 200

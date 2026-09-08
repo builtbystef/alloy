@@ -16,10 +16,24 @@ class PasswordChange(BaseModel):
     new_password: str = Password
 
 
+Token = Field(min_length=1, max_length=128)
+
+
 class EmailVerification(BaseModel):
     """The token from the verification link."""
 
-    token: str = Field(min_length=1, max_length=128)
+    token: str = Token
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordReset(BaseModel):
+    """The token from the reset link, and the password to set."""
+
+    token: str = Token
+    new_password: str = Password
 
 
 class UserRead(BaseModel):

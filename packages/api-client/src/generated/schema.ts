@@ -202,6 +202,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forgot Password
+         * @description Email a password reset link to the address, if an account has it.
+         *
+         *     Always 204, so the response does not reveal whether an account exists. A new
+         *     request replaces the previous link.
+         */
+        post: operations["auth-forgot_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Password
+         * @description Follow the emailed link: set the password and log in here.
+         *
+         *     Every existing session is revoked, since whoever asked may have lost control of
+         *     one. Following the link proves the address is the user's, so it also counts as
+         *     email verification. 404 for an unknown or already used token; 410 for an expired
+         *     one.
+         */
+        post: operations["auth-reset_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/me": {
         parameters: {
             query?: never;
@@ -1247,6 +1295,24 @@ export interface components {
             new_password: string;
         };
         /**
+         * PasswordReset
+         * @description The token from the reset link, and the password to set.
+         */
+        PasswordReset: {
+            /** Token */
+            token: string;
+            /** New Password */
+            new_password: string;
+        };
+        /** PasswordResetRequest */
+        PasswordResetRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
+        /**
          * Permission
          * @enum {string}
          */
@@ -1443,6 +1509,8 @@ export type InviteRead = components['schemas']['InviteRead'];
 export type MemberRead = components['schemas']['MemberRead'];
 export type MemberUpdate = components['schemas']['MemberUpdate'];
 export type PasswordChange = components['schemas']['PasswordChange'];
+export type PasswordReset = components['schemas']['PasswordReset'];
+export type PasswordResetRequest = components['schemas']['PasswordResetRequest'];
 export type Permission = components['schemas']['Permission'];
 export type RowError = components['schemas']['RowError'];
 export type TaskCreate = components['schemas']['TaskCreate'];
@@ -1690,6 +1758,70 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "auth-forgot_password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "auth-reset_password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordReset"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
             };
             /** @description Validation Error */
             422: {
