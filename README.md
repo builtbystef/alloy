@@ -124,7 +124,9 @@ apps/api/
 ├── alembic/                  # env.py (async, URL from Settings), script.py.mako, versions/
 ├── .env.example
 ├── src/alloy_api/
-│   ├── main.py               # app, lifespan (database engine), CORS, router includes
+│   ├── main.py               # app, lifespan (database engine), CORS, request IDs, router includes
+│   ├── logs.py               # log format shared with the worker; the request_id context variable
+│   ├── errors.py             # RequestIdMiddleware: X-Request-ID on every response, unhandled errors → plain 500
 │   ├── config.py             # Settings (pydantic-settings) + get_settings dependency
 │   ├── db.py                 # engine, session factory, get_session / SessionDep
 │   ├── models.py             # declarative Base, naming convention, id/timestamp mixins; imports every model
@@ -165,6 +167,25 @@ Operation IDs are `{tag}-{function}` (`health-read_health`) via
 `generate_unique_id_function`, the form the FastAPI docs recommend for
 generated clients. `python -m alloy_api.openapi` prints the schema without
 starting a server; `packages/api-client` uses it.
+
+### Errors and request IDs
+
+Every response carries an `X-Request-ID` header: the caller's, if it sent a
+short printable one, otherwise 16 hex characters made for the request. The same
+ID is on every log line written while handling the request (`logs.py` puts it
+in a context variable and the log format), so a user's report finds its log
+lines. An exception nothing handled becomes
+
+```json
+{ "detail": "Something went wrong. Quote the request ID when reporting it.", "request_id": "…" }
+```
+
+with status 500, one traceback in the log under that ID, and no internals in the
+body. `RequestIdMiddleware` in `errors.py` does both; it sits inside CORS, so
+the 500 still carries the CORS headers, and inside Logfire's span, so when a
+token is set the ID reaches Logfire too. `apps/web` shows the ID after the
+message on a 5xx and keeps it on `ApiError.requestId` for the others. Handled
+errors (`HTTPException`) are unchanged: `{"detail": "..."}` with their status.
 
 ### Database
 

@@ -18,6 +18,8 @@ export class ApiError extends Error {
     readonly fields: Readonly<Record<string, string>> = {},
     /** Seconds to wait, from a 429's `Retry-After` header. */
     readonly retryAfter: number | null = null,
+    /** The API's `X-Request-ID`, which finds the request's log lines. */
+    readonly requestId: string | null = null,
   ) {
     super(message);
   }
@@ -25,12 +27,24 @@ export class ApiError extends Error {
   static fromResult(result: ApiResult<unknown>): ApiError {
     const { response, error } = result;
     const detail = isRecord(error) ? error["detail"] : undefined;
+    const requestId = response.headers.get("x-request-id");
     if (response.status === 429) {
       const retryAfter = retryAfterSeconds(response);
-      return new ApiError(response.status, tooManyAttempts(retryAfter), {}, retryAfter);
+      return new ApiError(response.status, tooManyAttempts(retryAfter), {}, retryAfter, requestId);
+    }
+    if (response.status >= 500 && requestId) {
+      // The API's own 500 says to quote the ID; show it so the user can.
+      const message = typeof detail === "string" ? detail : "Something went wrong.";
+      return new ApiError(
+        response.status,
+        `${message} (request ${requestId})`,
+        {},
+        null,
+        requestId,
+      );
     }
     if (typeof detail === "string") {
-      return new ApiError(response.status, detail);
+      return new ApiError(response.status, detail, {}, null, requestId);
     }
     if (Array.isArray(detail)) {
       // FastAPI request validation: [{ loc: ["body", "email"], msg, type }].
@@ -43,11 +57,20 @@ export class ApiError extends Error {
         if (field) fields[field] ??= issue.msg;
         messages.push(field ? `${field}: ${issue.msg}` : issue.msg);
       }
-      return new ApiError(response.status, messages.join("; ") || "Validation error", fields);
+      return new ApiError(
+        response.status,
+        messages.join("; ") || "Validation error",
+        fields,
+        null,
+        requestId,
+      );
     }
     return new ApiError(
       response.status,
       response.statusText || `Request failed with status ${response.status}`,
+      {},
+      null,
+      requestId,
     );
   }
 }

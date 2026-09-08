@@ -13,7 +13,13 @@ import { getApiUrl } from "@/lib/api";
  * goes along as `X-Forwarded-For`, which the API's rate limits key on.
  */
 const REQUEST_HEADERS = ["accept", "content-type", "cookie"];
-const RESPONSE_HEADERS = ["content-type", "cache-control", "location", "retry-after"];
+const RESPONSE_HEADERS = [
+  "content-type",
+  "cache-control",
+  "location",
+  "retry-after",
+  "x-request-id",
+];
 
 /**
  * The visitor's address as the platform in front reports it. The last

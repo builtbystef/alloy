@@ -14,6 +14,31 @@ test("a detail string becomes the message", () => {
   expect(error.retryAfter).toBeNull();
 });
 
+test("a 500 quotes the request ID from the header", () => {
+  const error = ApiError.fromResult(
+    result(
+      500,
+      {
+        detail: "Something went wrong. Quote the request ID when reporting it.",
+        request_id: "abc123",
+      },
+      { "x-request-id": "abc123" },
+    ),
+  );
+  expect(error.requestId).toBe("abc123");
+  expect(errorMessage(error)).toBe(
+    "Something went wrong. Quote the request ID when reporting it. (request abc123)",
+  );
+});
+
+test("a 4xx keeps the request ID without showing it", () => {
+  const error = ApiError.fromResult(
+    result(404, { detail: "Contact not found" }, { "x-request-id": "abc123" }),
+  );
+  expect(error.requestId).toBe("abc123");
+  expect(errorMessage(error)).toBe("Contact not found");
+});
+
 test("a 429 says how long to wait, from Retry-After", () => {
   const error = ApiError.fromResult(
     result(429, { detail: "Too many attempts. Try again later." }, { "retry-after": "540" }),

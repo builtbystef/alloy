@@ -3,7 +3,7 @@ from contextlib import AsyncExitStack
 
 from taskiq import TaskiqEvents, TaskiqState
 
-from alloy_api import telemetry
+from alloy_api import logs, telemetry
 from alloy_api.config import get_settings
 from alloy_api.jobs import create_broker, create_scheduler
 from alloy_api.jobs.deps import open_resources
@@ -14,9 +14,8 @@ settings = get_settings()
 
 # The worker's child processes start with no log handler (Taskiq configures one
 # only for the `spawn` start method, and Python 3.14 forks with `forkserver`), so
-# the app's loggers, the console mailer included, would print nothing. Same
-# format as main.py; a no-op where a handler already exists.
-logging.basicConfig(level=settings.log_level, format="%(levelname)s [%(name)s] %(message)s")
+# the app's loggers, the console mailer included, would print nothing.
+logs.configure(settings.log_level)
 
 broker = create_broker(settings)
 scheduler = create_scheduler(broker, settings)
