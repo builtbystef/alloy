@@ -364,14 +364,15 @@ async def change_email(
     """
     user = principal.user
     new_email = body.new_email.lower()
-    await limiter.check(CHANGE_EMAIL_PER_USER, str(user.id))
     if not await verify_password(body.current_password, user.password_hash):
         raise unauthorized()
+    # Counted before the 409s, so a taken address costs an attempt too: otherwise
+    # this would test addresses without limit.
+    await limiter.hit(CHANGE_EMAIL_PER_USER, str(user.id))
     if new_email == user.email:
         raise HTTPException(status.HTTP_409_CONFLICT, "That is already your email")
     if await email_taken(session, new_email):
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-    await limiter.hit(CHANGE_EMAIL_PER_USER, str(user.id))
     token = new_token()
     user.pending_email = new_email
     user.email_change_token_hash = hash_token(token)
