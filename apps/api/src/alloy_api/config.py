@@ -22,6 +22,9 @@ class Settings(BaseSettings):
 
     database_url: PostgresDsn = PostgresDsn("postgresql+psycopg://alloy:alloy@localhost:5432/alloy")
     database_echo: bool = False
+    database_pool_size: int = Field(5, ge=1)
+    database_max_overflow: int = Field(10, ge=0)
+    database_statement_timeout: timedelta = timedelta(seconds=30)
 
     log_level: str = "INFO"
 
@@ -56,10 +59,14 @@ class Settings(BaseSettings):
 
     jobs_broker: JobsBroker = "redis"
     redis_url: RedisDsn = RedisDsn("redis://localhost:6379/0")
+    # How long a rate-limit or health-check call waits for Redis before giving up.
+    redis_timeout: timedelta = timedelta(seconds=2)
 
     rate_limit_store: RateLimitStore = "redis"
 
     purge_after: timedelta = timedelta(days=7)
+    # An import still queued or running after this is marked failed by the purge job.
+    import_timeout: timedelta = timedelta(hours=1)
 
     # env_ignore_empty: hosting platforms often pass an unset variable as "",
     # which must read as the default (None for the Logfire token), not as "".

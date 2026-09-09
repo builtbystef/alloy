@@ -27,6 +27,10 @@ class ObjectStore(Protocol):
     knows which one is in use.
     """
 
+    async def ping(self) -> None:
+        """Raises when the store (or the bucket) is not reachable. For health checks."""
+        ...
+
     async def put(self, key: str, data: bytes, content_type: str) -> None: ...
 
     async def get(self, key: str) -> bytes:

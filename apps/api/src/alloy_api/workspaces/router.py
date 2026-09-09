@@ -14,6 +14,7 @@ from alloy_api.jobs.emails import send_email
 from alloy_api.models import utcnow
 from alloy_api.ratelimit import INVITE_SEND_PER_USER, LimiterDep
 from alloy_api.storage import ObjectStoreDep
+from alloy_api.storage.cleanup import delete_stored, storage_prefix
 from alloy_api.workspaces.deps import (
     CanDeleteWorkspace,
     CanManageMembers,
@@ -64,6 +65,15 @@ def role_forbidden() -> HTTPException:
     return HTTPException(status.HTTP_403_FORBIDDEN, "Your role cannot manage that role")
 
 
+async def lock_workspace(session: AsyncSession, workspace_id: UUID) -> None:
+    """Row-lock the workspace until the transaction ends. Every change that could
+    remove an owner takes it first, so two of them cannot both count the same
+    owners and both go through."""
+    await session.execute(
+        select(Workspace.id).where(Workspace.id == workspace_id).with_for_update()
+    )
+
+
 async def count_owners(session: AsyncSession, workspace_id: UUID) -> int:
     """Owners not scheduled for deletion: the purge job will take that seat, so it
     must not be the one keeping the workspace afloat."""
@@ -81,7 +91,10 @@ async def count_owners(session: AsyncSession, workspace_id: UUID) -> int:
 
 async def ensure_not_last_owner(session: AsyncSession, member: WorkspaceMember) -> None:
     """Removing or demoting `member` must leave at least one owner."""
-    if member.role is WorkspaceRole.OWNER and await count_owners(session, member.workspace_id) <= 1:
+    if member.role is not WorkspaceRole.OWNER:
+        return
+    await lock_workspace(session, member.workspace_id)
+    if await count_owners(session, member.workspace_id) <= 1:
         raise HTTPException(status.HTTP_409_CONFLICT, "A workspace needs at least one owner")
 
 
@@ -138,9 +151,10 @@ async def delete_workspace(
 ) -> Response:
     """Owners only. Members, invitations, every CRM record, and every stored file go
     with it."""
-    await store.delete_prefix(f"workspaces/{membership.workspace.id}/")
+    prefix = storage_prefix(membership.workspace.id)
     await session.delete(membership.workspace)
     await session.commit()
+    await delete_stored(store, prefixes=[prefix])
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -275,18 +289,48 @@ async def create_invite(
     return invite_read(invite)
 
 
-@scoped.delete("/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def revoke_invite(
-    invite_id: UUID, membership: CanManageMembers, session: SessionDep
-) -> Response:
-    """The link stops working. Only pending invitations can be revoked."""
+async def fetch_pending_invite(
+    session: AsyncSession, membership: Membership, invite_id: UUID
+) -> WorkspaceInvite:
+    """404 unless pending; 403 unless the caller's role may manage the invited one."""
     invite = await session.scalar(
-        pending_invites(membership.workspace.id).where(WorkspaceInvite.id == invite_id)
+        pending_invites(membership.workspace.id)
+        .options(WITH_INVITER)
+        .where(WorkspaceInvite.id == invite_id)
     )
     if invite is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
     if not can_manage_role(membership.role, invite.role):
         raise role_forbidden()
+    return invite
+
+
+@scoped.post("/invites/{invite_id}/resend")
+async def resend_invite(
+    invite_id: UUID,
+    membership: CanManageMembers,
+    session: SessionDep,
+    settings: SettingsDep,
+    limiter: LimiterDep,
+) -> InviteRead:
+    """Email the invitation again with a fresh link; the previous one stops working
+    and the expiry starts over. Counts against the same limit as sending one."""
+    invite = await fetch_pending_invite(session, membership, invite_id)
+    await limiter.hit(INVITE_SEND_PER_USER, str(membership.user.id))
+    token = new_token()
+    invite.token_hash = hash_token(token)
+    invite.expires_at = utcnow() + settings.invite_ttl
+    await session.commit()
+    await send_email.kiq(invite_email(invite, token, str(settings.frontend_url)))
+    return invite_read(invite)
+
+
+@scoped.delete("/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_invite(
+    invite_id: UUID, membership: CanManageMembers, session: SessionDep
+) -> Response:
+    """The link stops working. Only pending invitations can be revoked."""
+    invite = await fetch_pending_invite(session, membership, invite_id)
     invite.revoked_at = utcnow()
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

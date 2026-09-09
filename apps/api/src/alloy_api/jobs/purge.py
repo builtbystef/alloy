@@ -15,6 +15,7 @@ from alloy_api.jobs.broker import broker
 from alloy_api.jobs.deps import get_object_store, get_session, get_settings
 from alloy_api.models import utcnow
 from alloy_api.storage import ObjectStore
+from alloy_api.storage.cleanup import delete_stored, storage_prefix
 from alloy_api.workspaces.models import Workspace, WorkspaceInvite, WorkspaceMember
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ class PurgeReport:
     email_change_tokens: int = 0
     attachments: int = 0
     imports: int = 0
+    timed_out_imports: int = 0
     accounts: int = 0
     workspaces: int = 0
 
@@ -46,10 +48,17 @@ class PurgeReport:
 async def purge(
     session: AsyncSession, store: ObjectStore, settings: Settings, now: datetime | None = None
 ) -> PurgeReport:
-    """One pass. `now` is a parameter so tests can move the clock."""
+    """One pass. `now` is a parameter so tests can move the clock.
+
+    Rows are removed in one transaction; the files they pointed at go after the
+    commit, so a failure mid-way leaves stray objects rather than rows without
+    files.
+    """
     now = now or utcnow()
     cutoff = now - settings.purge_after
     report = PurgeReport()
+    keys: list[str] = []
+    prefixes: list[str] = []
 
     result = await session.execute(
         delete(UserSession).where(
@@ -100,7 +109,7 @@ async def purge(
         .where(Attachment.created_at < abandoned_before)
     )
     for attachment in attachments:
-        await store.delete(attachment.key)
+        keys.append(attachment.key)
         await session.delete(attachment)
         report.attachments += 1
 
@@ -110,9 +119,25 @@ async def purge(
         .where(Import.created_at < abandoned_before)
     )
     for pending in imports:
-        await store.delete(pending.key)
+        keys.append(pending.key)
         await session.delete(pending)
         report.imports += 1
+
+    # Queued but never delivered (the API died between commit and send), or a run
+    # the broker will not hand out again: the file goes, and the row says why.
+    # The broker redelivers an unfinished run after ten minutes, so anything
+    # older than `import_timeout` is not coming back on its own.
+    stuck = await session.scalars(
+        select(Import)
+        .where(Import.status.in_([ImportStatus.QUEUED, ImportStatus.RUNNING]))
+        .where(Import.updated_at < now - settings.import_timeout)
+    )
+    for record in stuck:
+        keys.append(record.key)
+        record.status = ImportStatus.FAILED
+        record.error = "The import did not finish in time; upload the file again"
+        record.finished_at = now
+        report.timed_out_imports += 1
 
     # A workspace the user was alone in goes with the account. A seat in a shared
     # one is just dropped: the delete request already made sure it was not the
@@ -136,13 +161,14 @@ async def purge(
             .where(others == 0)
         )
         for workspace in solo:
-            await store.delete_prefix(f"workspaces/{workspace.id}/")
+            prefixes.append(storage_prefix(workspace.id))
             await session.delete(workspace)
             report.workspaces += 1
         await session.delete(user)
         report.accounts += 1
 
     await session.commit()
+    await delete_stored(store, keys=keys, prefixes=prefixes)
     return report
 
 

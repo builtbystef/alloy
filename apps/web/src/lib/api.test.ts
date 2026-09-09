@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { createApi, getApiUrl } from "./api";
+import { assertApiUrl, createApi, getApiUrl } from "./api";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -9,6 +9,20 @@ afterEach(() => {
 test("defaults to the local FastAPI dev server", () => {
   vi.stubEnv("API_URL", undefined);
   expect(getApiUrl()).toBe("http://127.0.0.1:8000");
+});
+
+test("a production server refuses to start without API_URL", () => {
+  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("API_URL", undefined);
+  expect(() => assertApiUrl()).toThrow("API_URL is not set");
+  vi.stubEnv("API_URL", "https://api.example.test");
+  expect(() => assertApiUrl()).not.toThrow();
+});
+
+test("development runs without API_URL", () => {
+  vi.stubEnv("NODE_ENV", "development");
+  vi.stubEnv("API_URL", undefined);
+  expect(() => assertApiUrl()).not.toThrow();
 });
 
 test("API_URL overrides the base URL for every request", async () => {

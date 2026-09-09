@@ -7,7 +7,7 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from alloy_api.crm.attachments import delete_objects
+from alloy_api.crm.attachments import delete_with_objects
 from alloy_api.crm.common import (
     Page,
     PageOf,
@@ -134,9 +134,7 @@ async def delete_contact(
     """The contact's activities and attachments go with it; tasks are kept, with the
     link cleared."""
     contact = await fetch_owned(session, Contact, contact_id, membership)
-    await delete_objects(session, store, contact)
-    await session.delete(contact)
-    await session.commit()
+    await delete_with_objects(session, store, contact)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

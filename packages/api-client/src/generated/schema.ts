@@ -60,6 +60,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Health Storage
+         * @description Readiness: the object store answers and the bucket exists.
+         */
+        get: operations["health-read_health_storage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/signup": {
         parameters: {
             query?: never;
@@ -486,6 +506,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workspaces/{workspace_id}/invites/{invite_id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Invite
+         * @description Email the invitation again with a fresh link; the previous one stops working
+         *     and the expiry starts over. Counts against the same limit as sending one.
+         */
+        post: operations["workspaces-resend_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/workspaces/{workspace_id}/invites/{invite_id}": {
         parameters: {
             query?: never;
@@ -851,7 +892,7 @@ export interface paths {
         post?: never;
         /**
          * Delete Attachment
-         * @description Removes the file from the store, then the row.
+         * @description Removes the row, then the file from the store.
          */
         delete: operations["attachments-delete_attachment"];
         options?: never;
@@ -1813,6 +1854,26 @@ export interface operations {
             };
         };
     };
+    "health-read_health_storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
     "auth-signup": {
         parameters: {
             query?: never;
@@ -2516,6 +2577,38 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "workspaces-resend_invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

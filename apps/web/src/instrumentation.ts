@@ -1,3 +1,4 @@
+import { assertApiUrl } from "@/lib/api";
 import { getClientIpHeader } from "@/lib/client-address";
 
 /**
@@ -6,5 +7,6 @@ import { getClientIpHeader } from "@/lib/client-address";
  * the first request that happens to need it.
  */
 export function register(): void {
+  assertApiUrl();
   getClientIpHeader();
 }

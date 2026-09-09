@@ -6,6 +6,7 @@ test transaction (see conftest), so a handler's side effects are visible at once
 import asyncio
 from datetime import timedelta
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -13,6 +14,7 @@ from taskiq import InMemoryBroker, SmartRetryMiddleware, TaskiqScheduler
 from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend, RedisStreamBroker
 
 from alloy_api.config import Settings
+from alloy_api.crm.models import Import, ImportStatus
 from alloy_api.jobs import create_broker, create_scheduler, ping_redis
 from alloy_api.jobs.emails import send_email
 from alloy_api.jobs.purge import PurgeReport, purge, purge_expired
@@ -157,6 +159,42 @@ def test_purge_removes_only_what_has_been_dead_long_enough(  # noqa: PLR0913, PL
     assert db.run(run, later) == PurgeReport()
 
 
+def test_purge_fails_imports_stuck_in_queued_or_running(
+    alice: Actor, db: Database, object_store: MemoryObjectStore, settings: Settings
+):
+    """A job that was never delivered, or died in a way the broker will not
+    redeliver, must not show as running forever."""
+    ticket = alice.post(
+        "/imports/", json={"kind": "contacts", "filename": "c.csv", "size": 1}
+    ).json()
+    import_id = ticket["import"]["id"]
+    key = object_store.key_of(ticket["upload_url"])
+    object_store.objects[key] = (b"name\nGrace\n", "text/csv")
+
+    async def mark(status: ImportStatus) -> None:
+        async with db.session() as session:
+            record = await session.get_one(Import, UUID(import_id))
+            record.status = status
+            await session.commit()
+
+    async def run(now) -> PurgeReport:
+        async with db.session() as session:
+            return await purge(session, object_store, settings, now=now)
+
+    db.run(mark, ImportStatus.QUEUED)
+    assert db.run(run, utcnow()) == PurgeReport()
+    assert alice.get(f"/imports/{import_id}").json()["status"] == "queued"
+
+    later = utcnow() + settings.import_timeout + timedelta(minutes=1)
+    assert db.run(run, later) == PurgeReport(timed_out_imports=1)
+    failed = alice.get(f"/imports/{import_id}").json()
+    assert failed["status"] == "failed"
+    assert "did not finish" in failed["error"]
+    assert failed["finished_at"] is not None
+    assert key not in object_store.objects
+    assert db.run(run, later) == PurgeReport()
+
+
 def test_the_purge_task_runs_with_the_worker_resources(db: Database):
     async def run() -> dict[str, int]:
         task = await purge_expired.kiq()
@@ -172,6 +210,7 @@ def test_the_purge_task_runs_with_the_worker_resources(db: Database):
         "email_change_tokens": 0,
         "attachments": 0,
         "imports": 0,
+        "timed_out_imports": 0,
         "accounts": 0,
         "workspaces": 0,
     }

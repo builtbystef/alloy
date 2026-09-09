@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
     NewLogin = Callable[[str], dict[str, str]]
     NewActor = Callable[[str], Actor]
+    Join = Callable[[Actor, str, str], Actor]
 
 
 def token_from(outbox: Outbox) -> str:
@@ -101,6 +102,34 @@ def test_unknown_and_revoked_tokens(client: TestClient, alice: Actor, outbox: Ou
     assert alice.delete(f"/invites/{invite['id']}").status_code == 404
     # Revoked: the address can be invited again.
     assert alice.post("/invites", json={"email": "grace@example.com"}).status_code == 201
+
+
+def test_resend_issues_a_fresh_link_and_voids_the_old_one(
+    client: TestClient, alice: Actor, outbox: Outbox, join: Join
+):
+    invite = alice.post("/invites", json={"email": "grace@example.com", "role": "admin"}).json()
+    first = token_from(outbox)
+
+    resent = alice.post(f"/invites/{invite['id']}/resend")
+    assert resent.status_code == 200, resent.text
+    assert resent.json()["id"] == invite["id"]
+    assert resent.json()["expires_at"] > invite["expires_at"]
+    assert len(outbox) == 2
+    assert outbox[-1].to == "grace@example.com"
+    second = token_from(outbox)
+    assert second != first
+    assert client.get(f"/invites/{first}").status_code == 404
+    assert client.get(f"/invites/{second}").status_code == 200
+    # Still one pending invitation for the address.
+    assert [i["id"] for i in alice.get("/invites").json()] == [invite["id"]]
+
+    # An admin may not resend an invitation for a role above their own.
+    admin = join(alice, "admin@example.com", "admin")
+    assert admin.post(f"/invites/{invite['id']}/resend").status_code == 403
+    # Only pending invitations can be resent.
+    assert alice.delete(f"/invites/{invite['id']}").status_code == 204
+    assert alice.post(f"/invites/{invite['id']}/resend").status_code == 404
+    assert alice.post(f"/invites/{admin.workspace}/resend").status_code == 404
 
 
 def test_one_pending_invitation_per_address(alice: Actor, bob: Actor):

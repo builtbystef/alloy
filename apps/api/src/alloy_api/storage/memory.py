@@ -15,6 +15,9 @@ class MemoryObjectStore:
         """The object key an `upload_url`/`download_url` of this store was made for."""
         return url.removeprefix("memory://").split("?", 1)[0]
 
+    async def ping(self) -> None:
+        return
+
     async def put(self, key: str, data: bytes, content_type: str) -> None:
         self.objects[key] = (data, content_type)
 

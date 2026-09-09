@@ -4,15 +4,14 @@ the file's name and size for an upload URL, `PUT` the CSV there, then `POST
 See `alloy_api.crm.importing` for the file format."""
 
 import uuid
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, Any, cast
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from alloy_api.config import SettingsDep
-from alloy_api.crm.attachments import storage_prefix
 from alloy_api.crm.common import Page, PageOf, fetch_owned, paginate
 from alloy_api.crm.models import Import, ImportStatus
 from alloy_api.crm.schemas import ImportCreate, ImportRead, ImportUpload
@@ -20,7 +19,11 @@ from alloy_api.db import SessionDep
 from alloy_api.jobs.imports import run_import_job
 from alloy_api.models import utcnow
 from alloy_api.storage import ObjectStoreDep
+from alloy_api.storage.cleanup import storage_prefix
 from alloy_api.workspaces.deps import CanReadCrm, CanWriteCrm
+
+if TYPE_CHECKING:
+    from sqlalchemy import CursorResult
 
 router = APIRouter(prefix="/imports", tags=["imports"])
 
@@ -113,8 +116,17 @@ async def start_import(
     if info.size > settings.import_max_bytes:
         await store.delete(record.key)
         raise too_large(settings)
-    record.size = info.size
+    # One conditional UPDATE, so of two `start`s at once exactly one queues the job.
+    result = await session.execute(
+        update(Import)
+        .where(Import.id == record.id, Import.status == ImportStatus.PENDING)
+        .values(status=ImportStatus.QUEUED, size=info.size)
+    )
+    if cast("CursorResult[Any]", result).rowcount == 0:
+        await session.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "The import has already been started")
     record.status = ImportStatus.QUEUED
+    record.size = info.size
     await session.commit()
     await run_import_job.kiq(record.id)
     return ImportRead.model_validate(record)

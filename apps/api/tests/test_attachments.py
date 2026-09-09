@@ -7,12 +7,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from alloy_api.config import Settings
+from alloy_api.storage.memory import MemoryObjectStore
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from tests.conftest import Actor
-
-    from alloy_api.storage.memory import MemoryObjectStore
 
 PDF = {"filename": "contract.pdf", "content_type": "application/pdf", "size": 11}
 
@@ -162,6 +161,48 @@ def test_deleting_the_parent_removes_its_objects(
     assert alice.delete(f"/attachments/{kept['id']}").status_code == 204
     assert alice.delete(f"/companies/{company['id']}").status_code == 204
     assert object_store.objects == {}
+
+
+class BrokenStore(MemoryObjectStore):
+    """A store whose deletes fail, as an unreachable bucket's would."""
+
+    async def delete(self, key: str) -> None:  # noqa: ARG002
+        msg = "storage is down"
+        raise RuntimeError(msg)
+
+    async def delete_prefix(self, prefix: str) -> None:  # noqa: ARG002
+        msg = "storage is down"
+        raise RuntimeError(msg)
+
+
+class TestWhenTheStoreCannotDelete:
+    @pytest.fixture
+    def object_store(self) -> MemoryObjectStore:
+        return BrokenStore()
+
+    def test_the_row_delete_stands(
+        self,
+        client: TestClient,
+        alice: Actor,
+        object_store: MemoryObjectStore,
+        contact: dict,
+        company: dict,
+    ):
+        """Rows go first and stay gone: a stray object is harmless, a row pointing at
+        a missing file is not."""
+        path = f"/contacts/{contact['id']}/attachments"
+        attachment = upload(alice, object_store, path, PDF, b"a")
+        assert alice.delete(f"/attachments/{attachment['id']}").status_code == 204
+        assert alice.get(path).json()["items"] == []
+        upload(alice, object_store, path, PDF, b"b")
+        assert alice.delete(f"/contacts/{contact['id']}").status_code == 204
+        assert alice.get(f"/contacts/{contact['id']}").status_code == 404
+        upload(alice, object_store, f"/companies/{company['id']}/attachments", PDF, b"c")
+        assert alice.delete(f"/companies/{company['id']}").status_code == 204
+        assert alice.get(f"/companies/{company['id']}").status_code == 404
+        assert client.delete(alice.ws(), headers=alice.headers).status_code == 204
+        assert alice.get("").status_code == 404
+        assert len(object_store.objects) == 3  # left behind, referenced by nothing
 
 
 def test_deleting_the_workspace_clears_its_prefix(

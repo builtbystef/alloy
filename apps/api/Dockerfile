@@ -50,8 +50,9 @@ USER app
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=2)"]
+# No HEALTHCHECK here: the worker and scheduler run from this image too and
+# serve no HTTP, so an image-level check would mark them unhealthy for good.
+# The deployment gives the `api` process one (see Processes in the root README).
 
 # No reload, binds 0.0.0.0.
 CMD ["fastapi", "run", "--port", "8000", "--proxy-headers"]

@@ -130,7 +130,7 @@ apps/api/
 │   ├── config.py             # Settings (pydantic-settings) + get_settings dependency
 │   ├── db.py                 # engine, session factory, get_session / SessionDep
 │   ├── models.py             # declarative Base, naming convention, id/timestamp mixins; imports every model
-│   ├── routers/health.py     # GET /health/ (liveness), GET /health/db and /health/redis (readiness)
+│   ├── routers/health.py     # GET /health/ (liveness); /health/db, /health/redis, /health/storage (readiness, 503 when down)
 │   ├── ratelimit.py          # fixed-window counters in Redis (or memory); the auth and invitation limits; per_ip / LimiterDep
 │   ├── auth/                 # sign up, log in, log out; cookie sessions in Postgres; CurrentUserDep
 │   ├── workspaces/           # workspaces, members, roles and permissions, invitations; CurrentMembership
@@ -366,7 +366,7 @@ count.
 | `POST /auth/change-email`                                                              | user            | 3 per hour    |
 | `POST /auth/verify-email`, `/reset-password`, `/confirm-email`, `GET /invites/{token}` | address         | 10 per minute |
 | `POST /invites/{token}/accept`                                                         | user            | 10 per minute |
-| `POST /workspaces/{id}/invites`                                                        | user            | 20 per hour   |
+| `POST /workspaces/{id}/invites`, `POST .../invites/{invite_id}/resend`                 | user            | 20 per hour   |
 
 Login checks both counters before the password hash, which is slow by design,
 so a blocked attempt costs nothing; the email counter counts wrong passwords
@@ -399,6 +399,7 @@ POST              /workspaces/{id}/leave                    give up your seat; t
 GET               /workspaces/{id}/members                  members:read
 PATCH/DELETE      /workspaces/{id}/members/{member_id}      change role · remove (members:manage)
 GET/POST          /workspaces/{id}/invites                  pending invitations · email a link {email, role} (members:manage)
+POST              /workspaces/{id}/invites/{invite_id}/resend  email a fresh link; the old one stops working
 DELETE            /workspaces/{id}/invites/{invite_id}      revoke
 GET               /invites/{token}                          preview, no login (404 unknown/used/revoked, 410 expired)
 POST              /invites/{token}/accept                   take the seat; the account's email must match
@@ -776,12 +777,17 @@ apps/web/Dockerfile           # Next.js standalone output
 
 ### Processes
 
-| Process     | Image      | Command                                                  | Port | Instances |
-| ----------- | ---------- | -------------------------------------------------------- | ---- | --------- |
-| `api`       | `apps/api` | `fastapi run --port 8000 --proxy-headers` (the default)  | 8000 | any       |
-| `worker`    | `apps/api` | `taskiq worker alloy_api.jobs.broker:broker --workers 2` | none | any       |
-| `scheduler` | `apps/api` | `taskiq scheduler alloy_api.jobs.broker:scheduler`       | none | exactly 1 |
-| `web`       | `apps/web` | `node apps/web/server.js` (the default)                  | 3000 | any       |
+| Process     | Image      | Command                                                  | Port | Health check   | Instances |
+| ----------- | ---------- | -------------------------------------------------------- | ---- | -------------- | --------- |
+| `api`       | `apps/api` | `fastapi run --port 8000 --proxy-headers` (the default)  | 8000 | `GET /health/` | any       |
+| `worker`    | `apps/api` | `taskiq worker alloy_api.jobs.broker:broker --workers 2` | none | none (no HTTP) | any       |
+| `scheduler` | `apps/api` | `taskiq scheduler alloy_api.jobs.broker:scheduler`       | none | none (no HTTP) | exactly 1 |
+| `web`       | `apps/web` | `node apps/web/server.js` (the default)                  | 3000 | `GET /`        | any       |
+
+The API image carries no `HEALTHCHECK` of its own, since the worker and
+scheduler share it and serve no HTTP: give `api` its check in the host's
+service config (`/health/` for liveness; `/health/db`, `/health/redis`, and
+`/health/storage` answer 503 when that dependency is down, for readiness).
 
 Plus PostgreSQL 18, Redis, and an S3-compatible bucket, which every host
 offers managed. Only `web` needs a public address: the browser talks to

@@ -57,10 +57,12 @@ class RateLimitStoreProtocol(Protocol):
 
 
 class RedisRateLimitStore:
-    """`EXPIRE NX` needs Redis 7."""
+    """`EXPIRE NX` needs Redis 7. `timeout` bounds every call: this runs on the
+    login and signup paths, which must not hang when Redis does."""
 
-    def __init__(self, url: str) -> None:
-        self._redis = Redis.from_url(url)
+    def __init__(self, url: str, timeout: timedelta = timedelta(seconds=2)) -> None:
+        seconds = timeout.total_seconds()
+        self._redis = Redis.from_url(url, socket_connect_timeout=seconds, socket_timeout=seconds)
 
     async def hit(self, key: str, window: timedelta) -> Hit:
         async with self._redis.pipeline(transaction=True) as pipe:
@@ -137,7 +139,7 @@ class MemoryRateLimitStore:
 def create_rate_limit_store(settings: Settings) -> RateLimitStoreProtocol:
     match settings.rate_limit_store:
         case "redis":
-            return RedisRateLimitStore(str(settings.redis_url))
+            return RedisRateLimitStore(str(settings.redis_url), settings.redis_timeout)
         case "memory":
             return MemoryRateLimitStore()
 

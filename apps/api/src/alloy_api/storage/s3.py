@@ -97,6 +97,9 @@ class S3ObjectStore:
             raise RuntimeError(msg)
         return self._signer
 
+    async def ping(self) -> None:
+        await self.client.head_bucket(Bucket=self.bucket)
+
     async def put(self, key: str, data: bytes, content_type: str) -> None:
         await self.client.put_object(
             Bucket=self.bucket, Key=key, Body=data, ContentType=content_type

@@ -15,6 +15,7 @@ from alloy_api.crm.schemas import AttachmentCreate, AttachmentRead, AttachmentUp
 from alloy_api.db import SessionDep
 from alloy_api.models import utcnow
 from alloy_api.storage import ObjectStore, ObjectStoreDep
+from alloy_api.storage.cleanup import delete_stored, storage_prefix
 from alloy_api.workspaces.deps import CanReadCrm, CanWriteCrm
 
 if TYPE_CHECKING:
@@ -27,12 +28,6 @@ if TYPE_CHECKING:
 router = APIRouter(tags=["attachments"])
 
 WITH_UPLOADER = selectinload(Attachment.uploaded_by)
-
-
-def storage_prefix(workspace_id: UUID) -> str:
-    """Every object of a workspace lives under this, so deleting the workspace can
-    clear its storage by prefix."""
-    return f"workspaces/{workspace_id}/"
 
 
 def object_key(workspace_id: UUID, attachment_id: UUID) -> str:
@@ -81,14 +76,16 @@ def get_attachment_storage(store: ObjectStoreDep, settings: SettingsDep) -> Atta
 StorageDep = Annotated[AttachmentStorage, Depends(get_attachment_storage)]
 
 
-async def delete_objects(
+async def delete_with_objects(
     session: AsyncSession, store: ObjectStore, parent: Contact | Company
 ) -> None:
-    """Remove the stored files of every attachment on a contact or company, before
-    the rows go with their parent."""
+    """Delete a contact or company and commit, then remove the stored files of the
+    attachments that went with it."""
     query = select(Attachment.key).where(parent_column(parent) == parent.id)
-    for key in await session.scalars(query):
-        await store.delete(key)
+    keys = list(await session.scalars(query))
+    await session.delete(parent)
+    await session.commit()
+    await delete_stored(store, keys=keys)
 
 
 async def _list(
@@ -220,9 +217,9 @@ async def download_attachment(
 async def delete_attachment(
     attachment_id: UUID, session: SessionDep, storage: StorageDep, membership: CanWriteCrm
 ) -> Response:
-    """Removes the file from the store, then the row."""
+    """Removes the row, then the file from the store."""
     attachment = await fetch_owned(session, Attachment, attachment_id, membership)
-    await storage.store.delete(attachment.key)
     await session.delete(attachment)
     await session.commit()
+    await delete_stored(storage.store, keys=[attachment.key])
     return Response(status_code=status.HTTP_204_NO_CONTENT)

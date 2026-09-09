@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import TYPE_CHECKING, Literal
 
 from redis.asyncio import Redis
@@ -77,9 +78,11 @@ def create_scheduler(broker: AsyncBroker, settings: Settings) -> TaskiqScheduler
     return TaskiqScheduler(broker, sources=sources)
 
 
-async def ping_redis(url: str) -> None:
-    """Raises `redis.ConnectionError` when the server does not answer."""
-    client = Redis.from_url(url)
+async def ping_redis(url: str, wait: timedelta = timedelta(seconds=2)) -> None:
+    """Raises `redis.ConnectionError` (or `redis.TimeoutError`) when the server does
+    not answer within `wait`."""
+    seconds = wait.total_seconds()
+    client = Redis.from_url(url, socket_connect_timeout=seconds, socket_timeout=seconds)
     try:
         await client.ping()
     finally:

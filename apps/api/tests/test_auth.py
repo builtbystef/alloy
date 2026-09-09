@@ -400,6 +400,24 @@ class TestEmailChange:
         client.post("/auth/signup", json={**CREDENTIALS, "email": "grace@example.com"})
         assert client.post("/auth/confirm-email", json={"token": token}).status_code == 409
 
+    def test_an_address_registered_during_the_request_is_a_409_not_a_500(
+        self, client: TestClient, outbox: Outbox, monkeypatch: pytest.MonkeyPatch
+    ):
+        """The unique constraint is the last line: `email_taken` is made to miss, as
+        it would if the other signup committed between the check and the write."""
+        client.post("/auth/signup", json=CREDENTIALS)
+        body = {"new_email": "grace@example.com", "current_password": CREDENTIALS["password"]}
+        assert client.post("/auth/change-email", json=body).status_code == 204
+        token = change_token(outbox)
+        client.cookies.clear()
+        client.post("/auth/signup", json={**CREDENTIALS, "email": "grace@example.com"})
+
+        async def missed(session, email) -> bool:  # noqa: ARG001
+            return False
+
+        monkeypatch.setattr("alloy_api.auth.router.email_taken", missed)
+        assert client.post("/auth/confirm-email", json={"token": token}).status_code == 409
+
     def test_a_new_request_replaces_the_pending_one_and_cancel_drops_it(
         self, client: TestClient, outbox: Outbox
     ):

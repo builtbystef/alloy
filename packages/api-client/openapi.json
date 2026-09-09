@@ -71,6 +71,28 @@
         }
       }
     },
+    "/health/storage": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Read Health Storage",
+        "description": "Readiness: the object store answers and the bucket exists.",
+        "operationId": "health-read_health_storage",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/signup": {
       "post": {
         "tags": [
@@ -1062,6 +1084,65 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/invites/{invite_id}/resend": {
+      "post": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Resend Invite",
+        "description": "Email the invitation again with a fresh link; the previous one stops working\nand the expiry starts over. Counts against the same limit as sending one.",
+        "operationId": "workspaces-resend_invite",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invite_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Invite Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -3073,7 +3154,7 @@
           "attachments"
         ],
         "summary": "Delete Attachment",
-        "description": "Removes the file from the store, then the row.",
+        "description": "Removes the row, then the file from the store.",
         "operationId": "attachments-delete_attachment",
         "security": [
           {

@@ -234,10 +234,14 @@ def test_invite_acceptance_is_limited_per_user(alice: Actor, new_actor: Callable
 
 
 def test_invitations_sent_by_one_user_are_limited(alice: Actor, outbox: Outbox):
+    """Resending counts against the same limit: it sends an email just the same."""
     outbox.clear()
-    for i in range(20):
+    first = alice.post("/invites", json={"email": "guest0@example.com"}).json()
+    for i in range(1, 19):
         assert alice.post("/invites", json={"email": f"guest{i}@example.com"}).status_code == 201
+    assert alice.post(f"/invites/{first['id']}/resend").status_code == 200
     assert alice.post("/invites", json={"email": "guest20@example.com"}).status_code == 429
+    assert alice.post(f"/invites/{first['id']}/resend").status_code == 429
     assert len(outbox) == 20
 
 

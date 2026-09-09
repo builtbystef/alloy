@@ -120,7 +120,19 @@ async def email_taken(session: AsyncSession, email: str) -> bool:
 
 async def workspaces_needing_an_owner(session: AsyncSession, user: User) -> list[str]:
     """Names of the workspaces `user` is the only owner of that have other members:
-    deleting the account would leave nobody able to manage them."""
+    deleting the account would leave nobody able to manage them.
+
+    Locks every workspace the user owns until the transaction ends, the same lock
+    the member routes take, so a demotion running at the same time cannot slip
+    past this check.
+    """
+    await session.execute(
+        select(Workspace.id)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+        .where(WorkspaceMember.user_id == user.id)
+        .where(WorkspaceMember.role == WorkspaceRole.OWNER)
+        .with_for_update(of=Workspace)
+    )
     other = aliased(WorkspaceMember)
     others = (
         select(func.count(other.id))
@@ -417,7 +429,11 @@ async def confirm_email(
     user.verification_token_hash = None
     user.verification_sent_at = None
     clear_email_change(user)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        # Registered between the check above and here.
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
     await send_email.kiq(email_changed_notice(old_email, new_email))
     return UserRead.model_validate(user)
 

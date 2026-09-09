@@ -51,6 +51,20 @@ export function InvitesCard({ timeZone }: { timeZone: string }) {
       ),
   });
 
+  const resend = useMutation({
+    mutationFn: async (id: string) =>
+      unwrap(
+        await browserApi.POST("/workspaces/{workspace_id}/invites/{invite_id}/resend", {
+          params: { path: { workspace_id: workspace.id, invite_id: id } },
+        }),
+      ),
+    onSuccess: async (sent) => {
+      toast.success(`Invitation sent again to ${sent.email}`);
+      await invalidateWorkspaces(queryClient);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
   const revoke = useMutation({
     mutationFn: async (id: string) =>
       unwrap(
@@ -127,14 +141,24 @@ export function InvitesCard({ timeZone }: { timeZone: string }) {
                     {` · expires ${formatDate(pending.expires_at, timeZone)}`}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={revoke.isPending}
-                  onClick={() => revoke.mutate(pending.id)}
-                >
-                  Revoke
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={resend.isPending}
+                    onClick={() => resend.mutate(pending.id)}
+                  >
+                    Resend
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={revoke.isPending}
+                    onClick={() => revoke.mutate(pending.id)}
+                  >
+                    Revoke
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
