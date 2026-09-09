@@ -1,3 +1,4 @@
+from html import escape
 from typing import TYPE_CHECKING
 
 from alloy_api.mail import Email
@@ -23,9 +24,9 @@ def verification_email(user: User, token: str, frontend_url: str) -> Email:
         f"The link works once. If you did not create an account, you can ignore this email."
     )
     html = (
-        f"<p>Confirm that <strong>{user.email}</strong> is your email address to finish "
+        f"<p>Confirm that <strong>{escape(user.email)}</strong> is your email address to finish "
         f"setting up your account.</p>"
-        f'<p><a href="{link}">Verify your email</a></p>'
+        f'<p><a href="{escape(link)}">Verify your email</a></p>'
         f"<p>The link works once. If you did not create an account, "
         f"you can ignore this email.</p>"
     )
@@ -49,9 +50,9 @@ def password_reset_email(user: User, token: str, frontend_url: str, ttl: timedel
         f"ignore this email: your password stays as it is."
     )
     html = (
-        f"<p>Someone asked to reset the password for <strong>{user.email}</strong>.</p>"
-        f'<p><a href="{link}">Choose a new password</a></p>'
-        f"<p>The link works once, for {validity}. If you did not ask for this, you can "
+        f"<p>Someone asked to reset the password for <strong>{escape(user.email)}</strong>.</p>"
+        f'<p><a href="{escape(link)}">Choose a new password</a></p>'
+        f"<p>The link works once, for {escape(validity)}. If you did not ask for this, you can "
         f"ignore this email: your password stays as it is.</p>"
     )
     return Email(to=user.email, subject="Reset your password", text=text, html=html)
@@ -74,9 +75,9 @@ def email_change_email(new_email: str, token: str, frontend_url: str, ttl: timed
         f"this email: nothing changes."
     )
     html = (
-        f"<p>Someone asked to move their account to <strong>{new_email}</strong>.</p>"
-        f'<p><a href="{link}">Confirm the new address</a></p>'
-        f"<p>The link works once, for {validity}. If this was not you, you can ignore "
+        f"<p>Someone asked to move their account to <strong>{escape(new_email)}</strong>.</p>"
+        f'<p><a href="{escape(link)}">Confirm the new address</a></p>'
+        f"<p>The link works once, for {escape(validity)}. If this was not you, you can ignore "
         f"this email: nothing changes.</p>"
     )
     return Email(to=new_email, subject="Confirm your new email", text=text, html=html)
@@ -91,8 +92,8 @@ def email_changed_notice(old_email: str, new_email: str) -> Email:
         f"email as soon as possible."
     )
     html = (
-        f"<p>The email address of your account was changed from <strong>{old_email}</strong> "
-        f"to <strong>{new_email}</strong>.</p>"
+        f"<p>The email address of your account was changed from "
+        f"<strong>{escape(old_email)}</strong> to <strong>{escape(new_email)}</strong>.</p>"
         f"<p>If you made this change, there is nothing to do. If you did not, reply to this "
         f"email as soon as possible.</p>"
     )
@@ -112,9 +113,10 @@ def account_deletion_email(user: User, frontend_url: str, grace: timedelta) -> E
         f"If you did not ask for this, log in now and change your password."
     )
     html = (
-        f"<p>Your account <strong>{user.email}</strong> is scheduled for deletion.</p>"
-        f"<p>It will be removed for good in {validity}, along with every workspace where "
-        f'you were the only member. To keep it, <a href="{link}">log in</a> before then.</p>'
+        f"<p>Your account <strong>{escape(user.email)}</strong> is scheduled for deletion.</p>"
+        f"<p>It will be removed for good in {escape(validity)}, along with every workspace where "
+        f'you were the only member. To keep it, <a href="{escape(link)}">log in</a> '
+        f"before then.</p>"
         f"<p>If you did not ask for this, log in now and change your password.</p>"
     )
     return Email(to=user.email, subject="Your account will be deleted", text=text, html=html)
