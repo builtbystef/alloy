@@ -2,7 +2,7 @@
 
 import type { TaskCreate, TaskRead } from "@alloy/api-client";
 import { revalidateLogic } from "@tanstack/react-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -13,7 +13,13 @@ import { browserApi } from "@/lib/api-browser";
 import { errorMessage, unwrap } from "@/lib/api-error";
 import { isoToWallClock } from "@/lib/dates";
 import { taskStatusLabels } from "@/lib/labels";
-import { companyListQuery, contactListQuery, invalidateCrm } from "@/lib/queries";
+import {
+  companyPickerQuery,
+  companyQuery,
+  contactPickerQuery,
+  contactQuery,
+  invalidateCrm,
+} from "@/lib/queries";
 import { taskSchema, taskStatuses, type TaskInput } from "@/lib/schemas";
 import { useWorkspace } from "@/lib/workspace";
 
@@ -33,8 +39,6 @@ export function TaskForm({ task, defaults, timeZone, onSaved, onCancel }: TaskFo
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
   const { id: workspaceId } = useWorkspace();
-  const contacts = useQuery(contactListQuery(browserApi, workspaceId, {}));
-  const companies = useQuery(companyListQuery(browserApi, workspaceId, {}));
 
   const mutation = useMutation({
     mutationFn: async (body: TaskCreate) =>
@@ -101,21 +105,23 @@ export function TaskForm({ task, defaults, timeZone, onSaved, onCancel }: TaskFo
         <div className="grid gap-5 sm:grid-cols-2">
           <form.AppField name="contact_id">
             {(field) => (
-              <field.SelectField
+              <field.ComboboxField
                 label="Contact"
-                placeholder={contacts.isPending ? "Loading…" : "No contact"}
-                options={(contacts.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-                disabled={contacts.isPending}
+                placeholder="No contact"
+                selected={task?.contact}
+                search={(q) => contactPickerQuery(browserApi, workspaceId, q)}
+                resolve={(id) => contactQuery(browserApi, workspaceId, id)}
               />
             )}
           </form.AppField>
           <form.AppField name="company_id">
             {(field) => (
-              <field.SelectField
+              <field.ComboboxField
                 label="Company"
-                placeholder={companies.isPending ? "Loading…" : "No company"}
-                options={(companies.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-                disabled={companies.isPending}
+                placeholder="No company"
+                selected={task?.company}
+                search={(q) => companyPickerQuery(browserApi, workspaceId, q)}
+                resolve={(id) => companyQuery(browserApi, workspaceId, id)}
               />
             )}
           </form.AppField>

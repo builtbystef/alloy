@@ -1,13 +1,18 @@
 import type {
   ApiClient,
+  CompanySort,
+  ContactSort,
   ContactStatus,
   DueFilter,
   ImportRead,
+  SortOrder,
+  TaskSort,
   TaskStatus,
 } from "@alloy/api-client";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 
 import { unwrap } from "./api-error";
+import type { ListSearch } from "./schemas";
 
 /**
  * Query definitions shared by Server Components (which prefetch with the
@@ -19,24 +24,65 @@ import { unwrap } from "./api-error";
  * the key and of the request path.
  */
 
-// The API's maximum page. Enough for the demo; a real list would paginate.
-const PAGE = { limit: 500 } as const;
+/**
+ * Every list the API serves is a page: `{ items, total, limit, offset }`. The
+ * tables ask for a page at a time and let the total drive the pager. Feeds
+ * and pickers that show everything ask for the largest page the API allows
+ * and say so when there was more.
+ */
 
-export interface ContactListFilters {
+/** Rows per page in the tables. */
+export const PAGE_SIZE = 50;
+
+/** The largest page the API serves, for lists that want every row. */
+export const ALL_ROWS = { limit: 500, offset: 0 } as const;
+
+/** What a picker shows per search: enough to scan, few enough to be quick. */
+export const PICKER_ROWS = { limit: 20, offset: 0 } as const;
+
+export interface ListPage {
+  limit: number;
+  offset: number;
+}
+
+/** The API's `limit` and `offset` for a 1-based page number. */
+export function listPage(page: number | undefined, pageSize = PAGE_SIZE): ListPage {
+  return { limit: pageSize, offset: ((page ?? 1) - 1) * pageSize };
+}
+
+/**
+ * API list parameters for a parsed URL search: `page` becomes `limit` and
+ * `offset`; `sort` and `order` pass through. Server prefetch and client
+ * query must build the same key, so both go through here.
+ */
+export function paged<S extends string, T extends ListSearch<S>>({
+  page,
+  ...filters
+}: T): Omit<T, "page"> & ListPage {
+  return { ...filters, ...listPage(page) };
+}
+
+export interface ContactListFilters extends ListPage {
   q?: string | undefined;
   status?: ContactStatus | undefined;
   company_id?: string | undefined;
+  sort?: ContactSort | undefined;
+  order?: SortOrder | undefined;
 }
 
-export interface CompanyListFilters {
+export interface CompanyListFilters extends ListPage {
   q?: string | undefined;
+  sort?: CompanySort | undefined;
+  order?: SortOrder | undefined;
 }
 
-export interface TaskListFilters {
+export interface TaskListFilters extends ListPage {
   due?: DueFilter | undefined;
   status?: TaskStatus | undefined;
   contact_id?: string | undefined;
   company_id?: string | undefined;
+  sort?: TaskSort | undefined;
+  order?: SortOrder | undefined;
   /** IANA zone that defines "today" for `due`. */
   tz: string;
 }
@@ -69,7 +115,6 @@ export const companyKeys = {
   list: (ws: string, filters: CompanyListFilters) =>
     [...companyKeys.all, ws, "list", filters] as const,
   detail: (ws: string, id: string) => [...companyKeys.all, ws, "detail", id] as const,
-  contacts: (ws: string, id: string) => [...companyKeys.detail(ws, id), "contacts"] as const,
 };
 
 export const taskKeys = {
@@ -90,7 +135,9 @@ export const attachmentKeys = {
 
 export const importKeys = {
   all: ["imports"] as const,
-  list: (ws: string) => [...importKeys.all, ws, "list"] as const,
+  /** Every page of the list: what to invalidate after an upload. */
+  lists: (ws: string) => [...importKeys.all, ws, "list"] as const,
+  list: (ws: string, page: number) => [...importKeys.lists(ws), page] as const,
 };
 
 export function workspaceListQuery(api: ApiClient) {
@@ -130,10 +177,15 @@ export function contactListQuery(api: ApiClient, ws: string, filters: ContactLis
     queryFn: async () =>
       unwrap(
         await api.GET("/workspaces/{workspace_id}/contacts/", {
-          params: { path: { workspace_id: ws }, query: { ...query(filters), ...PAGE } },
+          params: { path: { workspace_id: ws }, query: query(filters) },
         }),
       ),
   });
+}
+
+/** The matches for what was typed into a contact picker, by name. */
+export function contactPickerQuery(api: ApiClient, ws: string, q: string) {
+  return contactListQuery(api, ws, { q: q || undefined, ...PICKER_ROWS });
 }
 
 export function contactQuery(api: ApiClient, ws: string, id: string) {
@@ -148,13 +200,14 @@ export function contactQuery(api: ApiClient, ws: string, id: string) {
   });
 }
 
+/** The feed on a contact page: the newest 500. */
 export function contactActivitiesQuery(api: ApiClient, ws: string, id: string) {
   return queryOptions({
     queryKey: contactKeys.activities(ws, id),
     queryFn: async () =>
       unwrap(
         await api.GET("/workspaces/{workspace_id}/contacts/{contact_id}/activities", {
-          params: { path: { workspace_id: ws, contact_id: id }, query: PAGE },
+          params: { path: { workspace_id: ws, contact_id: id }, query: ALL_ROWS },
         }),
       ),
   });
@@ -166,10 +219,15 @@ export function companyListQuery(api: ApiClient, ws: string, filters: CompanyLis
     queryFn: async () =>
       unwrap(
         await api.GET("/workspaces/{workspace_id}/companies/", {
-          params: { path: { workspace_id: ws }, query: { ...query(filters), ...PAGE } },
+          params: { path: { workspace_id: ws }, query: query(filters) },
         }),
       ),
   });
+}
+
+/** The matches for what was typed into a company picker, by name. */
+export function companyPickerQuery(api: ApiClient, ws: string, q: string) {
+  return companyListQuery(api, ws, { q: q || undefined, ...PICKER_ROWS });
 }
 
 export function companyQuery(api: ApiClient, ws: string, id: string) {
@@ -184,16 +242,14 @@ export function companyQuery(api: ApiClient, ws: string, id: string) {
   });
 }
 
-export function companyContactsQuery(api: ApiClient, ws: string, id: string) {
-  return queryOptions({
-    queryKey: companyKeys.contacts(ws, id),
-    queryFn: async () =>
-      unwrap(
-        await api.GET("/workspaces/{workspace_id}/companies/{company_id}/contacts", {
-          params: { path: { workspace_id: ws, company_id: id } },
-        }),
-      ),
-  });
+/** The contacts table on a company page: the contact list, filtered to it. */
+export function companyContactsQuery(
+  api: ApiClient,
+  ws: string,
+  id: string,
+  list: ListSearch<ContactSort> = {},
+) {
+  return contactListQuery(api, ws, { company_id: id, ...paged(list) });
 }
 
 export function taskListQuery(api: ApiClient, ws: string, filters: TaskListFilters) {
@@ -202,7 +258,7 @@ export function taskListQuery(api: ApiClient, ws: string, filters: TaskListFilte
     queryFn: async () =>
       unwrap(
         await api.GET("/workspaces/{workspace_id}/tasks/", {
-          params: { path: { workspace_id: ws }, query: { ...query(filters), ...PAGE } },
+          params: { path: { workspace_id: ws }, query: query(filters) },
         }),
       ),
   });
@@ -215,12 +271,12 @@ export function attachmentsQuery(api: ApiClient, ws: string, parent: AttachmentP
       "contactId" in parent
         ? unwrap(
             await api.GET("/workspaces/{workspace_id}/contacts/{contact_id}/attachments", {
-              params: { path: { workspace_id: ws, contact_id: parent.contactId }, query: PAGE },
+              params: { path: { workspace_id: ws, contact_id: parent.contactId }, query: ALL_ROWS },
             }),
           )
         : unwrap(
             await api.GET("/workspaces/{workspace_id}/companies/{company_id}/attachments", {
-              params: { path: { workspace_id: ws, company_id: parent.companyId }, query: PAGE },
+              params: { path: { workspace_id: ws, company_id: parent.companyId }, query: ALL_ROWS },
             }),
           ),
   });
@@ -234,16 +290,17 @@ export function isImportActive(record: ImportRead): boolean {
 const IMPORT_POLL_MS = 2000;
 
 /** Newest first. Refetches every couple of seconds while an import is running. */
-export function importListQuery(api: ApiClient, ws: string) {
+export function importListQuery(api: ApiClient, ws: string, page = 1) {
   return queryOptions({
-    queryKey: importKeys.list(ws),
+    queryKey: importKeys.list(ws, page),
     queryFn: async () =>
       unwrap(
         await api.GET("/workspaces/{workspace_id}/imports/", {
-          params: { path: { workspace_id: ws }, query: PAGE },
+          params: { path: { workspace_id: ws }, query: listPage(page) },
         }),
       ),
-    refetchInterval: (query) => (query.state.data?.some(isImportActive) ? IMPORT_POLL_MS : false),
+    refetchInterval: (query) =>
+      query.state.data?.items.some(isImportActive) ? IMPORT_POLL_MS : false,
   });
 }
 

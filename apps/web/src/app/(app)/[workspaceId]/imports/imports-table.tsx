@@ -31,13 +31,14 @@ function outcome(record: ImportRead): string {
 export function ImportsTable({ timeZone }: { timeZone: string }) {
   const queryClient = useQueryClient();
   const { id: workspaceId } = useWorkspace();
-  const { data: imports } = useSuspenseQuery(importListQuery(browserApi, workspaceId));
+  const [page, setPage] = useState(1);
+  const { data: imports } = useSuspenseQuery(importListQuery(browserApi, workspaceId, page));
   const [selected, setSelected] = useState<ImportRead | null>(null);
   const watched = useRef(new Set<string>());
 
   useEffect(() => {
     const finished: ImportRead[] = [];
-    for (const record of imports) {
+    for (const record of imports.items) {
       if (isImportActive(record)) watched.current.add(record.id);
       else if (watched.current.delete(record.id)) finished.push(record);
     }
@@ -52,7 +53,10 @@ export function ImportsTable({ timeZone }: { timeZone: string }) {
     <div className="flex flex-col gap-4">
       <DataTable<ImportRead>
         columns={importColumns({ timeZone, onSelect: setSelected })}
-        data={imports}
+        data={imports.items}
+        total={imports.total}
+        page={page}
+        onPageChange={setPage}
         emptyMessage="No imports yet."
       />
       <ImportDetailsDialog

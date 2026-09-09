@@ -13,6 +13,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { browserApi } from "@/lib/api-browser";
 import { formatDateTime } from "@/lib/dates";
 import { companyContactsQuery, companyQuery } from "@/lib/queries";
+import { useListState } from "@/lib/use-list-state";
 import { useCan, useWorkspace } from "@/lib/workspace";
 
 import { AttachmentsCard } from "../../attachments/attachments-card";
@@ -27,7 +28,14 @@ export function CompanyDetail({ id, timeZone }: { id: string; timeZone: string }
   const { id: workspaceId, paths } = useWorkspace();
   const canWrite = useCan("crm:write");
   const { data: company } = useSuspenseQuery(companyQuery(browserApi, workspaceId, id));
-  const { data: contacts } = useSuspenseQuery(companyContactsQuery(browserApi, workspaceId, id));
+  const list = useListState({
+    filterKey: id,
+    initial: {},
+    defaultSort: { sort: "name", order: "asc" },
+  });
+  const { data: contacts } = useSuspenseQuery(
+    companyContactsQuery(browserApi, workspaceId, id, list.search),
+  );
   const deleteCompany = useDeleteCompany({ onDeleted: () => router.push(paths.companies) });
   const deleteContact = useDeleteContact();
 
@@ -95,8 +103,12 @@ export function CompanyDetail({ id, timeZone }: { id: string; timeZone: string }
                   onDelete: canWrite ? deleteContact.confirmDelete : null,
                   showCompany: false,
                 })}
-                data={contacts}
-                initialSorting={[{ id: "name", desc: false }]}
+                data={contacts.items}
+                total={contacts.total}
+                page={list.page}
+                onPageChange={list.setPage}
+                sorting={list.sorting}
+                onSortingChange={list.setSorting}
                 emptyMessage="No contacts at this company yet."
               />
             </CardContent>

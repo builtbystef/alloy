@@ -47,7 +47,7 @@ export function useImportUpload(): {
     },
     onSuccess: async (record) => {
       toast.success(`${record.filename} is queued; the rows appear as it runs.`);
-      await queryClient.invalidateQueries({ queryKey: importKeys.list(workspaceId) });
+      await queryClient.invalidateQueries({ queryKey: importKeys.lists(workspaceId) });
     },
     onError: (error, { file }) => toast.error(`${file.name}: ${errorMessage(error)}`),
     onSettled: () => setFraction(null),

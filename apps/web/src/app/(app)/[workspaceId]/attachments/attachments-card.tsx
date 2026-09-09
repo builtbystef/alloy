@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useRef, useState, type DragEvent, type ReactNode } from "react";
 
+import { TruncatedNote } from "@/components/truncated-note";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -93,7 +94,7 @@ export function AttachmentsCard({
         )}
       </CardHeader>
       <CardContent>
-        {attachments.length === 0 && uploads.length === 0 ? (
+        {attachments.items.length === 0 && uploads.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {canWrite ? "No files yet. Drop one here or use Upload." : "No files yet."}
           </p>
@@ -118,7 +119,7 @@ export function AttachmentsCard({
                 </span>
               </li>
             ))}
-            {attachments.map((attachment) => (
+            {attachments.items.map((attachment) => (
               <AttachmentRow
                 key={attachment.id}
                 attachment={attachment}
@@ -129,6 +130,7 @@ export function AttachmentsCard({
             ))}
           </ul>
         )}
+        <TruncatedNote shown={attachments.items.length} total={attachments.total} noun="files" />
       </CardContent>
       {dialog}
     </Card>

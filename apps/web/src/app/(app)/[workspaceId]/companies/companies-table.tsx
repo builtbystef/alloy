@@ -8,9 +8,10 @@ import { useState } from "react";
 import { DataTable } from "@/components/data-table";
 import { Input } from "@/components/ui/input";
 import { browserApi } from "@/lib/api-browser";
-import { companyListQuery } from "@/lib/queries";
+import { companyListQuery, paged } from "@/lib/queries";
 import { parseCompanySearch, type CompanySearch } from "@/lib/schemas";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { useListState } from "@/lib/use-list-state";
 import { useUrlFilters } from "@/lib/use-url-filters";
 import { cn } from "@/lib/utils";
 import { useCan, useWorkspace } from "@/lib/workspace";
@@ -27,11 +28,21 @@ export function CompaniesTable({
 }) {
   const [search, setSearch] = useState(initialFilters.q ?? "");
   const q = useDebouncedValue(search.trim(), 300);
-  const { deferred, isStale } = useUrlFilters({ q: q || undefined }, parseCompanySearch);
+  const list = useListState({
+    filterKey: q,
+    initial: initialFilters,
+    defaultSort: { sort: "name", order: "asc" },
+  });
+  const { deferred, isStale } = useUrlFilters(
+    { q: q || undefined, ...list.search },
+    parseCompanySearch,
+  );
 
   const { id: workspaceId, paths } = useWorkspace();
   const canWrite = useCan("crm:write");
-  const { data: companies } = useSuspenseQuery(companyListQuery(browserApi, workspaceId, deferred));
+  const { data: companies } = useSuspenseQuery(
+    companyListQuery(browserApi, workspaceId, paged(deferred)),
+  );
   const { confirmDelete, dialog } = useDeleteCompany();
 
   return (
@@ -49,13 +60,17 @@ export function CompaniesTable({
           />
         </div>
         <span className="ml-auto text-sm text-muted-foreground">
-          {companies.length} {companies.length === 1 ? "company" : "companies"}
+          {companies.total} {companies.total === 1 ? "company" : "companies"}
         </span>
       </div>
       <DataTable<CompanyRead>
         columns={companyColumns({ timeZone, paths, onDelete: canWrite ? confirmDelete : null })}
-        data={companies}
-        initialSorting={[{ id: "name", desc: false }]}
+        data={companies.items}
+        total={companies.total}
+        page={list.page}
+        onPageChange={list.setPage}
+        sorting={list.sorting}
+        onSortingChange={list.setSorting}
         emptyMessage={
           deferred.q ? "No companies match this search." : "No companies yet. Add your first one."
         }

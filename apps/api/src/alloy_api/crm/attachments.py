@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from alloy_api.config import SettingsDep
-from alloy_api.crm.common import Page, fetch_owned, not_found
+from alloy_api.crm.common import Page, PageOf, fetch_owned, not_found, paginate
 from alloy_api.crm.models import Attachment, Company, Contact
 from alloy_api.crm.schemas import AttachmentCreate, AttachmentRead, AttachmentUpload
 from alloy_api.db import SessionDep
@@ -93,17 +93,15 @@ async def delete_objects(
 
 async def _list(
     session: AsyncSession, parent: Contact | Company, page: Page
-) -> list[AttachmentRead]:
+) -> PageOf[AttachmentRead]:
     query = (
         select(Attachment)
         .options(WITH_UPLOADER)
         .where(parent_column(parent) == parent.id)
         .where(Attachment.uploaded_at.is_not(None))
         .order_by(Attachment.uploaded_at.desc(), Attachment.id.desc())
-        .limit(page.limit)
-        .offset(page.offset)
     )
-    return [AttachmentRead.model_validate(a) for a in await session.scalars(query)]
+    return await paginate(session, query, page, AttachmentRead)
 
 
 async def _create(
@@ -140,7 +138,7 @@ async def _create(
 @router.get("/contacts/{contact_id}/attachments")
 async def list_contact_attachments(
     contact_id: UUID, session: SessionDep, membership: CanReadCrm, page: Annotated[Page, Query()]
-) -> list[AttachmentRead]:
+) -> PageOf[AttachmentRead]:
     """Newest first. Files whose upload never completed are left out."""
     contact = await fetch_owned(session, Contact, contact_id, membership)
     return await _list(session, contact, page)
@@ -163,7 +161,7 @@ async def create_contact_attachment(
 @router.get("/companies/{company_id}/attachments")
 async def list_company_attachments(
     company_id: UUID, session: SessionDep, membership: CanReadCrm, page: Annotated[Page, Query()]
-) -> list[AttachmentRead]:
+) -> PageOf[AttachmentRead]:
     """Newest first. Files whose upload never completed are left out."""
     company = await fetch_owned(session, Company, company_id, membership)
     return await _list(session, company, page)

@@ -15,6 +15,7 @@ import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { FormError, useAppForm } from "@/components/form";
+import { TruncatedNote } from "@/components/truncated-note";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldGroup } from "@/components/ui/field";
 import { browserApi } from "@/lib/api-browser";
@@ -56,11 +57,11 @@ export function ActivityFeed({ contactId, timeZone }: { contactId: string; timeZ
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {canWrite && <LogActivityForm contactId={contactId} />}
-        {activities.length === 0 ? (
+        {activities.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing logged yet.</p>
         ) : (
           <ol className="flex flex-col gap-4">
-            {activities.map((activity) => (
+            {activities.items.map((activity) => (
               <li key={activity.id} className="flex gap-3">
                 <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground [&_svg]:size-3.5">
                   {icons[activity.type]}
@@ -85,6 +86,7 @@ export function ActivityFeed({ contactId, timeZone }: { contactId: string; timeZ
             ))}
           </ol>
         )}
+        <TruncatedNote shown={activities.items.length} total={activities.total} noun="activities" />
       </CardContent>
     </Card>
   );

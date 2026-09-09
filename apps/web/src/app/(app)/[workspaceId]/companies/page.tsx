@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
 import { TableSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
-import { companyListQuery } from "@/lib/queries";
+import { companyListQuery, paged } from "@/lib/queries";
 import { getQueryClient } from "@/lib/query-client";
 import { parseCompanySearch, toSearchString } from "@/lib/schemas";
 import { workspacePaths } from "@/lib/routes";
@@ -80,7 +80,7 @@ async function CompaniesContent({
   const filters = parseCompanySearch(await searchParams);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(companyListQuery(api, workspaceId, filters));
+  await queryClient.prefetchQuery(companyListQuery(api, workspaceId, paged(filters)));
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

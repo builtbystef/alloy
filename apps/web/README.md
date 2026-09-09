@@ -202,8 +202,25 @@ zone. Errors from the API land in a form-level `<FormError>`.
 
 `src/components/data-table.tsx` registers only sorting and pagination with
 `tableFeatures()` (v9 is tree-shakeable) and exports a column helper typed
-with those features. Sorting and paging happen on the client; the API caps a
-page at 500 rows, plenty for the demo.
+with those features. Both are the API's job: every list answers with a page
+and a `total`, the table holds one page (50 rows) in manual mode, and a
+header or pager click asks the owner for another. `useListState` keeps the
+page and sort; the list pages put them in the URL next to the filters
+(`?page=3&sort=company&order=desc`), so a link opens the same view and the
+server prefetches the same page. Changing a filter goes back to page 1.
+
+Lists that show everything at once (the activity feed, attachments, the task
+card on a detail page) ask for the API's largest page, 500 rows, and say
+"Showing 500 of N" when there was more.
+
+The contact and company pickers in forms are a searchable combobox
+(`src/components/entity-combobox.tsx`, on shadcn's Base UI combobox). The
+API does the matching: each pause in typing fetches the first 20 matches by
+name, the popup says how many more there were, and a value the form already
+holds (an edit, or `?company_id=` on the new-contact page) shows its name
+from the record or from a fetch of its own. `ComboboxField` in
+`src/components/form/fields.tsx` binds it to a form field whose value is the
+id, or `""` for none.
 
 ### Time zones
 

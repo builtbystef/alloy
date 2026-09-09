@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import { FormSkeleton } from "@/components/skeletons";
-import { companyListQuery } from "@/lib/queries";
+import { companyPickerQuery } from "@/lib/queries";
 import { getQueryClient } from "@/lib/query-client";
 import { getSessionApi, requireWorkspace } from "@/lib/session";
 import { getTimeZone } from "@/lib/time-zone";
@@ -45,7 +45,7 @@ async function NewContactForm({
   const { company_id } = await searchParams;
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(companyListQuery(api, workspaceId, {}));
+  await queryClient.prefetchQuery(companyPickerQuery(api, workspaceId, ""));
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <ContactForm

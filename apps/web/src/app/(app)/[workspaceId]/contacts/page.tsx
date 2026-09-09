@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
 import { TableSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
-import { contactListQuery } from "@/lib/queries";
+import { contactListQuery, paged } from "@/lib/queries";
 import { getQueryClient } from "@/lib/query-client";
 import { parseContactSearch, toSearchString } from "@/lib/schemas";
 import { workspacePaths } from "@/lib/routes";
@@ -86,11 +86,11 @@ async function ContactsContent({
   const filters = parseContactSearch(await searchParams);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(contactListQuery(api, workspaceId, filters));
+  await queryClient.prefetchQuery(contactListQuery(api, workspaceId, paged(filters)));
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      {/* Keyed so a real navigation (back/forward) resets the client filters. */}
+      {/* Keyed so a real navigation (back/forward) resets the client filters, page, and sort. */}
       <ContactsTable key={toSearchString(filters)} initialFilters={filters} timeZone={timeZone} />
     </HydrationBoundary>
   );

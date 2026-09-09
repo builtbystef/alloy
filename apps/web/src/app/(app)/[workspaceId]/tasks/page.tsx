@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import { TableSkeleton } from "@/components/skeletons";
-import { taskListQuery } from "@/lib/queries";
+import { paged, taskListQuery } from "@/lib/queries";
 import { getQueryClient } from "@/lib/query-client";
 import { parseTaskSearch, toSearchString } from "@/lib/schemas";
 import { getSessionApi, requireWorkspace } from "@/lib/session";
@@ -46,7 +46,9 @@ async function TasksContent({
   const filters = parseTaskSearch(await searchParams);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(taskListQuery(api, workspaceId, { ...filters, tz: timeZone }));
+  await queryClient.prefetchQuery(
+    taskListQuery(api, workspaceId, { ...paged(filters), tz: timeZone }),
+  );
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

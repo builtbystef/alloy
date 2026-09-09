@@ -30,10 +30,10 @@ def test_list_companies_sorted_by_name_with_search(alice: Actor):
     for name in ["Zeta Corp", "Acme", "Beta Labs"]:
         alice.post("/companies/", json={"name": name})
 
-    names = [c["name"] for c in alice.get("/companies/").json()]
+    names = [c["name"] for c in alice.get("/companies/").json()["items"]]
     assert names == ["Acme", "Beta Labs", "Zeta Corp"]
 
-    found = alice.get("/companies/", params={"q": "eta"}).json()
+    found = alice.get("/companies/", params={"q": "eta"}).json()["items"]
     assert [c["name"] for c in found] == ["Beta Labs", "Zeta Corp"]
 
 
@@ -57,7 +57,7 @@ def test_delete_a_company(alice: Actor):
 
 def test_users_only_see_their_own_companies(alice: Actor, bob: Actor):
     company = alice.post("/companies/", json=ACME).json()
-    assert bob.get("/companies/").json() == []
+    assert bob.get("/companies/").json()["items"] == []
     assert bob.get(f"/companies/{company['id']}").status_code == 404
     assert bob.patch(f"/companies/{company['id']}", json={"name": "X"}).status_code == 404
     assert bob.delete(f"/companies/{company['id']}").status_code == 404

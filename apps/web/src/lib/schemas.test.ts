@@ -102,6 +102,20 @@ test("search params keep valid filters and drop the rest", () => {
   expect(toSearchString({ q: "ada", status: undefined })).toBe("q=ada");
 });
 
+test("search params carry the page and sort of a list", () => {
+  expect(parseContactSearch({ page: "3", sort: "company", order: "desc" })).toEqual({
+    page: 3,
+    sort: "company",
+    order: "desc",
+  });
+  // The first page is the URL without one; anything unknown is dropped.
+  expect(parseContactSearch({ page: "1", sort: "email", order: "up" })).toEqual({});
+  expect(parseContactSearch({ page: "0" })).toEqual({});
+  expect(parseContactSearch({ page: "two" })).toEqual({});
+  expect(parseTaskSearch({ sort: "due_at" })).toEqual({ sort: "due_at" });
+  expect(toSearchString({ q: "ada", page: 2, sort: undefined })).toBe("q=ada&page=2");
+});
+
 test("a reset password form needs matching passwords", () => {
   const result = resetPasswordSchema.safeParse({ new_password: "long enough", confirm: "nope" });
   expect(result.success).toBe(false);

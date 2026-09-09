@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { DetailSkeleton } from "@/components/skeletons";
 import { ApiError } from "@/lib/api-error";
 import {
+  ALL_ROWS,
   contactActivitiesQuery,
   attachmentsQuery,
   contactQuery,
@@ -43,7 +44,9 @@ async function ContactContent({ params }: { params: Params }) {
       queryClient.fetchQuery(contactQuery(api, workspaceId, id)),
       queryClient.prefetchQuery(contactActivitiesQuery(api, workspaceId, id)),
       queryClient.prefetchQuery(attachmentsQuery(api, workspaceId, { contactId: id })),
-      queryClient.prefetchQuery(taskListQuery(api, workspaceId, { contact_id: id, tz: timeZone })),
+      queryClient.prefetchQuery(
+        taskListQuery(api, workspaceId, { contact_id: id, ...ALL_ROWS, tz: timeZone }),
+      ),
     ]);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 422)) notFound();

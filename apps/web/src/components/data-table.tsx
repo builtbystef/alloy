@@ -2,13 +2,8 @@
 
 import {
   createColumnHelper,
-  createPaginatedRowModel,
-  createSortedRowModel,
   rowPaginationFeature,
   rowSortingFeature,
-  sortFn_alphanumeric,
-  sortFn_basic,
-  sortFn_text,
   tableFeatures,
   useTable,
   type Column,
@@ -28,20 +23,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PAGE_SIZE } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 /**
  * TanStack Table v9 registers only the features a table uses, and the types
  * follow: `createColumnHelper<DataTableFeatures, Row>()` knows about sorting
- * because it is declared here. Sorting and paging happen on the client; the
- * lists are small (the API caps a page at 500).
+ * because it is declared here. Sorting and paging are the API's job: the
+ * table holds one page and the state that asked for it, and a header click or
+ * a pager click asks the owner for another page.
  */
 export const dataTableFeatures = tableFeatures({
   rowSortingFeature,
   rowPaginationFeature,
-  sortedRowModel: createSortedRowModel(),
-  paginatedRowModel: createPaginatedRowModel(),
-  sortFns: { alphanumeric: sortFn_alphanumeric, basic: sortFn_basic, text: sortFn_text },
 });
 
 export type DataTableFeatures = typeof dataTableFeatures;
@@ -56,31 +50,57 @@ export type DataTableColumn<TData extends RowData> = ColumnDef<DataTableFeatures
 
 interface DataTableProps<TData extends { id: string }> {
   columns: DataTableColumn<TData>[];
+  /** The rows of the current page. */
   data: TData[];
-  initialSorting?: SortingState;
+  /** Rows across every page: the API's `total`. */
+  total: number;
+  /** 1-based. */
+  page: number;
   pageSize?: number;
+  onPageChange: (page: number) => void;
+  /** Leave out for a table whose order is fixed. */
+  sorting?: SortingState;
+  onSortingChange?: (sorting: SortingState) => void;
   emptyMessage?: ReactNode;
   className?: string;
 }
 
+const NO_SORTING: SortingState = [];
+
 export function DataTable<TData extends { id: string }>({
   columns,
   data,
-  initialSorting = [],
-  pageSize = 25,
+  total,
+  page,
+  pageSize = PAGE_SIZE,
+  onPageChange,
+  sorting = NO_SORTING,
+  onSortingChange,
   emptyMessage = "Nothing here yet.",
   className,
 }: DataTableProps<TData>) {
+  const pagination = { pageIndex: page - 1, pageSize };
   const table = useTable({
     features: dataTableFeatures,
     columns,
     data,
     getRowId: (row) => row.id,
-    initialState: { sorting: initialSorting, pagination: { pageIndex: 0, pageSize } },
+    manualSorting: true,
+    manualPagination: true,
+    rowCount: total,
+    state: { sorting, pagination },
+    onSortingChange: (updater) => {
+      onSortingChange?.(typeof updater === "function" ? updater(sorting) : updater);
+    },
+    onPaginationChange: (updater) => {
+      const next = typeof updater === "function" ? updater(pagination) : updater;
+      onPageChange(next.pageIndex + 1);
+    },
   });
   const rows = table.getRowModel().rows;
   const pageCount = table.getPageCount();
-  const { pageIndex } = table.state.pagination;
+  const first = rows.length === 0 ? 0 : pagination.pageIndex * pageSize + 1;
+  const last = pagination.pageIndex * pageSize + rows.length;
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -104,7 +124,7 @@ export function DataTable<TData extends { id: string }>({
                   colSpan={columns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  {emptyMessage}
+                  {total > 0 ? "Nothing on this page." : emptyMessage}
                 </TableCell>
               </TableRow>
             ) : (
@@ -121,27 +141,33 @@ export function DataTable<TData extends { id: string }>({
           </TableBody>
         </Table>
       </div>
-      {pageCount > 1 && (
-        <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground">
-          <span>
-            Page {pageIndex + 1} of {pageCount}
+      {/* Also when the page is past the end (a delete emptied it), so there is a way back. */}
+      {(pageCount > 1 || page > 1) && (
+        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm text-muted-foreground">
+          <span className="tabular-nums">
+            {rows.length === 0 ? `0 of ${total}` : `${first}–${last} of ${total}`}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
+          <span>
+            Page {page} of {Math.max(pageCount, 1)}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       )}
     </div>

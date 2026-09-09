@@ -4,6 +4,7 @@ import type { CompanyRef, ContactRef } from "@alloy/api-client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
+import { TruncatedNote } from "@/components/truncated-note";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { browserApi } from "@/lib/api-browser";
 import { formatRelativeDays, isBeforeToday } from "@/lib/dates";
-import { taskListQuery } from "@/lib/queries";
+import { ALL_ROWS, taskListQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { useCan, useWorkspace } from "@/lib/workspace";
 
@@ -38,11 +39,11 @@ export function TaskList({
   const { id: workspaceId } = useWorkspace();
   const canWrite = useCan("crm:write");
   const { data: tasks } = useSuspenseQuery(
-    taskListQuery(browserApi, workspaceId, { ...filters, tz: timeZone }),
+    taskListQuery(browserApi, workspaceId, { ...filters, ...ALL_ROWS, tz: timeZone }),
   );
   const actions = useTaskMutations({ timeZone, defaults: filters });
-  const open = tasks.filter((task) => task.status === "open");
-  const done = tasks.filter((task) => task.status === "done");
+  const open = tasks.items.filter((task) => task.status === "open");
+  const done = tasks.items.filter((task) => task.status === "done");
 
   return (
     <Card>
@@ -57,7 +58,7 @@ export function TaskList({
         )}
       </CardHeader>
       <CardContent>
-        {tasks.length === 0 ? (
+        {tasks.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tasks yet.</p>
         ) : (
           <ul className="flex flex-col gap-1">
@@ -126,6 +127,7 @@ export function TaskList({
             })}
           </ul>
         )}
+        <TruncatedNote shown={tasks.items.length} total={tasks.total} noun="tasks" />
       </CardContent>
       {actions.dialogs}
     </Card>

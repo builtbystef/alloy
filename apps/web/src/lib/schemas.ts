@@ -1,8 +1,12 @@
 import type {
   ActivityType,
+  CompanySort,
+  ContactSort,
   ContactStatus,
   DueFilter,
   ImportKind,
+  SortOrder,
+  TaskSort,
   TaskStatus,
   WorkspaceRole,
 } from "@alloy/api-client";
@@ -30,6 +34,24 @@ export const workspaceRoles = [
 ] as const satisfies readonly WorkspaceRole[];
 export const dueFilters = ["overdue", "today", "upcoming"] as const satisfies readonly DueFilter[];
 export const importKinds = ["contacts", "companies"] as const satisfies readonly ImportKind[];
+export const sortOrders = ["asc", "desc"] as const satisfies readonly SortOrder[];
+export const contactSorts = [
+  "name",
+  "company",
+  "status",
+  "last_contacted_at",
+] as const satisfies readonly ContactSort[];
+export const companySorts = [
+  "name",
+  "industry",
+  "created_at",
+] as const satisfies readonly CompanySort[];
+export const taskSorts = [
+  "due_at",
+  "title",
+  "contact",
+  "company",
+] as const satisfies readonly TaskSort[];
 /** The types a user logs by hand; `task_completed` is written by the API. */
 export const loggableActivityTypes = [
   "note",
@@ -186,19 +208,40 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 const optionalParam = <T extends z.ZodType>(schema: T) => schema.optional().catch(undefined);
 
+/**
+ * Where a paged list is: `page` (the first page is the URL without one, so
+ * equal views build equal URLs and query keys), and the column and direction
+ * it is sorted by (absent means the API's default order).
+ */
+const listSearch = <S extends readonly [string, ...string[]]>(sorts: S) => ({
+  page: optionalParam(z.coerce.number().int().min(2)),
+  sort: optionalParam(z.enum(sorts)),
+  order: optionalParam(z.enum(sortOrders)),
+});
+
+/** The page and sort part of a list's search, on its own. */
+export interface ListSearch<S extends string> {
+  page?: number | undefined;
+  sort?: S | undefined;
+  order?: SortOrder | undefined;
+}
+
 const contactSearchSchema = z.object({
   q: optionalParam(text.min(1)),
   status: optionalParam(z.enum(contactStatuses)),
   company_id: optionalParam(z.uuid()),
+  ...listSearch(contactSorts),
 });
 
 const companySearchSchema = z.object({
   q: optionalParam(text.min(1)),
+  ...listSearch(companySorts),
 });
 
 const taskSearchSchema = z.object({
   due: optionalParam(z.enum(dueFilters)),
   status: optionalParam(z.enum(taskStatuses)),
+  ...listSearch(taskSorts),
 });
 
 /** `?kind=` preselects the import kind; anything else means contacts. */
@@ -228,10 +271,10 @@ export function parseImportSearch(params: SearchParams | URLSearchParams): Impor
 }
 
 /** The query string for a filter object, without empty values. */
-export function toSearchString(filters: Record<string, string | undefined>): string {
+export function toSearchString(filters: Record<string, string | number | undefined>): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
-    if (value) params.set(key, value);
+    if (value !== undefined && value !== "") params.set(key, String(value));
   }
   return params.toString();
 }

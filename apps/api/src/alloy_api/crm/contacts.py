@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
 
@@ -7,7 +8,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from alloy_api.crm.attachments import delete_objects
-from alloy_api.crm.common import Page, check_owned, fetch_owned
+from alloy_api.crm.common import (
+    Page,
+    PageOf,
+    SortOrder,
+    check_owned,
+    fetch_owned,
+    paginate,
+    sorted_by,
+)
 from alloy_api.crm.models import (
     CONTACT_ACTIVITY_TYPES,
     Activity,
@@ -32,23 +41,43 @@ router = APIRouter(prefix="/contacts", tags=["contacts"])
 WITH_COMPANY = selectinload(Contact.company)
 
 
+class ContactSort(StrEnum):
+    NAME = "name"
+    COMPANY = "company"
+    STATUS = "status"
+    LAST_CONTACTED_AT = "last_contacted_at"
+
+
+SORT_COLUMNS = {
+    ContactSort.NAME: Contact.name,
+    ContactSort.COMPANY: Company.name,
+    ContactSort.STATUS: Contact.status,
+    ContactSort.LAST_CONTACTED_AT: Contact.last_contacted_at,
+}
+
+
 class ContactFilters(Page):
     q: str | None = Field(None, description="Matches name, email, phone, job title, or company.")
     status: ContactStatus | None = None
     company_id: UUID | None = None
+    sort: ContactSort = ContactSort.NAME
+    order: SortOrder = SortOrder.ASC
 
 
 @router.get("/")
 async def list_contacts(
     session: SessionDep, membership: CanReadCrm, filters: Annotated[ContactFilters, Query()]
-) -> list[ContactRead]:
-    """Sorted by name."""
+) -> PageOf[ContactRead]:
+    """Sorted by name unless `sort` says otherwise; contacts without a value for the
+    sort column come last either way."""
     query = (
         select(Contact).options(WITH_COMPANY).where(Contact.workspace_id == membership.workspace.id)
     )
+    if filters.q or filters.sort is ContactSort.COMPANY:
+        query = query.outerjoin(Contact.company)
     if filters.q:
         pattern = f"%{filters.q}%"
-        query = query.outerjoin(Contact.company).where(
+        query = query.where(
             Contact.name.ilike(pattern)
             | Contact.email.ilike(pattern)
             | Contact.phone.ilike(pattern)
@@ -59,8 +88,8 @@ async def list_contacts(
         query = query.where(Contact.status == filters.status)
     if filters.company_id is not None:
         query = query.where(Contact.company_id == filters.company_id)
-    query = query.order_by(Contact.name, Contact.id).limit(filters.limit).offset(filters.offset)
-    return [ContactRead.model_validate(c) for c in await session.scalars(query)]
+    query = sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Contact.id)
+    return await paginate(session, query, filters, ContactRead)
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -114,17 +143,15 @@ async def delete_contact(
 @router.get("/{contact_id}/activities")
 async def list_activities(
     contact_id: UUID, session: SessionDep, membership: CanReadCrm, page: Annotated[Page, Query()]
-) -> list[ActivityRead]:
+) -> PageOf[ActivityRead]:
     """Newest first."""
     await fetch_owned(session, Contact, contact_id, membership)
     query = (
         select(Activity)
         .where(Activity.contact_id == contact_id)
         .order_by(Activity.created_at.desc(), Activity.id.desc())
-        .limit(page.limit)
-        .offset(page.offset)
     )
-    return [ActivityRead.model_validate(a) for a in await session.scalars(query)]
+    return await paginate(session, query, page, ActivityRead)
 
 
 @router.post("/{contact_id}/activities", status_code=status.HTTP_201_CREATED)

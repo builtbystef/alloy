@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { browserApi } from "@/lib/api-browser";
 import { dueFilterLabels, taskStatusLabels } from "@/lib/labels";
-import { taskListQuery } from "@/lib/queries";
+import { paged, taskListQuery } from "@/lib/queries";
 import { dueFilters, parseTaskSearch, taskStatuses, type TaskSearch } from "@/lib/schemas";
+import { useListState } from "@/lib/use-list-state";
 import { useUrlFilters } from "@/lib/use-url-filters";
 import { cn } from "@/lib/utils";
 import { useCan, useWorkspace } from "@/lib/workspace";
@@ -28,15 +29,20 @@ export function TasksTable({
 }) {
   const [due, setDue] = useState<DueFilter | "">(initialFilters.due ?? "");
   const [status, setStatus] = useState<TaskStatus | "">(initialFilters.status ?? "");
+  const list = useListState({
+    filterKey: `${due}\0${status}`,
+    initial: initialFilters,
+    defaultSort: { sort: "due_at", order: "asc" },
+  });
   const { deferred, isStale } = useUrlFilters(
-    { due: due || undefined, status: status || undefined },
+    { due: due || undefined, status: status || undefined, ...list.search },
     parseTaskSearch,
   );
 
   const { id: workspaceId, paths } = useWorkspace();
   const canWrite = useCan("crm:write");
   const { data: tasks } = useSuspenseQuery(
-    taskListQuery(browserApi, workspaceId, { ...deferred, tz: timeZone }),
+    taskListQuery(browserApi, workspaceId, { ...paged(deferred), tz: timeZone }),
   );
   const actions = useTaskMutations({ timeZone });
 
@@ -68,7 +74,7 @@ export function TasksTable({
           ))}
         </NativeSelect>
         <span className="text-sm text-muted-foreground">
-          {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
+          {tasks.total} {tasks.total === 1 ? "task" : "tasks"}
         </span>
         {canWrite && (
           <Button className="ml-auto" onClick={actions.openCreate}>
@@ -78,7 +84,12 @@ export function TasksTable({
       </div>
       <DataTable<TaskRead>
         columns={taskColumns({ timeZone, paths, actions: canWrite ? actions : null })}
-        data={tasks}
+        data={tasks.items}
+        total={tasks.total}
+        page={list.page}
+        onPageChange={list.setPage}
+        sorting={list.sorting}
+        onSortingChange={list.setSorting}
         emptyMessage={
           deferred.due || deferred.status
             ? "No tasks match these filters."

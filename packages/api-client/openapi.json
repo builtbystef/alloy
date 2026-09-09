@@ -1093,7 +1093,7 @@
           "companies"
         ],
         "summary": "List Companies",
-        "description": "Sorted by name.",
+        "description": "Sorted by name unless `sort` says otherwise; companies without a value for the\nsort column come last either way.",
         "operationId": "companies-list_companies",
         "security": [
           {
@@ -1151,6 +1151,24 @@
               "title": "Q"
             },
             "description": "Matches name, website, or industry."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CompanySort",
+              "default": "name"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "default": "asc"
+            }
           }
         ],
         "responses": {
@@ -1159,11 +1177,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CompanyRead"
-                  },
-                  "title": "Response Companies-List Companies"
+                  "$ref": "#/components/schemas/PageOf_CompanyRead_"
                 }
               }
             }
@@ -1417,6 +1431,7 @@
           "companies"
         ],
         "summary": "List Company Contacts",
+        "description": "Sorted by name. `GET .../contacts/?company_id=` is the same list with filters\nand sorting.",
         "operationId": "companies-list_company_contacts",
         "security": [
           {
@@ -1443,6 +1458,29 @@
               "format": "uuid",
               "title": "Workspace Id"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
           }
         ],
         "responses": {
@@ -1451,11 +1489,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ContactRead"
-                  },
-                  "title": "Response Companies-List Company Contacts"
+                  "$ref": "#/components/schemas/PageOf_ContactRead_"
                 }
               }
             }
@@ -1479,7 +1513,7 @@
           "contacts"
         ],
         "summary": "List Contacts",
-        "description": "Sorted by name.",
+        "description": "Sorted by name unless `sort` says otherwise; contacts without a value for the\nsort column come last either way.",
         "operationId": "contacts-list_contacts",
         "security": [
           {
@@ -1570,6 +1604,24 @@
               ],
               "title": "Company Id"
             }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ContactSort",
+              "default": "name"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "default": "asc"
+            }
           }
         ],
         "responses": {
@@ -1578,11 +1630,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ContactRead"
-                  },
-                  "title": "Response Contacts-List Contacts"
+                  "$ref": "#/components/schemas/PageOf_ContactRead_"
                 }
               }
             }
@@ -1894,11 +1942,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActivityRead"
-                  },
-                  "title": "Response Contacts-List Activities"
+                  "$ref": "#/components/schemas/PageOf_ActivityRead_"
                 }
               }
             }
@@ -1989,7 +2033,7 @@
           "tasks"
         ],
         "summary": "List Tasks",
-        "description": "Soonest due first, undated last.",
+        "description": "Soonest due first unless `sort` says otherwise; tasks without a value for the\nsort column (undated, or with no contact or company) come last either way.",
         "operationId": "tasks-list_tasks",
         "security": [
           {
@@ -2107,6 +2151,24 @@
               ],
               "title": "Company Id"
             }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TaskSort",
+              "default": "due_at"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "default": "asc"
+            }
           }
         ],
         "responses": {
@@ -2115,11 +2177,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TaskRead"
-                  },
-                  "title": "Response Tasks-List Tasks"
+                  "$ref": "#/components/schemas/PageOf_TaskRead_"
                 }
               }
             }
@@ -2519,11 +2577,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AttachmentRead"
-                  },
-                  "title": "Response Attachments-List Contact Attachments"
+                  "$ref": "#/components/schemas/PageOf_AttachmentRead_"
                 }
               }
             }
@@ -2672,11 +2726,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AttachmentRead"
-                  },
-                  "title": "Response Attachments-List Company Attachments"
+                  "$ref": "#/components/schemas/PageOf_AttachmentRead_"
                 }
               }
             }
@@ -2983,11 +3033,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ImportRead"
-                  },
-                  "title": "Response Imports-List Imports"
+                  "$ref": "#/components/schemas/PageOf_ImportRead_"
                 }
               }
             }
@@ -3557,6 +3603,15 @@
         "title": "CompanyRef",
         "description": "Enough to link to a company from a contact or task."
       },
+      "CompanySort": {
+        "type": "string",
+        "enum": [
+          "name",
+          "industry",
+          "created_at"
+        ],
+        "title": "CompanySort"
+      },
       "CompanyUpdate": {
         "properties": {
           "name": {
@@ -3803,6 +3858,16 @@
           "name"
         ],
         "title": "ContactRef"
+      },
+      "ContactSort": {
+        "type": "string",
+        "enum": [
+          "name",
+          "company",
+          "status",
+          "last_contacted_at"
+        ],
+        "title": "ContactSort"
       },
       "ContactStatus": {
         "type": "string",
@@ -4353,6 +4418,198 @@
         ],
         "title": "MemberUpdate"
       },
+      "PageOf_ActivityRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Rows matching the filters, across every page."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ActivityPage"
+      },
+      "PageOf_AttachmentRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Rows matching the filters, across every page."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AttachmentPage"
+      },
+      "PageOf_CompanyRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Rows matching the filters, across every page."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "CompanyPage"
+      },
+      "PageOf_ContactRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContactRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Rows matching the filters, across every page."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ContactPage"
+      },
+      "PageOf_ImportRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Rows matching the filters, across every page."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ImportPage"
+      },
+      "PageOf_TaskRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Rows matching the filters, across every page."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "TaskPage"
+      },
       "PasswordChange": {
         "properties": {
           "current_password": {
@@ -4440,6 +4697,14 @@
           "message"
         ],
         "title": "RowError"
+      },
+      "SortOrder": {
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "title": "SortOrder"
       },
       "TaskCreate": {
         "properties": {
@@ -4588,6 +4853,16 @@
           "updated_at"
         ],
         "title": "TaskRead"
+      },
+      "TaskSort": {
+        "type": "string",
+        "enum": [
+          "due_at",
+          "title",
+          "contact",
+          "company"
+        ],
+        "title": "TaskSort"
       },
       "TaskStatus": {
         "type": "string",

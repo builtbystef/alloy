@@ -541,21 +541,26 @@ Every row belongs to a workspace (`OwnedByWorkspace` mixin), every query
 filters on the workspace in the URL, and a row from another workspace is a
 404, whether it is addressed in the path or referenced from a body
 (`company_id`, `contact_id`). Reads need `crm:read`, writes `crm:write`
-(403 for viewers). Lists take `limit` (≤ 500) and `offset`. `PATCH` bodies
-are partial: a field left out is untouched, a field sent as `null` is cleared.
+(403 for viewers). Lists take `limit` (≤ 500) and `offset` and answer with a
+page, `{items, total, limit, offset}`, where `total` counts every row the
+filters match, so a client can page through all of them. The contact, company,
+and task lists also take `sort` (a column of the table) and `order`
+(`asc` / `desc`); a row without a value for the sort column comes last either
+way, and ties keep creation order so pages never overlap. `PATCH` bodies are
+partial: a field left out is untouched, a field sent as `null` is cleared.
 
 ```text
                   /workspaces/{workspace_id}/...  every route below hangs off a workspace
 
-GET/POST          .../companies/                 ?q=            search name, website, industry
+GET/POST          .../companies/                 ?q= &sort=name|industry|created_at &order=
 GET/PATCH/DELETE  .../companies/{id}                            delete keeps contacts and tasks, clears the link
 GET               .../companies/{id}/contacts
 
-GET/POST          .../contacts/                  ?q= &status= &company_id=
+GET/POST          .../contacts/                  ?q= &status= &company_id= &sort=name|company|status|last_contacted_at &order=
 GET/PATCH/DELETE  .../contacts/{id}                             delete removes the activity feed, keeps tasks
 GET/POST          .../contacts/{id}/activities                  newest first
 
-GET/POST          .../tasks/                     ?due=overdue|today|upcoming &tz= &status= &contact_id= &company_id=
+GET/POST          .../tasks/                     ?due=overdue|today|upcoming &tz= &status= &contact_id= &company_id= &sort=due_at|title|contact|company &order=
 GET/PATCH/DELETE  .../tasks/{id}
 
 GET               .../dashboard/                 ?tz= &stale_days=30 &limit=5

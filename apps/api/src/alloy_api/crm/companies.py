@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
 
@@ -7,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from alloy_api.crm.attachments import delete_objects
-from alloy_api.crm.common import Page, fetch_owned
+from alloy_api.crm.common import Page, PageOf, SortOrder, fetch_owned, paginate, sorted_by
 from alloy_api.crm.models import Company, Contact
 from alloy_api.crm.schemas import CompanyCreate, CompanyRead, CompanyUpdate, ContactRead
 from alloy_api.db import SessionDep
@@ -17,15 +18,31 @@ from alloy_api.workspaces.deps import CanReadCrm, CanWriteCrm
 router = APIRouter(prefix="/companies", tags=["companies"])
 
 
+class CompanySort(StrEnum):
+    NAME = "name"
+    INDUSTRY = "industry"
+    CREATED_AT = "created_at"
+
+
+SORT_COLUMNS = {
+    CompanySort.NAME: Company.name,
+    CompanySort.INDUSTRY: Company.industry,
+    CompanySort.CREATED_AT: Company.created_at,
+}
+
+
 class CompanyFilters(Page):
     q: str | None = Field(None, description="Matches name, website, or industry.")
+    sort: CompanySort = CompanySort.NAME
+    order: SortOrder = SortOrder.ASC
 
 
 @router.get("/")
 async def list_companies(
     session: SessionDep, membership: CanReadCrm, filters: Annotated[CompanyFilters, Query()]
-) -> list[CompanyRead]:
-    """Sorted by name."""
+) -> PageOf[CompanyRead]:
+    """Sorted by name unless `sort` says otherwise; companies without a value for the
+    sort column come last either way."""
     query = select(Company).where(Company.workspace_id == membership.workspace.id)
     if filters.q:
         pattern = f"%{filters.q}%"
@@ -34,8 +51,8 @@ async def list_companies(
             | Company.website.ilike(pattern)
             | Company.industry.ilike(pattern)
         )
-    query = query.order_by(Company.name, Company.id).limit(filters.limit).offset(filters.offset)
-    return [CompanyRead.model_validate(c) for c in await session.scalars(query)]
+    query = sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Company.id)
+    return await paginate(session, query, filters, CompanyRead)
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -81,8 +98,10 @@ async def delete_company(
 
 @router.get("/{company_id}/contacts")
 async def list_company_contacts(
-    company_id: UUID, session: SessionDep, membership: CanReadCrm
-) -> list[ContactRead]:
+    company_id: UUID, session: SessionDep, membership: CanReadCrm, page: Annotated[Page, Query()]
+) -> PageOf[ContactRead]:
+    """Sorted by name. `GET .../contacts/?company_id=` is the same list with filters
+    and sorting."""
     await fetch_owned(session, Company, company_id, membership)
     query = (
         select(Contact)
@@ -90,4 +109,4 @@ async def list_company_contacts(
         .where(Contact.company_id == company_id)
         .order_by(Contact.name, Contact.id)
     )
-    return [ContactRead.model_validate(c) for c in await session.scalars(query)]
+    return await paginate(session, query, page, ContactRead)

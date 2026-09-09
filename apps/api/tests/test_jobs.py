@@ -153,7 +153,7 @@ def test_purge_removes_only_what_has_been_dead_long_enough(  # noqa: PLR0913, PL
     assert client.post("/auth/reset-password", json=reset_body).status_code == 404
     # Live logins and completed rows are untouched.
     assert alice.get("/members").status_code == 200
-    assert [c["name"] for c in alice.get("/contacts/").json()] == ["Grace"]
+    assert [c["name"] for c in alice.get("/contacts/").json()["items"]] == ["Grace"]
     assert db.run(run, later) == PurgeReport()
 
 

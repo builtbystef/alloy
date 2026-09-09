@@ -2,7 +2,7 @@
 
 import type { ContactCreate, ContactRead } from "@alloy/api-client";
 import { revalidateLogic } from "@tanstack/react-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,7 +15,7 @@ import { browserApi } from "@/lib/api-browser";
 import { errorMessage, unwrap } from "@/lib/api-error";
 import { isoToWallClock } from "@/lib/dates";
 import { contactStatusLabels } from "@/lib/labels";
-import { companyListQuery, invalidateCrm } from "@/lib/queries";
+import { companyPickerQuery, companyQuery, invalidateCrm } from "@/lib/queries";
 import { contactSchema, contactStatuses, type ContactInput } from "@/lib/schemas";
 import { useWorkspace } from "@/lib/workspace";
 
@@ -42,7 +42,6 @@ export function ContactForm({
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
   const { id: workspaceId, paths } = useWorkspace();
-  const companies = useQuery(companyListQuery(browserApi, workspaceId, {}));
 
   const mutation = useMutation({
     mutationFn: async (body: ContactCreate) =>
@@ -113,11 +112,12 @@ export function ContactForm({
           </form.AppField>
           <form.AppField name="company_id">
             {(field) => (
-              <field.SelectField
+              <field.ComboboxField
                 label="Company"
-                placeholder={companies.isPending ? "Loading…" : "No company"}
-                options={(companies.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-                disabled={companies.isPending}
+                placeholder="No company"
+                selected={contact?.company}
+                search={(q) => companyPickerQuery(browserApi, workspaceId, q)}
+                resolve={(id) => companyQuery(browserApi, workspaceId, id)}
               />
             )}
           </form.AppField>

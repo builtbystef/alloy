@@ -53,7 +53,7 @@ def test_upload_to_a_contact(alice: Actor, object_store: MemoryObjectStore, cont
     assert attachment["uploaded_by"]["email"] == alice.email
     assert attachment["uploaded_at"] is not None
 
-    assert alice.get(path).json() == [attachment]
+    assert alice.get(path).json()["items"] == [attachment]
     # The object sits under the workspace's prefix, so a workspace delete can find it.
     (key,) = object_store.objects
     assert key == f"workspaces/{alice.workspace}/attachments/{attachment['id']}"
@@ -64,7 +64,7 @@ def test_upload_to_a_company(alice: Actor, object_store: MemoryObjectStore, comp
     attachment = upload(alice, object_store, path, PDF, b"hello world")
     assert attachment["company_id"] == company["id"]
     assert attachment["contact_id"] is None
-    assert alice.get(path).json() == [attachment]
+    assert alice.get(path).json()["items"] == [attachment]
 
 
 def test_complete_is_idempotent_and_trusts_the_store(
@@ -85,7 +85,7 @@ def test_pending_uploads_are_hidden_until_complete(
     path = f"/contacts/{contact['id']}/attachments"
     ticket = alice.post(path, json=PDF).json()
     attachment_id = ticket["attachment"]["id"]
-    assert alice.get(path).json() == []
+    assert alice.get(path).json()["items"] == []
     download = alice.get(f"/attachments/{attachment_id}/download", follow_redirects=False)
     assert download.status_code == 404
 
@@ -94,7 +94,7 @@ def test_pending_uploads_are_hidden_until_complete(
 
     object_store.objects[object_store.key_of(ticket["upload_url"])] = (b"x", "application/pdf")
     assert alice.post(f"/attachments/{attachment_id}/complete").status_code == 200
-    assert [a["id"] for a in alice.get(path).json()] == [attachment_id]
+    assert [a["id"] for a in alice.get(path).json()["items"]] == [attachment_id]
 
 
 @pytest.fixture
@@ -123,7 +123,7 @@ def test_size_limit(alice: Actor, object_store: MemoryObjectStore, contact: dict
     object_store.objects[key] = (b"0123456789ab", "application/pdf")
     assert alice.post(f"/attachments/{ticket['attachment']['id']}/complete").status_code == 413
     assert key not in object_store.objects
-    assert alice.get(path).json() == []
+    assert alice.get(path).json()["items"] == []
 
     assert upload(alice, object_store, path, {**PDF, "size": 5}, b"12345")["size"] == 5
 
@@ -145,7 +145,7 @@ def test_delete_removes_the_object(alice: Actor, object_store: MemoryObjectStore
     attachment = upload(alice, object_store, path, PDF, b"hello world")
     assert alice.delete(f"/attachments/{attachment['id']}").status_code == 204
     assert object_store.objects == {}
-    assert alice.get(path).json() == []
+    assert alice.get(path).json()["items"] == []
     assert alice.delete(f"/attachments/{attachment['id']}").status_code == 404
 
 

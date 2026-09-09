@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { browserApi } from "@/lib/api-browser";
 import { contactStatusLabels } from "@/lib/labels";
-import { contactListQuery } from "@/lib/queries";
+import { contactListQuery, paged } from "@/lib/queries";
 import { contactStatuses, parseContactSearch, type ContactSearch } from "@/lib/schemas";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { useListState } from "@/lib/use-list-state";
 import { useUrlFilters } from "@/lib/use-url-filters";
 import { cn } from "@/lib/utils";
 import { useCan, useWorkspace } from "@/lib/workspace";
@@ -30,14 +31,19 @@ export function ContactsTable({
   const [search, setSearch] = useState(initialFilters.q ?? "");
   const [status, setStatus] = useState<ContactStatus | "">(initialFilters.status ?? "");
   const q = useDebouncedValue(search.trim(), 300);
-  const { deferred, isStale } = useUrlFilters(
-    { ...initialFilters, q: q || undefined, status: status || undefined },
-    parseContactSearch,
-  );
+  const filters = { ...initialFilters, q: q || undefined, status: status || undefined };
+  const list = useListState({
+    filterKey: `${filters.q ?? ""}\0${filters.status ?? ""}`,
+    initial: initialFilters,
+    defaultSort: { sort: "name", order: "asc" },
+  });
+  const { deferred, isStale } = useUrlFilters({ ...filters, ...list.search }, parseContactSearch);
 
   const { id: workspaceId, paths } = useWorkspace();
   const canWrite = useCan("crm:write");
-  const { data: contacts } = useSuspenseQuery(contactListQuery(browserApi, workspaceId, deferred));
+  const { data: contacts } = useSuspenseQuery(
+    contactListQuery(browserApi, workspaceId, paged(deferred)),
+  );
   const { confirmDelete, dialog } = useDeleteContact();
 
   return (
@@ -67,13 +73,17 @@ export function ContactsTable({
           ))}
         </NativeSelect>
         <span className="ml-auto text-sm text-muted-foreground">
-          {contacts.length} {contacts.length === 1 ? "contact" : "contacts"}
+          {contacts.total} {contacts.total === 1 ? "contact" : "contacts"}
         </span>
       </div>
       <DataTable<ContactRead>
         columns={contactColumns({ timeZone, paths, onDelete: canWrite ? confirmDelete : null })}
-        data={contacts}
-        initialSorting={[{ id: "name", desc: false }]}
+        data={contacts.items}
+        total={contacts.total}
+        page={list.page}
+        onPageChange={list.setPage}
+        sorting={list.sorting}
+        onSortingChange={list.setSorting}
         emptyMessage={
           deferred.q || deferred.status
             ? "No contacts match these filters."

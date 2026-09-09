@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
 
@@ -5,7 +6,15 @@ from fastapi import APIRouter, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from alloy_api.crm.common import Page, check_owned, fetch_owned
+from alloy_api.crm.common import (
+    Page,
+    PageOf,
+    SortOrder,
+    check_owned,
+    fetch_owned,
+    paginate,
+    sorted_by,
+)
 from alloy_api.crm.dates import UTC_ZONE, DueFilter, TimeZoneField, due_clause
 from alloy_api.crm.models import Activity, ActivityType, Company, Contact, Task, TaskStatus
 from alloy_api.crm.schemas import TaskCreate, TaskRead, TaskUpdate
@@ -18,6 +27,21 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 WITH_RELATIONS = (selectinload(Task.contact), selectinload(Task.company))
 
 
+class TaskSort(StrEnum):
+    DUE_AT = "due_at"
+    TITLE = "title"
+    CONTACT = "contact"
+    COMPANY = "company"
+
+
+SORT_COLUMNS = {
+    TaskSort.DUE_AT: Task.due_at,
+    TaskSort.TITLE: Task.title,
+    TaskSort.CONTACT: Contact.name,
+    TaskSort.COMPANY: Company.name,
+}
+
+
 class TaskFilters(Page):
     """`due` and `status` filter independently: pass both for open overdue tasks."""
 
@@ -26,16 +50,23 @@ class TaskFilters(Page):
     status: TaskStatus | None = None
     contact_id: UUID | None = None
     company_id: UUID | None = None
+    sort: TaskSort = TaskSort.DUE_AT
+    order: SortOrder = SortOrder.ASC
 
 
 @router.get("/")
 async def list_tasks(
     session: SessionDep, membership: CanReadCrm, filters: Annotated[TaskFilters, Query()]
-) -> list[TaskRead]:
-    """Soonest due first, undated last."""
+) -> PageOf[TaskRead]:
+    """Soonest due first unless `sort` says otherwise; tasks without a value for the
+    sort column (undated, or with no contact or company) come last either way."""
     query = (
         select(Task).options(*WITH_RELATIONS).where(Task.workspace_id == membership.workspace.id)
     )
+    if filters.sort is TaskSort.CONTACT:
+        query = query.outerjoin(Task.contact)
+    elif filters.sort is TaskSort.COMPANY:
+        query = query.outerjoin(Task.company)
     if filters.due is not None:
         query = query.where(due_clause(Task.due_at, filters.due, filters.tz))
     if filters.status is not None:
@@ -44,12 +75,8 @@ async def list_tasks(
         query = query.where(Task.contact_id == filters.contact_id)
     if filters.company_id is not None:
         query = query.where(Task.company_id == filters.company_id)
-    query = (
-        query.order_by(Task.due_at.asc().nulls_last(), Task.created_at, Task.id)
-        .limit(filters.limit)
-        .offset(filters.offset)
-    )
-    return [TaskRead.model_validate(t) for t in await session.scalars(query)]
+    query = sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Task.id)
+    return await paginate(session, query, filters, TaskRead)
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)

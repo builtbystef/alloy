@@ -101,7 +101,6 @@ export function companyColumns({
     column.accessor("created_at", {
       header: ({ column }) => <SortableHeader column={column}>Added</SortableHeader>,
       cell: ({ getValue }) => formatDate(getValue(), timeZone),
-      sortFn: "basic",
     }),
     ...(onDelete ? [actionsColumn] : []),
   ]);

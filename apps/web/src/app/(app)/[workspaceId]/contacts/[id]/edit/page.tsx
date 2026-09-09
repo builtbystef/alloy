@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import { FormSkeleton } from "@/components/skeletons";
-import { companyListQuery } from "@/lib/queries";
+import { companyPickerQuery } from "@/lib/queries";
 import { getQueryClient } from "@/lib/query-client";
 import { getSessionApi, requireWorkspace } from "@/lib/session";
 import { getTimeZone } from "@/lib/time-zone";
@@ -36,7 +36,7 @@ async function EditContactForm({ params }: { params: Params }) {
     api.GET("/workspaces/{workspace_id}/contacts/{contact_id}", {
       params: { path: { workspace_id: workspaceId, contact_id: id } },
     }),
-    queryClient.prefetchQuery(companyListQuery(api, workspaceId, {})),
+    queryClient.prefetchQuery(companyPickerQuery(api, workspaceId, "")),
   ]);
   if (!contact) notFound();
   return (

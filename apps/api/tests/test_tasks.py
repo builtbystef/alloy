@@ -64,7 +64,7 @@ def test_due_views(alice: Actor):
     def titles(**params: str) -> list[str]:
         response = alice.get("/tasks/", params=params)
         assert response.status_code == 200, response.text
-        return [t["title"] for t in response.json()]
+        return [t["title"] for t in response.json()["items"]]
 
     assert titles() == ["Overdue", "Today", "Upcoming", "Someday"]  # by due date, undated last
     assert titles(due="overdue") == ["Overdue"]
@@ -82,7 +82,7 @@ def test_today_depends_on_the_timezone(alice: Actor):
 
     def titles(due: str, tz: str) -> list[str]:
         response = alice.get("/tasks/", params={"due": due, "tz": tz})
-        return [t["title"] for t in response.json()]
+        return [t["title"] for t in response.json()["items"]]
 
     assert titles("today", "UTC") == ["Early"]
     assert titles("today", "Etc/GMT+12") == []
@@ -98,12 +98,36 @@ def test_filter_by_status_contact_and_company(alice: Actor):
     alice.post("/tasks/", json={"title": "C", "status": "done"})
 
     def titles(**params: str) -> list[str]:
-        return [t["title"] for t in alice.get("/tasks/", params=params).json()]
+        return [t["title"] for t in alice.get("/tasks/", params=params).json()["items"]]
 
     assert titles(status="open") == ["A", "B"]
     assert titles(status="done") == ["C"]
     assert titles(contact_id=contact["id"]) == ["A"]
     assert titles(company_id=company["id"]) == ["B"]
+
+
+def test_sort_tasks(alice: Actor):
+    company = alice.post("/companies/", json={"name": "Navy"}).json()
+    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    alice.post("/tasks/", json={"title": "B", "due_at": "2026-09-10T09:00:00Z"})
+    alice.post("/tasks/", json={"title": "C", "contact_id": contact["id"]})
+    alice.post(
+        "/tasks/",
+        json={"title": "A", "due_at": "2026-09-01T09:00:00Z", "company_id": company["id"]},
+    )
+
+    def titles(**params: str) -> list[str]:
+        response = alice.get("/tasks/", params=params)
+        assert response.status_code == 200, response.text
+        return [t["title"] for t in response.json()["items"]]
+
+    assert titles() == ["A", "B", "C"]  # soonest first, undated last
+    assert titles(sort="due_at", order="desc") == ["B", "A", "C"]  # still undated last
+    assert titles(sort="title") == ["A", "B", "C"]
+    assert titles(sort="title", order="desc") == ["C", "B", "A"]
+    assert titles(sort="contact") == ["C", "B", "A"]
+    assert titles(sort="company", order="desc") == ["A", "B", "C"]
+    assert alice.get("/tasks/", params={"sort": "notes"}).status_code == 422
 
 
 def test_update_and_delete_a_task(alice: Actor):
@@ -128,7 +152,7 @@ def test_completing_a_task_is_logged_on_the_contact(alice: Actor):
     # Saving an already done task again does not log it twice.
     alice.patch(f"/tasks/{task['id']}", json={"status": "done", "notes": "Sent"})
 
-    feed = alice.get(f"/contacts/{contact['id']}/activities").json()
+    feed = alice.get(f"/contacts/{contact['id']}/activities").json()["items"]
     assert [(a["type"], a["notes"]) for a in feed] == [("task_completed", "Send proposal")]
 
 
@@ -141,7 +165,7 @@ def test_deleting_a_contact_keeps_its_tasks(alice: Actor):
 
 def test_users_only_see_their_own_tasks(alice: Actor, bob: Actor):
     task = alice.post("/tasks/", json={"title": "A"}).json()
-    assert bob.get("/tasks/").json() == []
+    assert bob.get("/tasks/").json()["items"] == []
     assert bob.get(f"/tasks/{task['id']}").status_code == 404
     assert bob.patch(f"/tasks/{task['id']}", json={"title": "X"}).status_code == 404
     assert bob.delete(f"/tasks/{task['id']}").status_code == 404

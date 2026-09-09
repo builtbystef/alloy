@@ -116,8 +116,6 @@ export function contactColumns({
           <span className="text-muted-foreground">Never</span>
         );
       },
-      sortFn: "basic",
-      sortUndefined: "last",
     }),
     ...(onDelete ? [actionsColumn] : []),
   ]);

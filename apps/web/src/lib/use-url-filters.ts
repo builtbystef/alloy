@@ -8,7 +8,7 @@ import { toSearchString } from "./schemas";
  * the deferred copy lets `useSuspenseQuery` keep showing the previous rows
  * while the next filter's data loads.
  */
-export function useUrlFilters<T extends Record<string, string | undefined>>(
+export function useUrlFilters<T extends Record<string, string | number | undefined>>(
   filters: T,
   parse: (params: URLSearchParams) => T,
 ): { deferred: T; isStale: boolean } {

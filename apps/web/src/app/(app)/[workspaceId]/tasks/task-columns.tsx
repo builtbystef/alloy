@@ -125,8 +125,6 @@ export function taskColumns({
           </span>
         );
       },
-      sortFn: "basic",
-      sortUndefined: "last",
     }),
     column.accessor((row) => row.contact?.name ?? "", {
       id: "contact",

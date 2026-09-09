@@ -1,7 +1,13 @@
 "use client";
 
+import type { QueryKey } from "@tanstack/react-query";
 import type { ComponentProps } from "react";
 
+import {
+  EntityCombobox,
+  type EntityComboboxProps,
+  type EntityOption,
+} from "@/components/entity-combobox";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
@@ -116,6 +122,40 @@ export function SelectField({
           </NativeSelectOption>
         ))}
       </NativeSelect>
+      {description && <FieldDescription>{description}</FieldDescription>}
+      {invalid && <FieldError errors={field.state.meta.errors} />}
+    </Field>
+  );
+}
+
+/** A contact or company chosen by name; the value is its id, "" for none. */
+export function ComboboxField<
+  P extends { items: readonly EntityOption[]; total: number },
+  R extends EntityOption,
+  PK extends QueryKey,
+  RK extends QueryKey,
+>({
+  label,
+  description,
+  ...pickerProps
+}: CommonProps &
+  Omit<
+    EntityComboboxProps<P, R, PK, RK>,
+    "id" | "name" | "value" | "onValueChange" | "onBlur" | "invalid"
+  >) {
+  const { field, invalid } = useFieldState();
+  return (
+    <Field data-invalid={invalid}>
+      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <EntityCombobox
+        id={field.name}
+        name={field.name}
+        value={field.state.value}
+        onValueChange={field.handleChange}
+        onBlur={field.handleBlur}
+        invalid={invalid}
+        {...pickerProps}
+      />
       {description && <FieldDescription>{description}</FieldDescription>}
       {invalid && <FieldError errors={field.state.meta.errors} />}
     </Field>

@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from alloy_api.config import SettingsDep
 from alloy_api.crm.attachments import storage_prefix
-from alloy_api.crm.common import Page, fetch_owned
+from alloy_api.crm.common import Page, PageOf, fetch_owned, paginate
 from alloy_api.crm.models import Import, ImportStatus
 from alloy_api.crm.schemas import ImportCreate, ImportRead, ImportUpload
 from alloy_api.db import SessionDep
@@ -42,17 +42,15 @@ def too_large(settings: SettingsDep) -> HTTPException:
 @router.get("/")
 async def list_imports(
     session: SessionDep, membership: CanReadCrm, page: Annotated[Page, Query()]
-) -> list[ImportRead]:
+) -> PageOf[ImportRead]:
     """Newest first, whatever their state."""
     query = (
         select(Import)
         .options(WITH_REQUESTER)
         .where(Import.workspace_id == membership.workspace.id)
         .order_by(Import.created_at.desc(), Import.id.desc())
-        .limit(page.limit)
-        .offset(page.offset)
     )
-    return [ImportRead.model_validate(i) for i in await session.scalars(query)]
+    return await paginate(session, query, page, ImportRead)
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)

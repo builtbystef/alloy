@@ -82,14 +82,14 @@ def test_import_contacts(alice: Actor, object_store: MemoryObjectStore):
     # The file is not kept.
     assert object_store.objects == {}
 
-    contacts = {c["name"]: c for c in alice.get("/contacts/").json()}
+    contacts = {c["name"]: c for c in alice.get("/contacts/").json()["items"]}
     assert set(contacts) == {"Grace", "Ada Lovelace", "Charles Babbage", "No Email", "Grace Hopper"}
     assert contacts["Grace Hopper"]["job_title"] == "Rear Admiral"
     assert contacts["Grace Hopper"]["status"] == "active"
     assert contacts["No Email"]["email"] is None
     assert contacts["No Email"]["status"] == "lead"
     # One company per name, whatever the case, created once for the file.
-    companies = {c["name"]: c["id"] for c in alice.get("/companies/").json()}
+    companies = {c["name"]: c["id"] for c in alice.get("/companies/").json()["items"]}
     assert set(companies) == {"Acme", "US Navy", "Analytical Engines"}
     assert companies["Acme"] == acme["id"]
     assert contacts["Ada Lovelace"]["company"]["id"] == companies["Analytical Engines"]
@@ -113,7 +113,7 @@ def test_import_companies(alice: Actor, object_store: MemoryObjectStore):
     assert (record["created_count"], record["skipped_count"], record["failed_count"]) == (1, 2, 1)
     assert record["errors"][0]["row"] == 4
     assert record["errors"][0]["message"].startswith("website: ")
-    companies = {c["name"]: c for c in alice.get("/companies/").json()}
+    companies = {c["name"]: c for c in alice.get("/companies/").json()["items"]}
     assert set(companies) == {"Acme", "Initech"}
     assert companies["Acme"]["website"] == "https://acme.test"
     assert companies["Acme"]["notes"] == "Beep beep"
@@ -126,7 +126,7 @@ def test_a_file_without_a_name_column_fails_as_a_whole(
     assert record["status"] == "failed"
     assert record["error"] == "The header row has no 'name' column"
     assert record["created_count"] == 0
-    assert alice.get("/contacts/").json() == []
+    assert alice.get("/contacts/").json()["items"] == []
     assert object_store.objects == {}
 
 
@@ -167,8 +167,8 @@ def test_imports_are_listed_newest_first_and_per_workspace(
 ):
     first = upload(alice, object_store, "companies", "name\nAcme\n")
     second = upload(alice, object_store, "contacts", "name\nGrace\n")
-    assert [i["id"] for i in alice.get("/imports/").json()] == [second["id"], first["id"]]
-    assert bob.get("/imports/").json() == []
+    assert [i["id"] for i in alice.get("/imports/").json()["items"]] == [second["id"], first["id"]]
+    assert bob.get("/imports/").json()["items"] == []
     assert client.get(alice.ws(f"/imports/{first['id']}"), headers=bob.headers).status_code == 404
     assert (
         client.post(alice.ws(f"/imports/{first['id']}/start"), headers=bob.headers).status_code

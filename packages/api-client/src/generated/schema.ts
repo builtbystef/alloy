@@ -482,7 +482,8 @@ export interface paths {
         };
         /**
          * List Companies
-         * @description Sorted by name.
+         * @description Sorted by name unless `sort` says otherwise; companies without a value for the
+         *     sort column come last either way.
          */
         get: operations["companies-list_companies"];
         put?: never;
@@ -524,7 +525,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Company Contacts */
+        /**
+         * List Company Contacts
+         * @description Sorted by name. `GET .../contacts/?company_id=` is the same list with filters
+         *     and sorting.
+         */
         get: operations["companies-list_company_contacts"];
         put?: never;
         post?: never;
@@ -543,7 +548,8 @@ export interface paths {
         };
         /**
          * List Contacts
-         * @description Sorted by name.
+         * @description Sorted by name unless `sort` says otherwise; contacts without a value for the
+         *     sort column come last either way.
          */
         get: operations["contacts-list_contacts"];
         put?: never;
@@ -611,7 +617,8 @@ export interface paths {
         };
         /**
          * List Tasks
-         * @description Soonest due first, undated last.
+         * @description Soonest due first unless `sort` says otherwise; tasks without a value for the
+         *     sort column (undated, or with no contact or company) come last either way.
          */
         get: operations["tasks-list_tasks"];
         put?: never;
@@ -1001,6 +1008,11 @@ export interface components {
             /** Name */
             name: string;
         };
+        /**
+         * CompanySort
+         * @enum {string}
+         */
+        CompanySort: "name" | "industry" | "created_at";
         /** CompanyUpdate */
         CompanyUpdate: {
             /** Name */
@@ -1069,6 +1081,11 @@ export interface components {
             /** Name */
             name: string;
         };
+        /**
+         * ContactSort
+         * @enum {string}
+         */
+        ContactSort: "name" | "company" | "status" | "last_contacted_at";
         /**
          * ContactStatus
          * @enum {string}
@@ -1292,6 +1309,90 @@ export interface components {
         MemberUpdate: {
             role: components["schemas"]["WorkspaceRole"];
         };
+        /** ActivityPage */
+        PageOf_ActivityRead_: {
+            /** Items */
+            items: components["schemas"]["ActivityRead"][];
+            /**
+             * Total
+             * @description Rows matching the filters, across every page.
+             */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** AttachmentPage */
+        PageOf_AttachmentRead_: {
+            /** Items */
+            items: components["schemas"]["AttachmentRead"][];
+            /**
+             * Total
+             * @description Rows matching the filters, across every page.
+             */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** CompanyPage */
+        PageOf_CompanyRead_: {
+            /** Items */
+            items: components["schemas"]["CompanyRead"][];
+            /**
+             * Total
+             * @description Rows matching the filters, across every page.
+             */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** ContactPage */
+        PageOf_ContactRead_: {
+            /** Items */
+            items: components["schemas"]["ContactRead"][];
+            /**
+             * Total
+             * @description Rows matching the filters, across every page.
+             */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** ImportPage */
+        PageOf_ImportRead_: {
+            /** Items */
+            items: components["schemas"]["ImportRead"][];
+            /**
+             * Total
+             * @description Rows matching the filters, across every page.
+             */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** TaskPage */
+        PageOf_TaskRead_: {
+            /** Items */
+            items: components["schemas"]["TaskRead"][];
+            /**
+             * Total
+             * @description Rows matching the filters, across every page.
+             */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** PasswordChange */
         PasswordChange: {
             /** Current Password */
@@ -1332,6 +1433,11 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * SortOrder
+         * @enum {string}
+         */
+        SortOrder: "asc" | "desc";
         /** TaskCreate */
         TaskCreate: {
             /** Title */
@@ -1374,6 +1480,11 @@ export interface components {
              */
             updated_at: string;
         };
+        /**
+         * TaskSort
+         * @enum {string}
+         */
+        TaskSort: "due_at" | "title" | "contact" | "company";
         /**
          * TaskStatus
          * @enum {string}
@@ -1491,10 +1602,12 @@ export type AttachmentUpload = components['schemas']['AttachmentUpload'];
 export type CompanyCreate = components['schemas']['CompanyCreate'];
 export type CompanyRead = components['schemas']['CompanyRead'];
 export type CompanyRef = components['schemas']['CompanyRef'];
+export type CompanySort = components['schemas']['CompanySort'];
 export type CompanyUpdate = components['schemas']['CompanyUpdate'];
 export type ContactCreate = components['schemas']['ContactCreate'];
 export type ContactRead = components['schemas']['ContactRead'];
 export type ContactRef = components['schemas']['ContactRef'];
+export type ContactSort = components['schemas']['ContactSort'];
 export type ContactStatus = components['schemas']['ContactStatus'];
 export type ContactUpdate = components['schemas']['ContactUpdate'];
 export type Credentials = components['schemas']['Credentials'];
@@ -1513,13 +1626,21 @@ export type InvitePreview = components['schemas']['InvitePreview'];
 export type InviteRead = components['schemas']['InviteRead'];
 export type MemberRead = components['schemas']['MemberRead'];
 export type MemberUpdate = components['schemas']['MemberUpdate'];
+export type PageOfActivityRead = components['schemas']['PageOf_ActivityRead_'];
+export type PageOfAttachmentRead = components['schemas']['PageOf_AttachmentRead_'];
+export type PageOfCompanyRead = components['schemas']['PageOf_CompanyRead_'];
+export type PageOfContactRead = components['schemas']['PageOf_ContactRead_'];
+export type PageOfImportRead = components['schemas']['PageOf_ImportRead_'];
+export type PageOfTaskRead = components['schemas']['PageOf_TaskRead_'];
 export type PasswordChange = components['schemas']['PasswordChange'];
 export type PasswordReset = components['schemas']['PasswordReset'];
 export type PasswordResetRequest = components['schemas']['PasswordResetRequest'];
 export type Permission = components['schemas']['Permission'];
 export type RowError = components['schemas']['RowError'];
+export type SortOrder = components['schemas']['SortOrder'];
 export type TaskCreate = components['schemas']['TaskCreate'];
 export type TaskRead = components['schemas']['TaskRead'];
+export type TaskSort = components['schemas']['TaskSort'];
 export type TaskStatus = components['schemas']['TaskStatus'];
 export type TaskUpdate = components['schemas']['TaskUpdate'];
 export type UploaderRef = components['schemas']['UploaderRef'];
@@ -2298,6 +2419,8 @@ export interface operations {
                 offset?: number;
                 /** @description Matches name, website, or industry. */
                 q?: string | null;
+                sort?: components["schemas"]["CompanySort"];
+                order?: components["schemas"]["SortOrder"];
             };
             header?: never;
             path: {
@@ -2313,7 +2436,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CompanyRead"][];
+                    "application/json": components["schemas"]["PageOf_CompanyRead_"];
                 };
             };
             /** @description Validation Error */
@@ -2462,7 +2585,10 @@ export interface operations {
     };
     "companies-list_company_contacts": {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path: {
                 company_id: string;
@@ -2478,7 +2604,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContactRead"][];
+                    "application/json": components["schemas"]["PageOf_ContactRead_"];
                 };
             };
             /** @description Validation Error */
@@ -2501,6 +2627,8 @@ export interface operations {
                 q?: string | null;
                 status?: components["schemas"]["ContactStatus"] | null;
                 company_id?: string | null;
+                sort?: components["schemas"]["ContactSort"];
+                order?: components["schemas"]["SortOrder"];
             };
             header?: never;
             path: {
@@ -2516,7 +2644,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContactRead"][];
+                    "application/json": components["schemas"]["PageOf_ContactRead_"];
                 };
             };
             /** @description Validation Error */
@@ -2684,7 +2812,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ActivityRead"][];
+                    "application/json": components["schemas"]["PageOf_ActivityRead_"];
                 };
             };
             /** @description Validation Error */
@@ -2745,6 +2873,8 @@ export interface operations {
                 status?: components["schemas"]["TaskStatus"] | null;
                 contact_id?: string | null;
                 company_id?: string | null;
+                sort?: components["schemas"]["TaskSort"];
+                order?: components["schemas"]["SortOrder"];
             };
             header?: never;
             path: {
@@ -2760,7 +2890,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskRead"][];
+                    "application/json": components["schemas"]["PageOf_TaskRead_"];
                 };
             };
             /** @description Validation Error */
@@ -2966,7 +3096,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttachmentRead"][];
+                    "application/json": components["schemas"]["PageOf_AttachmentRead_"];
                 };
             };
             /** @description Validation Error */
@@ -3037,7 +3167,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttachmentRead"][];
+                    "application/json": components["schemas"]["PageOf_AttachmentRead_"];
                 };
             };
             /** @description Validation Error */
@@ -3201,7 +3331,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportRead"][];
+                    "application/json": components["schemas"]["PageOf_ImportRead_"];
                 };
             };
             /** @description Validation Error */
