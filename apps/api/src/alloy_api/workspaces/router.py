@@ -12,6 +12,7 @@ from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
 from alloy_api.jobs.emails import send_email
 from alloy_api.models import utcnow
+from alloy_api.ratelimit import INVITE_SEND_PER_USER, LimiterDep
 from alloy_api.storage import ObjectStoreDep
 from alloy_api.workspaces.deps import (
     CanDeleteWorkspace,
@@ -231,11 +232,13 @@ async def create_invite(
     membership: CanManageMembers,
     session: SessionDep,
     settings: SettingsDep,
+    limiter: LimiterDep,
 ) -> InviteRead:
     """Email a link that grants `role`. One pending invitation per address; 409 if the
     address is already a member or already invited."""
     if not can_manage_role(membership.role, body.role):
         raise role_forbidden()
+    await limiter.hit(INVITE_SEND_PER_USER, str(membership.user.id))
     email = body.email.lower()
     workspace_id = membership.workspace.id
 

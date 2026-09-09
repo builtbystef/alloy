@@ -35,6 +35,7 @@ FORGOT_PASSWORD_PER_IP = Limit("forgot-password:ip", 10, timedelta(hours=1))
 FORGOT_PASSWORD_PER_EMAIL = Limit("forgot-password:email", 3, timedelta(hours=1))
 RESEND_VERIFICATION_PER_USER = Limit("resend-verification:user", 3, timedelta(hours=1))
 CHANGE_EMAIL_PER_USER = Limit("change-email:user", 3, timedelta(hours=1))
+INVITE_SEND_PER_USER = Limit("invite-send:user", 20, timedelta(hours=1))
 # Not against guessing (tokens are 32 random bytes): keeps scanners off the database.
 TOKEN_PER_IP = Limit("token:ip", 10, timedelta(minutes=1))
 INVITE_ACCEPT_PER_USER = Limit("invite-accept:user", 10, timedelta(minutes=1))
@@ -210,6 +211,7 @@ __all__ = [
     "FORGOT_PASSWORD_PER_EMAIL",
     "FORGOT_PASSWORD_PER_IP",
     "INVITE_ACCEPT_PER_USER",
+    "INVITE_SEND_PER_USER",
     "LOGIN_PER_EMAIL",
     "LOGIN_PER_IP",
     "RESEND_VERIFICATION_PER_USER",
