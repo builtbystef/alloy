@@ -346,8 +346,8 @@ down meanwhile. Until the purge, the address still counts as registered.
 
 ### Rate limits
 
-`ratelimit.py` guards what can be called without a login, plus the two
-logged-in endpoints that send mail or take a token. Fixed-window counters:
+`ratelimit.py` guards what can be called without a login, plus the logged-in
+endpoints that send mail or take a token. Fixed-window counters:
 the first hit starts a window, each hit adds one, and past the limit the
 answer is 429 with `Retry-After` set to what is left of the window. A
 `Limit` names the policy; the subject (client address, email, user id) picks
@@ -366,13 +366,15 @@ count.
 | `POST /auth/change-email`                                                              | user            | 3 per hour    |
 | `POST /auth/verify-email`, `/reset-password`, `/confirm-email`, `GET /invites/{token}` | address         | 10 per minute |
 | `POST /invites/{token}/accept`                                                         | user            | 10 per minute |
+| `POST /workspaces/{id}/invites`                                                        | user            | 20 per hour   |
 
 Login checks both counters before the password hash, which is slow by design,
 so a blocked attempt costs nothing; the email counter counts wrong passwords
 only and is cleared by a right one, so a botnet working on one account is
 stopped without locking the real user out for good. `forgot-password` counts
 per address whether or not the account exists, so the limit reveals nothing
-the 204 hides. Every trip is logged at WARNING with the limit's name and the
+the 204 hides. `change-email` counts before its 409 for a taken address, so
+it cannot be used to test addresses. Every trip is logged at WARNING with the limit's name and the
 subject.
 
 The counters live in Redis (`ALLOY_RATE_LIMIT_STORE=redis`, the default, on

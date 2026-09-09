@@ -231,3 +231,25 @@ def test_invite_acceptance_is_limited_per_user(alice: Actor, new_actor: Callable
         assert alice.client.post("/invites/nope/accept", headers=guest.headers).status_code == 404
     assert alice.client.post("/invites/nope/accept", headers=guest.headers).status_code == 429
     assert alice.client.post("/invites/nope/accept", headers=alice.headers).status_code == 404
+
+
+def test_invitations_sent_by_one_user_are_limited(alice: Actor, outbox: Outbox):
+    outbox.clear()
+    for i in range(20):
+        assert alice.post("/invites", json={"email": f"guest{i}@example.com"}).status_code == 201
+    assert alice.post("/invites", json={"email": "guest20@example.com"}).status_code == 429
+    assert len(outbox) == 20
+
+
+def test_change_email_counts_a_taken_address(client: TestClient, outbox: Outbox):
+    """The 409 for a registered address must cost an attempt, or the endpoint would
+    test addresses without limit."""
+    client.post("/auth/signup", json={"email": "taken@example.com", "password": "long enough"})
+    client.post("/auth/logout")
+    client.post("/auth/signup", json=CREDENTIALS)
+    outbox.clear()
+    body = {"new_email": "taken@example.com", "current_password": CREDENTIALS["password"]}
+    for _ in range(3):
+        assert client.post("/auth/change-email", json=body).status_code == 409
+    assert client.post("/auth/change-email", json=body).status_code == 429
+    assert len(outbox) == 0
