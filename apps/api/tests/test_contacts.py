@@ -26,6 +26,7 @@ def test_create_and_read_a_contact(alice: Actor):
     assert contact["status"] == "lead"
     assert contact["company"] is None
     assert contact["last_contacted_at"] is None
+    assert contact["created_by"]["email"] == alice.email
 
     assert alice.get(f"/contacts/{contact['id']}").json() == contact
 
@@ -165,6 +166,7 @@ def test_activity_feed_is_newest_first(alice: Actor):
     assert first.json()["type"] == "note"
     assert first.json()["notes"] == "Prefers email"
     assert first.json()["contact_id"] == contact["id"]
+    assert first.json()["created_by"]["email"] == alice.email
 
     alice.post(url, json={"type": "call"})
     feed = alice.get(url).json()["items"]

@@ -102,7 +102,12 @@ export function ContactDetail({ id, timeZone }: { id: string; timeZone: string }
                     </span>
                   ) : null}
                 </Detail>
-                <Detail label="Added">{formatDateTime(contact.created_at, timeZone)}</Detail>
+                <Detail label="Added">
+                  {formatDateTime(contact.created_at, timeZone)}
+                  {contact.created_by && (
+                    <span className="text-muted-foreground"> by {contact.created_by.email}</span>
+                  )}
+                </Detail>
               </dl>
             </CardContent>
           </Card>

@@ -97,7 +97,9 @@ async def create_contact(
     body: ContactCreate, session: SessionDep, membership: CanWriteCrm
 ) -> ContactRead:
     await check_owned(session, Company, body.company_id, membership)
-    contact = Contact(workspace_id=membership.workspace.id, **body.model_dump())
+    contact = Contact(
+        workspace_id=membership.workspace.id, created_by=membership.user, **body.model_dump()
+    )
     session.add(contact)
     await session.commit()
     await session.refresh(contact, ["company"])
@@ -159,7 +161,13 @@ async def create_activity(
     """A call, email, meeting, or follow-up also marks the contact as contacted now."""
     contact = await fetch_owned(session, Contact, contact_id, membership)
     now = utcnow()
-    activity = Activity(contact_id=contact.id, type=body.type, notes=body.notes, created_at=now)
+    activity = Activity(
+        contact_id=contact.id,
+        type=body.type,
+        notes=body.notes,
+        created_by=membership.user,
+        created_at=now,
+    )
     session.add(activity)
     if body.type in CONTACT_ACTIVITY_TYPES:
         contact.last_contacted_at = now

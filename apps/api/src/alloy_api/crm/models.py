@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, BigInteger, CheckConstraint, DateTime, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
 from alloy_api.models import Base, Timestamps, UUIDPrimaryKey, string_enum
 
@@ -63,7 +63,20 @@ class OwnedByWorkspace(UUIDPrimaryKey):
     )
 
 
-class Company(OwnedByWorkspace, Timestamps, Base):
+class CreatedBy:
+    """Who made the row. Null for rows that predate the column, and once the user
+    is gone. Loaded with the row: every read shows it."""
+
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), sort_order=90
+    )
+
+    @declared_attr
+    def created_by(self) -> Mapped[User | None]:
+        return relationship("User", lazy="selectin")
+
+
+class Company(OwnedByWorkspace, CreatedBy, Timestamps, Base):
     __tablename__ = "companies"
 
     name: Mapped[str] = mapped_column(String(200))
@@ -74,7 +87,7 @@ class Company(OwnedByWorkspace, Timestamps, Base):
     contacts: Mapped[list["Contact"]] = relationship(back_populates="company")
 
 
-class Contact(OwnedByWorkspace, Timestamps, Base):
+class Contact(OwnedByWorkspace, CreatedBy, Timestamps, Base):
     __tablename__ = "contacts"
 
     company_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -95,8 +108,9 @@ class Contact(OwnedByWorkspace, Timestamps, Base):
     )
 
 
-class Activity(UUIDPrimaryKey, Base):
-    """One entry in a contact's feed. Owned through the contact."""
+class Activity(UUIDPrimaryKey, CreatedBy, Base):
+    """One entry in a contact's feed. Owned through the contact. `created_by` is
+    who logged it, or who completed the task for a `task_completed` entry."""
 
     __tablename__ = "activities"
 
@@ -110,7 +124,7 @@ class Activity(UUIDPrimaryKey, Base):
     contact: Mapped[Contact] = relationship(back_populates="activities")
 
 
-class Task(OwnedByWorkspace, Timestamps, Base):
+class Task(OwnedByWorkspace, CreatedBy, Timestamps, Base):
     __tablename__ = "tasks"
 
     contact_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -54,6 +54,13 @@ class CompanyUpdate(BaseModel):
     notes: Notes | None = None
 
 
+class UserRef(ReadModel):
+    """Enough to name the user who made or uploaded something."""
+
+    id: UUID
+    email: str
+
+
 class CompanyRef(ReadModel):
     """Enough to link to a company from a contact or task."""
 
@@ -65,6 +72,7 @@ class CompanyRead(CompanyRef):
     website: str | None
     industry: str | None
     notes: str | None
+    created_by: UserRef | None
     created_at: datetime
     updated_at: datetime
 
@@ -101,6 +109,7 @@ class ContactRead(ContactRef):
     status: ContactStatus
     last_contacted_at: datetime | None
     company: CompanyRef | None
+    created_by: UserRef | None
     created_at: datetime
     updated_at: datetime
 
@@ -115,6 +124,9 @@ class ActivityRead(ReadModel):
     contact_id: UUID
     type: ActivityType
     notes: str | None
+    created_by: UserRef | None = Field(
+        description="Who logged it; for `task_completed`, who completed the task."
+    )
     created_at: datetime
 
 
@@ -144,6 +156,7 @@ class TaskRead(ReadModel):
     notes: str | None
     contact: ContactRef | None
     company: CompanyRef | None
+    created_by: UserRef | None
     created_at: datetime
     updated_at: datetime
 
@@ -170,11 +183,6 @@ class AttachmentCreate(BaseModel):
     size: int = Field(ge=1, description="Bytes.")
 
 
-class UploaderRef(ReadModel):
-    id: UUID
-    email: str
-
-
 class AttachmentRead(ReadModel):
     id: UUID
     contact_id: UUID | None
@@ -182,7 +190,7 @@ class AttachmentRead(ReadModel):
     filename: str
     content_type: str
     size: int
-    uploaded_by: UploaderRef | None
+    uploaded_by: UserRef | None
     uploaded_at: datetime | None
     created_at: datetime
 
@@ -216,7 +224,7 @@ class ImportRead(ReadModel):
     status: ImportStatus
     filename: str
     size: int
-    requested_by: UploaderRef | None
+    requested_by: UserRef | None
     started_at: datetime | None
     finished_at: datetime | None
     total_rows: int

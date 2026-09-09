@@ -84,7 +84,10 @@ def validation_message(exc: ValidationError) -> str:
     )
 
 
-async def import_companies(session: AsyncSession, workspace_id: UUID, data: bytes) -> ImportReport:
+async def import_companies(
+    session: AsyncSession, workspace_id: UUID, data: bytes, created_by_user_id: UUID | None
+) -> ImportReport:
+    """Rows are credited to the user who requested the import."""
     report = ImportReport()
     existing = {
         name.lower()
@@ -102,13 +105,21 @@ async def import_companies(session: AsyncSession, workspace_id: UUID, data: byte
         if body.name.lower() in existing:
             report.skipped += 1
             continue
-        session.add(Company(workspace_id=workspace_id, **body.model_dump()))
+        session.add(
+            Company(
+                workspace_id=workspace_id,
+                created_by_user_id=created_by_user_id,
+                **body.model_dump(),
+            )
+        )
         existing.add(body.name.lower())
         report.created += 1
     return report
 
 
-async def import_contacts(session: AsyncSession, workspace_id: UUID, data: bytes) -> ImportReport:
+async def import_contacts(
+    session: AsyncSession, workspace_id: UUID, data: bytes, created_by_user_id: UUID | None
+) -> ImportReport:
     report = ImportReport()
     existing_emails = {
         email.lower()
@@ -134,11 +145,17 @@ async def import_contacts(session: AsyncSession, workspace_id: UUID, data: bytes
         if body.email is not None and body.email.lower() in existing_emails:
             report.skipped += 1
             continue
-        contact = Contact(workspace_id=workspace_id, **body.model_dump())
+        contact = Contact(
+            workspace_id=workspace_id, created_by_user_id=created_by_user_id, **body.model_dump()
+        )
         if company_name is not None:
             company = companies.get(company_name.lower())
             if company is None:
-                company = Company(workspace_id=workspace_id, name=company_name[:200])
+                company = Company(
+                    workspace_id=workspace_id,
+                    created_by_user_id=created_by_user_id,
+                    name=company_name[:200],
+                )
                 session.add(company)
                 companies[company_name.lower()] = company
             contact.company = company
@@ -167,9 +184,13 @@ async def run_import(session: AsyncSession, store: ObjectStore, import_id: UUID)
     try:
         data = await store.get(record.key)
         if record.kind is ImportKind.CONTACTS:
-            report = await import_contacts(session, record.workspace_id, data)
+            report = await import_contacts(
+                session, record.workspace_id, data, record.requested_by_user_id
+            )
         else:
-            report = await import_companies(session, record.workspace_id, data)
+            report = await import_companies(
+                session, record.workspace_id, data, record.requested_by_user_id
+            )
     except Exception as exc:
         logger.exception("Import %s failed", import_id)
         await session.rollback()

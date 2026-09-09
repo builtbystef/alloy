@@ -84,14 +84,15 @@ export function TaskList({
                     >
                       {task.title}
                     </span>
-                    {task.due_at && (
-                      <span
-                        className={cn(
-                          "text-xs text-muted-foreground",
-                          overdue && "font-medium text-destructive",
+                    {(task.due_at || task.created_by) && (
+                      <span className="text-xs text-muted-foreground">
+                        {task.due_at && (
+                          <span className={cn(overdue && "font-medium text-destructive")}>
+                            Due {formatRelativeDays(task.due_at, timeZone)}
+                          </span>
                         )}
-                      >
-                        Due {formatRelativeDays(task.due_at, timeZone)}
+                        {task.due_at && task.created_by && " · "}
+                        {task.created_by && `Added by ${task.created_by.email}`}
                       </span>
                     )}
                   </div>

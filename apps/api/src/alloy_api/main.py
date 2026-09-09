@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 settings = get_settings()
 
-logs.configure(settings.log_level)
+logs.configure(settings.log_level, settings.log_format)
 if (log_handler := telemetry.configure(settings, service_name="alloy-api")) is not None:
     logging.getLogger().addHandler(log_handler)
 

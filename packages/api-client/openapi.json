@@ -3534,6 +3534,17 @@
             ],
             "title": "Notes"
           },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who logged it; for `task_completed`, who completed the task."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3546,6 +3557,7 @@
           "contact_id",
           "type",
           "notes",
+          "created_by",
           "created_at"
         ],
         "title": "ActivityRead"
@@ -3638,7 +3650,7 @@
           "uploaded_by": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/UploaderRef"
+                "$ref": "#/components/schemas/UserRef"
               },
               {
                 "type": "null"
@@ -3796,6 +3808,16 @@
             ],
             "title": "Notes"
           },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3814,6 +3836,7 @@
           "website",
           "industry",
           "notes",
+          "created_by",
           "created_at",
           "updated_at"
         ],
@@ -4051,6 +4074,16 @@
               }
             ]
           },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4072,6 +4105,7 @@
           "status",
           "last_contacted_at",
           "company",
+          "created_by",
           "created_at",
           "updated_at"
         ],
@@ -4408,7 +4442,7 @@
           "requested_by": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/UploaderRef"
+                "$ref": "#/components/schemas/UserRef"
               },
               {
                 "type": "null"
@@ -5101,6 +5135,16 @@
               }
             ]
           },
+          "created_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -5121,6 +5165,7 @@
           "notes",
           "contact",
           "company",
+          "created_by",
           "created_at",
           "updated_at"
         ],
@@ -5221,25 +5266,6 @@
         "type": "object",
         "title": "TaskUpdate"
       },
-      "UploaderRef": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "email": {
-            "type": "string",
-            "title": "Email"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "email"
-        ],
-        "title": "UploaderRef"
-      },
       "UserRead": {
         "properties": {
           "id": {
@@ -5289,6 +5315,26 @@
           "created_at"
         ],
         "title": "UserRead"
+      },
+      "UserRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email"
+        ],
+        "title": "UserRef",
+        "description": "Enough to name the user who made or uploaded something."
       },
       "ValidationError": {
         "properties": {

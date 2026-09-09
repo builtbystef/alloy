@@ -15,7 +15,7 @@ settings = get_settings()
 # The worker's child processes start with no log handler (Taskiq configures one
 # only for the `spawn` start method, and Python 3.14 forks with `forkserver`), so
 # the app's loggers, the console mailer included, would print nothing.
-logs.configure(settings.log_level)
+logs.configure(settings.log_level, settings.log_format)
 
 broker = create_broker(settings)
 scheduler = create_scheduler(broker, settings)

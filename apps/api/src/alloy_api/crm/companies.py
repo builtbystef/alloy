@@ -59,7 +59,9 @@ async def list_companies(
 async def create_company(
     body: CompanyCreate, session: SessionDep, membership: CanWriteCrm
 ) -> CompanyRead:
-    company = Company(workspace_id=membership.workspace.id, **body.model_dump())
+    company = Company(
+        workspace_id=membership.workspace.id, created_by=membership.user, **body.model_dump()
+    )
     session.add(company)
     await session.commit()
     return CompanyRead.model_validate(company)

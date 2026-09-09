@@ -69,11 +69,11 @@ export function ActivityFeed({ contactId, timeZone }: { contactId: string; timeZ
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
                     <span className="font-medium">{activityTypeLabels[activity.type]}</span>
-                    <span
-                      className="text-xs text-muted-foreground"
-                      title={formatDateTime(activity.created_at, timeZone)}
-                    >
-                      {formatRelativeDays(activity.created_at, timeZone)}
+                    <span className="text-xs text-muted-foreground">
+                      <span title={formatDateTime(activity.created_at, timeZone)}>
+                        {formatRelativeDays(activity.created_at, timeZone)}
+                      </span>
+                      {activity.created_by && ` by ${activity.created_by.email}`}
                     </span>
                   </div>
                   {activity.notes && (

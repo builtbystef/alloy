@@ -7,6 +7,7 @@ from pydantic import Field, HttpUrl, PostgresDsn, RedisDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from alloy_api.jobs import JobsBroker
+from alloy_api.logs import LogFormat
 from alloy_api.mail import MailProvider
 from alloy_api.ratelimit import RateLimitStore
 from alloy_api.storage import StorageProvider
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
     database_statement_timeout: timedelta = timedelta(seconds=30)
 
     log_level: str = "INFO"
+    log_format: LogFormat = "text"
 
     logfire_token: SecretStr | None = None
     logfire_environment: str = "development"

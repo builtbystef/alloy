@@ -16,6 +16,7 @@ from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend, Redis
 from alloy_api.config import Settings
 from alloy_api.crm.models import Import, ImportStatus
 from alloy_api.jobs import create_broker, create_scheduler, ping_redis
+from alloy_api.jobs.context import RequestIdMiddleware
 from alloy_api.jobs.emails import send_email
 from alloy_api.jobs.purge import PurgeReport, purge, purge_expired
 from alloy_api.mail import Email
@@ -43,9 +44,10 @@ def test_redis_settings_build_a_stream_broker_with_retries_and_a_scheduler():
     broker = create_broker(settings)
     assert isinstance(broker, RedisStreamBroker)
     assert isinstance(broker.result_backend, RedisAsyncResultBackend)
-    (retry,) = broker.middlewares
+    retry, request_ids = broker.middlewares
     assert isinstance(retry, SmartRetryMiddleware)
     assert isinstance(retry.schedule_source, ListRedisScheduleSource)
+    assert isinstance(request_ids, RequestIdMiddleware)
 
     scheduler = create_scheduler(broker, settings)
     assert isinstance(scheduler, TaskiqScheduler)
@@ -56,6 +58,8 @@ def test_memory_settings_build_an_in_memory_broker():
     settings = Settings(app_name="Test API", jobs_broker="memory")
     broker = create_broker(settings)
     assert isinstance(broker, InMemoryBroker)
+    (request_ids,) = broker.middlewares
+    assert isinstance(request_ids, RequestIdMiddleware)
     assert len(create_scheduler(broker, settings).sources) == 1
 
 

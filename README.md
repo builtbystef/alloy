@@ -125,7 +125,7 @@ apps/api/
 ├── .env.example
 ├── src/alloy_api/
 │   ├── main.py               # app, lifespan (database engine), CORS, request IDs, router includes
-│   ├── logs.py               # log format shared with the worker; the request_id context variable
+│   ├── logs.py               # text and JSON log formats shared with the worker; the request_id context variable
 │   ├── errors.py             # RequestIdMiddleware: X-Request-ID on every response, unhandled errors → plain 500
 │   ├── config.py             # Settings (pydantic-settings) + get_settings dependency
 │   ├── db.py                 # engine, session factory, get_session / SessionDep
@@ -168,13 +168,24 @@ Operation IDs are `{tag}-{function}` (`health-read_health`) via
 generated clients. `python -m alloy_api.openapi` prints the schema without
 starting a server; `packages/api-client` uses it.
 
-### Errors and request IDs
+### Logs, errors, and request IDs
+
+Every log line from the API, the worker, and the scheduler has the same shape:
+a UTC timestamp, the level, the logger, the request ID, and the message.
+`ALLOY_LOG_FORMAT` picks `text` (the default, for a terminal) or `json` (one
+object per line with those fields, for a log collector). Uvicorn's loggers are
+routed through the same handler, and its access log is replaced by one line
+per request from `alloy_api.access`: method, path, status, and duration, with
+the request ID. Health checks are left out, as they are polled.
 
 Every response carries an `X-Request-ID` header: the caller's, if it sent a
 short printable one, otherwise 16 hex characters made for the request. The same
 ID is on every log line written while handling the request (`logs.py` puts it
 in a context variable and the log format), so a user's report finds its log
-lines. An exception nothing handled becomes
+lines. A job queued by the request carries the ID in its message labels and
+logs under it in the worker (`jobs/context.py`); a job the scheduler queues
+gets an ID of its own, so its lines still group. An exception nothing handled
+becomes
 
 ```json
 { "detail": "Something went wrong. Quote the request ID when reporting it.", "request_id": "…" }
@@ -621,6 +632,11 @@ GET/POST          .../imports/                                  CSV imports of c
 - Logging a call, email, meeting, or follow-up sets the contact's
   `last_contacted_at`; a note does not. Marking a task `done` logs a
   `task_completed` activity on its contact (once).
+- Companies, contacts, tasks, and activities carry `created_by` (id and
+  email): the caller who made the row, the requester for imported rows, and
+  for a `task_completed` activity whoever completed the task. Null once the
+  user is gone, and for rows older than the column. The web app shows it as
+  "by …" on detail pages, in the activity feed, and on tasks.
 - "Today" depends on where the user is, so `tz` takes an IANA zone (default
   `UTC`). Overdue means due before today, upcoming means due after it, and
   undated tasks are neither. `due` and `status` filter independently; the

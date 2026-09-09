@@ -33,6 +33,7 @@ def test_create_and_read_a_task(alice: Actor):
     assert task["status"] == "open"
     assert task["contact"] == {"id": contact["id"], "name": "Grace"}
     assert task["company"] == {"id": company["id"], "name": "Navy"}
+    assert task["created_by"]["email"] == alice.email
     assert datetime.fromisoformat(task["due_at"]) == datetime(2026, 9, 10, 9, tzinfo=UTC)
 
     assert alice.get(f"/tasks/{task['id']}").json() == task
@@ -154,6 +155,7 @@ def test_completing_a_task_is_logged_on_the_contact(alice: Actor):
 
     feed = alice.get(f"/contacts/{contact['id']}/activities").json()["items"]
     assert [(a["type"], a["notes"]) for a in feed] == [("task_completed", "Send proposal")]
+    assert feed[0]["created_by"]["email"] == alice.email
 
 
 def test_deleting_a_contact_keeps_its_tasks(alice: Actor):

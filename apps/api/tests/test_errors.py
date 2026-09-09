@@ -76,6 +76,33 @@ def test_unhandled_error_becomes_a_500_with_the_request_id(
     assert "Unhandled error on GET /boom" in record.getMessage()
 
 
+def test_each_request_gets_an_access_log_line(
+    failing_client: TestClient, caplog: pytest.LogCaptureFixture
+):
+    caplog.handler.addFilter(RequestIdFilter())
+    with caplog.at_level(logging.INFO, logger="alloy_api.access"):
+        failing_client.get("/ok", headers={"X-Request-ID": "report-7"})
+        failing_client.get("/boom")
+    lines = [r for r in caplog.records if r.name == "alloy_api.access"]
+    assert [getattr(r, "request_id", None) for r in lines] == [
+        "report-7",
+        getattr(lines[1], "request_id", None),
+    ]
+    assert [r.getMessage().rsplit(" ", 1)[0] for r in lines] == ["GET /ok 200", "GET /boom 500"]
+    assert all(r.getMessage().endswith("ms") for r in lines)
+
+
+def test_health_checks_are_not_in_the_access_log(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+):
+    with caplog.at_level(logging.INFO, logger="alloy_api.access"):
+        client.get("/health/")
+        client.get("/")
+    assert [r.getMessage()[:6] for r in caplog.records if r.name == "alloy_api.access"] == [
+        "GET / "
+    ]
+
+
 def test_log_lines_outside_a_request_read_dash(caplog: pytest.LogCaptureFixture):
     caplog.handler.addFilter(RequestIdFilter())
     log.warning("no request here")

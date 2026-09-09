@@ -57,7 +57,10 @@ export function CompanyDetail({ id, timeZone }: { id: string; timeZone: string }
                 <ExternalLinkIcon className="size-3" />
               </a>
             )}
-            <span>Added {formatDateTime(company.created_at, timeZone)}</span>
+            <span>
+              Added {formatDateTime(company.created_at, timeZone)}
+              {company.created_by && ` by ${company.created_by.email}`}
+            </span>
           </span>
         }
       >

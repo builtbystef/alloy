@@ -83,7 +83,9 @@ async def list_tasks(
 async def create_task(body: TaskCreate, session: SessionDep, membership: CanWriteCrm) -> TaskRead:
     await check_owned(session, Contact, body.contact_id, membership)
     await check_owned(session, Company, body.company_id, membership)
-    task = Task(workspace_id=membership.workspace.id, **body.model_dump())
+    task = Task(
+        workspace_id=membership.workspace.id, created_by=membership.user, **body.model_dump()
+    )
     session.add(task)
     await session.commit()
     await session.refresh(task, ["contact", "company"])
@@ -117,6 +119,7 @@ async def update_task(
                 contact_id=task.contact_id,
                 type=ActivityType.TASK_COMPLETED,
                 notes=task.title,
+                created_by=membership.user,
                 created_at=utcnow(),
             )
         )

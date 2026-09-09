@@ -20,6 +20,7 @@ def test_create_and_read_a_company(alice: Actor):
     assert company["website"] == "https://acme.example"
     assert company["industry"] == "Manufacturing"
     assert company["notes"] is None
+    assert company["created_by"]["email"] == alice.email
 
     read = alice.get(f"/companies/{company['id']}")
     assert read.status_code == 200

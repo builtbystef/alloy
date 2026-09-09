@@ -95,6 +95,10 @@ def test_import_contacts(alice: Actor, object_store: MemoryObjectStore):
     assert contacts["Ada Lovelace"]["company"]["id"] == companies["Analytical Engines"]
     assert contacts["Charles Babbage"]["company"]["id"] == companies["Analytical Engines"]
     assert contacts["Grace Hopper"]["company"]["name"] == "US Navy"
+    # Imported rows, and the companies made for them, are credited to the requester.
+    assert contacts["Grace Hopper"]["created_by"]["email"] == alice.email
+    navy = next(c for c in alice.get("/companies/").json()["items"] if c["name"] == "US Navy")
+    assert navy["created_by"]["email"] == alice.email
 
 
 COMPANIES = (

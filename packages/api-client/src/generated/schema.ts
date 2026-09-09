@@ -1011,6 +1011,8 @@ export interface components {
             type: components["schemas"]["ActivityType"];
             /** Notes */
             notes: string | null;
+            /** @description Who logged it; for `task_completed`, who completed the task. */
+            created_by: components["schemas"]["UserRef"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1055,7 +1057,7 @@ export interface components {
             content_type: string;
             /** Size */
             size: number;
-            uploaded_by: components["schemas"]["UploaderRef"] | null;
+            uploaded_by: components["schemas"]["UserRef"] | null;
             /** Uploaded At */
             uploaded_at: string | null;
             /**
@@ -1106,6 +1108,7 @@ export interface components {
             industry: string | null;
             /** Notes */
             notes: string | null;
+            created_by: components["schemas"]["UserRef"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1182,6 +1185,7 @@ export interface components {
             /** Last Contacted At */
             last_contacted_at: string | null;
             company: components["schemas"]["CompanyRef"] | null;
+            created_by: components["schemas"]["UserRef"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1322,7 +1326,7 @@ export interface components {
             filename: string;
             /** Size */
             size: number;
-            requested_by: components["schemas"]["UploaderRef"] | null;
+            requested_by: components["schemas"]["UserRef"] | null;
             /** Started At */
             started_at: string | null;
             /** Finished At */
@@ -1606,6 +1610,7 @@ export interface components {
             notes: string | null;
             contact: components["schemas"]["ContactRef"] | null;
             company: components["schemas"]["CompanyRef"] | null;
+            created_by: components["schemas"]["UserRef"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1641,16 +1646,6 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
-        /** UploaderRef */
-        UploaderRef: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Email */
-            email: string;
-        };
         /** UserRead */
         UserRead: {
             /**
@@ -1669,6 +1664,19 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * UserRef
+         * @description Enough to name the user who made or uploaded something.
+         */
+        UserRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1785,8 +1793,8 @@ export type TaskRead = components['schemas']['TaskRead'];
 export type TaskSort = components['schemas']['TaskSort'];
 export type TaskStatus = components['schemas']['TaskStatus'];
 export type TaskUpdate = components['schemas']['TaskUpdate'];
-export type UploaderRef = components['schemas']['UploaderRef'];
 export type UserRead = components['schemas']['UserRead'];
+export type UserRef = components['schemas']['UserRef'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type WorkspaceCreate = components['schemas']['WorkspaceCreate'];
 export type WorkspaceRead = components['schemas']['WorkspaceRead'];

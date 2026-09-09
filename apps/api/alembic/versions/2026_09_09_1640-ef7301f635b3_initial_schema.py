@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 61f8d12280ad
+Revision ID: ef7301f635b3
 Revises:
-Create Date: 2026-09-08 09:48:43.819184
+Create Date: 2026-09-09 16:40:00.810117
 """
 
 from typing import TYPE_CHECKING
@@ -13,7 +13,7 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = "61f8d12280ad"
+revision: str = "ef7301f635b3"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -30,15 +30,22 @@ def upgrade() -> None:
         sa.Column("verification_sent_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("password_reset_token_hash", sa.String(length=64), nullable=True),
         sa.Column("password_reset_sent_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("pending_email", sa.String(length=320), nullable=True),
+        sa.Column("email_change_token_hash", sa.String(length=64), nullable=True),
+        sa.Column("email_change_sent_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
         sa.UniqueConstraint("email", name=op.f("uq_users_email")),
         sa.UniqueConstraint(
-            "verification_token_hash", name=op.f("uq_users_verification_token_hash")
+            "email_change_token_hash", name=op.f("uq_users_email_change_token_hash")
         ),
         sa.UniqueConstraint(
             "password_reset_token_hash", name=op.f("uq_users_password_reset_token_hash")
+        ),
+        sa.UniqueConstraint(
+            "verification_token_hash", name=op.f("uq_users_verification_token_hash")
         ),
     )
     op.create_table(
@@ -57,8 +64,15 @@ def upgrade() -> None:
         sa.Column("website", sa.String(length=500), nullable=True),
         sa.Column("industry", sa.String(length=100), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("created_by_user_id", sa.Uuid(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name=op.f("fk_companies_created_by_user_id_users"),
+            ondelete="SET NULL",
+        ),
         sa.ForeignKeyConstraint(
             ["workspace_id"],
             ["workspaces.id"],
@@ -251,12 +265,19 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("last_contacted_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_by_user_id", sa.Uuid(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
             ["company_id"],
             ["companies.id"],
             name=op.f("fk_contacts_company_id_companies"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name=op.f("fk_contacts_created_by_user_id_users"),
             ondelete="SET NULL",
         ),
         sa.ForeignKeyConstraint(
@@ -290,11 +311,18 @@ def upgrade() -> None:
         ),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("created_by_user_id", sa.Uuid(), nullable=True),
         sa.ForeignKeyConstraint(
             ["contact_id"],
             ["contacts.id"],
             name=op.f("fk_activities_contact_id_contacts"),
             ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name=op.f("fk_activities_created_by_user_id_users"),
+            ondelete="SET NULL",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_activities")),
     )
@@ -362,6 +390,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("created_by_user_id", sa.Uuid(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
@@ -374,6 +403,12 @@ def upgrade() -> None:
             ["contact_id"],
             ["contacts.id"],
             name=op.f("fk_tasks_contact_id_contacts"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name=op.f("fk_tasks_created_by_user_id_users"),
             ondelete="SET NULL",
         ),
         sa.ForeignKeyConstraint(
