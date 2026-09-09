@@ -1,3 +1,4 @@
+from html import escape
 from typing import TYPE_CHECKING
 
 from alloy_api.mail import Email
@@ -25,11 +26,13 @@ def invite_email(invite: WorkspaceInvite, token: str, frontend_url: str) -> Emai
         f"The link works until {expires} and only for {invite.email}.\n"
         f"If you were not expecting this, you can ignore this email."
     )
+    # The workspace name is whatever an admin typed; escaped, so it cannot add
+    # markup (or a link) to an email sent from our domain.
     html = (
-        f"<p>{inviter} invited you to join the workspace <strong>{workspace}</strong> "
-        f"as <strong>{invite.role.value}</strong>.</p>"
-        f'<p><a href="{link}">Accept the invitation</a></p>'
-        f"<p>The link works until {expires} and only for {invite.email}. "
+        f"<p>{escape(inviter)} invited you to join the workspace "
+        f"<strong>{escape(workspace)}</strong> as <strong>{escape(invite.role.value)}</strong>.</p>"
+        f'<p><a href="{escape(link)}">Accept the invitation</a></p>'
+        f"<p>The link works until {expires} and only for {escape(invite.email)}. "
         f"If you were not expecting this, you can ignore this email.</p>"
     )
     return Email(to=invite.email, subject=f"You're invited to {workspace}", text=text, html=html)

@@ -19,6 +19,22 @@ def token_from(outbox: Outbox) -> str:
     return outbox[-1].text.split("/invites/")[1].split()[0]
 
 
+def test_invite_email_escapes_the_workspace_name(alice: Actor, outbox: Outbox):
+    """An admin picks the name; it must not become markup in an email from our domain."""
+    name = '<a href="https://evil.example">Reset your password</a>'
+    assert alice.patch("", json={"name": name}).status_code == 200
+    created = alice.post("/invites", json={"email": "grace@example.com", "role": "member"})
+    assert created.status_code == 201, created.text
+
+    email = outbox[-1]
+    assert email.html is not None
+    assert 'evil.example">' not in email.html
+    assert "&lt;a href=&quot;https://evil.example&quot;&gt;" in email.html
+    # The plain-text body and the subject are not HTML, so they carry the name as typed.
+    assert name in email.text
+    assert name in email.subject
+
+
 def test_invite_emails_a_link_the_invitee_accepts(
     client: TestClient, alice: Actor, outbox: Outbox, new_login: NewLogin
 ):
