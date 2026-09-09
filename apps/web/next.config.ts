@@ -17,6 +17,20 @@ const nextConfig: NextConfig = {
   // packages (@alloy/api-client) and hoisted node_modules are included.
   output: "standalone",
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
+  // Nothing here needs framing, sniffing, or the full URL as a referrer (reset
+  // and invite links carry their token in the URL). HSTS is ignored over plain
+  // HTTP, so it is harmless in development.
+  headers: async () => [
+    {
+      source: "/(.*)",
+      headers: [
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+      ],
+    },
+  ],
 };
 
 export default nextConfig;
