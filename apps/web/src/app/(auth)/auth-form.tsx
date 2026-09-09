@@ -39,6 +39,12 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const next = searchParams.get("next");
   const search = next ? `?next=${encodeURIComponent(next)}` : "";
   const isInvite = next?.startsWith("/invites/") ?? false;
+  // Only a path on this site. "//evil.com" and "/\evil.com" are protocol-relative
+  // URLs to a browser, so a leading slash alone is not enough.
+  const destination =
+    next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")
+      ? (next as "/")
+      : "/";
 
   const mutation = useMutation({
     mutationFn: async (credentials: { email: string; password: string }) =>
@@ -52,7 +58,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       if (isSignup && !isInvite) {
         router.push("/verify-email");
       } else {
-        router.push(next?.startsWith("/") ? (next as "/") : "/");
+        router.push(destination);
       }
       router.refresh();
     },
