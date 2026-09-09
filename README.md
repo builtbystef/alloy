@@ -225,10 +225,13 @@ subclasses evaluate their annotations at runtime, and that the modules
 exporting `*Dep` aliases are never moved into `TYPE_CHECKING` blocks, since
 FastAPI reads dependency annotations at import time.
 
-Tests use the real database, never SQLite. The `client` fixture opens one
-connection, begins a transaction, runs `create_all` inside it, and hands out
-sessions that join it with savepoints; the fixture rolls everything back, so
-tests are isolated and the development database is left untouched (DDL is
+Tests use the real PostgreSQL, never SQLite, in a database of their own:
+`alloy_test` on the same server as `ALLOY_DATABASE_URL`, created by the test
+session if it is missing, so rows left over from manual testing in the
+development database are never counted by a test. The `client` fixture opens
+one connection, begins a transaction, runs `create_all` inside it, and hands
+out sessions that join it with savepoints; the fixture rolls everything back,
+so tests are isolated and the database is left as it was found (DDL is
 transactional in PostgreSQL). `test_migrations_match_models` upgrades to head
 inside such a transaction and diffs the result against `Base.metadata`, so a
 model change without a migration fails CI. CI runs a `postgres:18` service

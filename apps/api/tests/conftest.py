@@ -1,5 +1,7 @@
-"""Tests use the real PostgreSQL. Each test runs in one transaction that is rolled
-back at the end, DDL included, so the database is left as it was found.
+"""Tests use the real PostgreSQL, in a database of their own: `alloy_test` on the
+configured server, created on first use. Each test runs in one transaction that is
+rolled back at the end, DDL included, so the database is left as it was found, and
+nothing left over from development is visible to a test.
 
 Jobs run in-process on the in-memory broker, inline, with the test transaction
 and the same doubles the handlers get, so a handler that queues an email has the
@@ -11,32 +13,66 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-
-# Before `alloy_api` is imported: the broker is chosen when its module loads.
-os.environ["ALLOY_JOBS_BROKER"] = "memory"
-os.environ["ALLOY_RATE_LIMIT_STORE"] = "memory"
-from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
-from taskiq import InMemoryBroker
 
-from alloy_api.auth.cookies import SESSION_COOKIE
+# Before `alloy_api` is imported: the broker is chosen when its module loads, and
+# `main` reads `Settings` at import too.
+os.environ["ALLOY_JOBS_BROKER"] = "memory"
+os.environ["ALLOY_RATE_LIMIT_STORE"] = "memory"
 from alloy_api.config import Settings, get_settings
-from alloy_api.db import get_session
-from alloy_api.jobs.broker import broker
-from alloy_api.jobs.deps import configure as configure_jobs
-from alloy_api.mail import Email
-from alloy_api.main import app
-from alloy_api.models import Base
-from alloy_api.ratelimit import Limiter, MemoryRateLimitStore, get_limiter
-from alloy_api.storage import get_object_store
-from alloy_api.storage.memory import MemoryObjectStore
+
+TEST_DATABASE = "alloy_test"
+# The configured server (environment or `.env`), with the database swapped for the
+# test one. Every `Settings(...)` a test builds picks this up from the environment.
+_configured_url = make_url(str(Settings().database_url))
+os.environ["ALLOY_DATABASE_URL"] = _configured_url.set(database=TEST_DATABASE).render_as_string(
+    hide_password=False
+)
+get_settings.cache_clear()
+
+from fastapi.testclient import TestClient  # noqa: E402
+from taskiq import InMemoryBroker  # noqa: E402
+
+from alloy_api.auth.cookies import SESSION_COOKIE  # noqa: E402
+from alloy_api.db import get_session  # noqa: E402
+from alloy_api.jobs.broker import broker  # noqa: E402
+from alloy_api.jobs.deps import configure as configure_jobs  # noqa: E402
+from alloy_api.mail import Email  # noqa: E402
+from alloy_api.main import app  # noqa: E402
+from alloy_api.models import Base  # noqa: E402
+from alloy_api.ratelimit import Limiter, MemoryRateLimitStore, get_limiter  # noqa: E402
+from alloy_api.storage import get_object_store  # noqa: E402
+from alloy_api.storage.memory import MemoryObjectStore  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
 
     from anyio.from_thread import BlockingPortal
+
+
+@pytest.fixture(scope="session", autouse=True)
+def test_database() -> None:
+    """Create `alloy_test` on the configured server if it is not there yet.
+
+    Connects to the configured (development) database to do it: CREATE DATABASE
+    cannot run inside a transaction, hence autocommit.
+    """
+    engine = create_engine(_configured_url, isolation_level="AUTOCOMMIT", poolclass=NullPool)
+    try:
+        with engine.connect() as connection:
+            exists = connection.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": TEST_DATABASE}
+            ).scalar()
+            if not exists:
+                connection.execute(text(f'CREATE DATABASE "{TEST_DATABASE}"'))
+    except OperationalError as exc:
+        pytest.fail(f"PostgreSQL is not reachable at {engine.url}. Run `vp run db:up`. ({exc})")
+    finally:
+        engine.dispose()
 
 
 @pytest.fixture
