@@ -266,17 +266,16 @@ export interface paths {
         put?: never;
         /**
          * Change Email
-         * @description Email a confirmation link to the new address; the account moves to it once
-         *     the link is followed. A new request replaces the pending one.
+         * @description Email a confirmation link to the new address; the account moves once it is
+         *     followed. A new request replaces the pending one.
          *
-         *     Allowed before the current address is verified, since a typo at signup is
-         *     the most common reason to need this. 409 if the address is taken, or is the
-         *     account's own.
+         *     Allowed before the current address is verified: a typo at signup is the
+         *     usual reason to need this. 409 if the address is taken or unchanged.
          */
         post: operations["auth-change_email"];
         /**
          * Cancel Email Change
-         * @description Drop the pending change; its link stops working. 204 even when there is none.
+         * @description Drop the pending change; its link stops working. 204 when there is none too.
          */
         delete: operations["auth-cancel_email_change"];
         options?: never;
@@ -295,11 +294,10 @@ export interface paths {
         put?: never;
         /**
          * Confirm Email
-         * @description Follow the link sent to the new address: the account moves to it. No login
-         *     needed. Reaching the new inbox proves it, so the account counts as verified,
-         *     and any verification link for the old address is voided. The old address is
-         *     told. 404 for an unknown or used token; 410 for an expired one; 409 if the
-         *     address was registered meanwhile.
+         * @description Follow the link sent to the new address. No login needed: it may be opened
+         *     anywhere. Reaching the new inbox proves it, so the account counts as
+         *     verified. 404 for an unknown or used token; 410 for an expired one; 409 if
+         *     the address was registered meanwhile.
          */
         post: operations["auth-confirm_email"];
         delete?: never;
@@ -321,11 +319,10 @@ export interface paths {
          * Delete Account
          * @description Schedule the account for deletion and log out everywhere.
          *
-         *     The row stays for `account_deletion_grace`, during which logging in brings
-         *     the account back; then the purge job removes it, together with every
-         *     workspace the user was the only member of. 409 while the user is the only
-         *     owner of a workspace that has other members: those must be handed over or
-         *     deleted first, or they would be left with nobody to manage them.
+         *     Logging in within `account_deletion_grace` brings the account back; after
+         *     that the purge job removes it, with every workspace the user was alone in.
+         *     409 while the user is the only owner of a shared workspace, which would
+         *     otherwise be left with nobody to manage it.
          */
         post: operations["auth-delete_account"];
         delete?: never;
@@ -1219,19 +1216,12 @@ export interface components {
          * @enum {string}
          */
         DueFilter: "overdue" | "today" | "upcoming";
-        /**
-         * EmailChangeConfirmation
-         * @description The token from the link sent to the new address.
-         */
+        /** EmailChangeConfirmation */
         EmailChangeConfirmation: {
             /** Token */
             token: string;
         };
-        /**
-         * EmailChangeRequest
-         * @description The address to move the account to, and the password to prove it is the
-         *     account holder asking.
-         */
+        /** EmailChangeRequest */
         EmailChangeRequest: {
             /**
              * New Email

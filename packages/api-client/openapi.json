@@ -380,7 +380,7 @@
           "auth"
         ],
         "summary": "Change Email",
-        "description": "Email a confirmation link to the new address; the account moves to it once\nthe link is followed. A new request replaces the pending one.\n\nAllowed before the current address is verified, since a typo at signup is\nthe most common reason to need this. 409 if the address is taken, or is the\naccount's own.",
+        "description": "Email a confirmation link to the new address; the account moves once it is\nfollowed. A new request replaces the pending one.\n\nAllowed before the current address is verified: a typo at signup is the\nusual reason to need this. 409 if the address is taken or unchanged.",
         "operationId": "auth-change_email",
         "requestBody": {
           "content": {
@@ -418,7 +418,7 @@
           "auth"
         ],
         "summary": "Cancel Email Change",
-        "description": "Drop the pending change; its link stops working. 204 even when there is none.",
+        "description": "Drop the pending change; its link stops working. 204 when there is none too.",
         "operationId": "auth-cancel_email_change",
         "responses": {
           "204": {
@@ -438,7 +438,7 @@
           "auth"
         ],
         "summary": "Confirm Email",
-        "description": "Follow the link sent to the new address: the account moves to it. No login\nneeded. Reaching the new inbox proves it, so the account counts as verified,\nand any verification link for the old address is voided. The old address is\ntold. 404 for an unknown or used token; 410 for an expired one; 409 if the\naddress was registered meanwhile.",
+        "description": "Follow the link sent to the new address. No login needed: it may be opened\nanywhere. Reaching the new inbox proves it, so the account counts as\nverified. 404 for an unknown or used token; 410 for an expired one; 409 if\nthe address was registered meanwhile.",
         "operationId": "auth-confirm_email",
         "requestBody": {
           "content": {
@@ -480,7 +480,7 @@
           "auth"
         ],
         "summary": "Delete Account",
-        "description": "Schedule the account for deletion and log out everywhere.\n\nThe row stays for `account_deletion_grace`, during which logging in brings\nthe account back; then the purge job removes it, together with every\nworkspace the user was the only member of. 409 while the user is the only\nowner of a workspace that has other members: those must be handed over or\ndeleted first, or they would be left with nobody to manage them.",
+        "description": "Schedule the account for deletion and log out everywhere.\n\nLogging in within `account_deletion_grace` brings the account back; after\nthat the purge job removes it, with every workspace the user was alone in.\n409 while the user is the only owner of a shared workspace, which would\notherwise be left with nobody to manage it.",
         "operationId": "auth-delete_account",
         "requestBody": {
           "content": {
@@ -4202,8 +4202,7 @@
         "required": [
           "token"
         ],
-        "title": "EmailChangeConfirmation",
-        "description": "The token from the link sent to the new address."
+        "title": "EmailChangeConfirmation"
       },
       "EmailChangeRequest": {
         "properties": {
@@ -4222,8 +4221,7 @@
           "new_email",
           "current_password"
         ],
-        "title": "EmailChangeRequest",
-        "description": "The address to move the account to, and the password to prove it is the\naccount holder asking."
+        "title": "EmailChangeRequest"
       },
       "EmailVerification": {
         "properties": {
