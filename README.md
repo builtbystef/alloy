@@ -695,9 +695,10 @@ apps/web/
 ├── postcss.config.mjs        # @tailwindcss/postcss
 ├── components.json           # shadcn/ui config: base-nova style, zinc, src/app/globals.css
 ├── tsconfig.json             # tsconfig/browser.json + jsx, paths (@/*), next plugin
-├── .env.example              # API_URL
+├── .env.example              # API_URL, CLIENT_IP_HEADER
 └── src/
     ├── proxy.ts              # redirects on the session cookie's presence (formerly middleware)
+    ├── instrumentation.ts    # server start: rejects an unknown CLIENT_IP_HEADER
     ├── app/
     │   ├── layout.tsx, providers.tsx   # font, QueryClientProvider, next-themes, toasts
     │   ├── api/[...path]/route.ts      # forwards /api/* to the FastAPI service with the cookie
@@ -787,11 +788,18 @@ private network, so the API stays internal and needs no CORS. The bucket must
 be reachable by the browser, since uploads and downloads use presigned URLs.
 
 The proxy route passes the visitor's address upstream as `X-Forwarded-For`,
-read from the platform's own header (`CF-Connecting-IP`, `X-Real-IP`, or the
-last entry of `X-Forwarded-For`), and the API image sets
-`FORWARDED_ALLOW_IPS=*` so Uvicorn believes it from any peer. That is safe
-while the API is reachable only from `web`; if it ever gets a public address,
-set `FORWARDED_ALLOW_IPS` to the web service's address or network instead.
+read from the one request header `CLIENT_IP_HEADER` names: the header the
+platform in front of `web` overwrites on every request, so a visitor cannot
+supply it. Set it to `cf-connecting-ip` behind Cloudflare, `x-real-ip` behind
+Nginx, or `x-forwarded-for` on Railway, Render, or Fly (the last entry is
+used, the one the nearest proxy appended). Any other header is ignored, and
+with the variable unset no address is sent, so the API counts every request
+against `web`'s own address rather than one a visitor chose; an unknown
+value stops the server at startup. The API image sets
+`FORWARDED_ALLOW_IPS=*` so Uvicorn believes the header from any peer. That
+is safe while the API is reachable only from `web`; if it ever gets a public
+address, set `FORWARDED_ALLOW_IPS` to the web service's address or network
+instead.
 
 ### Migrations
 
@@ -806,7 +814,7 @@ is what makes this ordering enough.
 ### Settings and secrets
 
 Every process reads the same `ALLOY_*` variables, documented in
-`apps/api/.env.example`; `web` reads `API_URL`. Set them in the host's
+`apps/api/.env.example`; `web` reads `API_URL` and `CLIENT_IP_HEADER`. Set them in the host's
 variables store, shared across the four processes. Nothing is baked into an
 image, so one image serves staging and production. The ones that change per
 environment:
@@ -823,6 +831,7 @@ ALLOY_CORS_ORIGINS='["https://app.example.com"]'
 ALLOY_LOGFIRE_TOKEN=...                          # optional; empty turns telemetry off
 ALLOY_LOGFIRE_ENVIRONMENT=production
 API_URL=http://api.internal:8000                 # web only: the API's private address
+CLIENT_IP_HEADER=x-forwarded-for                 # web only: the header the host sets to the visitor's address
 ```
 
 Unset optionals may arrive as `""` from a variables UI; `Settings` ignores
@@ -836,7 +845,8 @@ with the commands above as start commands; `apps/web/Dockerfile` for `web`),
 plus the PostgreSQL and Redis plugins and an external bucket (S3, R2, or any
 S3-compatible service). Set `alembic upgrade head` as the pre-deploy command
 on `api`. Give `web` the public domain; `API_URL` is
-`http://api.railway.internal:8000` on the private network. Railway builds from
+`http://api.railway.internal:8000` on the private network, and
+`CLIENT_IP_HEADER` is `x-forwarded-for`, the header Railway's edge sets. Railway builds from
 the repository, so the Images workflow is not needed; it serves hosts that
 pull from a registry instead.
 

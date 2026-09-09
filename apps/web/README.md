@@ -13,9 +13,10 @@ apps/web/
 ├── postcss.config.mjs    # @tailwindcss/postcss
 ├── components.json       # shadcn/ui: style, base color, aliases
 ├── tsconfig.json         # extends tsconfig/browser.json with what Next.js needs
-├── .env.example          # API_URL, copy to .env.local
+├── .env.example          # API_URL, CLIENT_IP_HEADER; copy to .env.local
 └── src/
     ├── proxy.ts          # no cookie → /login?next=…; cookie on /login → /
+    ├── instrumentation.ts # runs at server start: rejects a bad CLIENT_IP_HEADER
     ├── app/
     │   ├── layout.tsx    # root layout: Geist font, <Providers>
     │   ├── providers.tsx # QueryClientProvider, next-themes, sonner <Toaster>
@@ -42,6 +43,7 @@ apps/web/
     │   └── logo.tsx, time-zone-sync.tsx, remember-workspace.tsx
     └── lib/
         ├── api.ts        # createApi(): the @alloy/api-client instance, baseUrl from API_URL
+        ├── client-address.ts # getClientIpHeader() from CLIENT_IP_HEADER; clientAddress(headers)
         ├── session.ts    # server-only: getSessionApi(), getCurrentUser(), requireUser(), listWorkspaces(), requireWorkspace()
         ├── workspace.tsx # client: <WorkspaceProvider>, useWorkspace(), useCan(), <Can permission>
         ├── routes.ts     # workspacePaths(id): every href under /{workspaceId}
@@ -117,8 +119,16 @@ The browser never sees `API_URL`. Every request goes through
 `src/app/api/[...path]/route.ts`, a Route Handler that forwards the method,
 path, query, body, `Cookie`, and `Set-Cookie` between the browser and the API,
 and passes the visitor's address along as `X-Forwarded-For` for the API's
-rate limits (from `CF-Connecting-IP`, `X-Real-IP`, or the last entry of the
-incoming `X-Forwarded-For`, whichever the platform in front sets).
+rate limits. The address is read from the one request header
+`CLIENT_IP_HEADER` names (`cf-connecting-ip` on Cloudflare, `x-real-ip`
+behind Nginx, `x-forwarded-for` on Railway, Render, or Fly; for the last, the
+final entry, which is the one the nearest proxy appended). Only the header
+the host overwrites on every request is safe: the proxy cannot tell which
+platform is in front of it, so guessing from whatever arrives would let a
+visitor forge one of the others and dodge the per-address limits. With the
+variable unset (local `next dev`), no address is sent and the API limits on
+this server's address; an unknown value fails at startup in
+`src/instrumentation.ts`.
 The API's login response sets its `__Host-session` cookie for the Next.js
 origin; the browser sends it back on the next `/api/...` call by itself, and
 Server Components read it with `cookies()` and forward it through

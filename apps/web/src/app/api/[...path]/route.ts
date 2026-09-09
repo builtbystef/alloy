@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { getApiUrl } from "@/lib/api";
+import { clientAddress } from "@/lib/client-address";
 
 /**
  * Forwards `/api/*` to the FastAPI service, so the browser never needs the
@@ -10,7 +11,10 @@ import { getApiUrl } from "@/lib/api";
  *
  * Only the headers that matter cross the boundary. Hop-by-hop headers and
  * anything the API does not need stay on their side. The visitor's address
- * goes along as `X-Forwarded-For`, which the API's rate limits key on.
+ * goes along as `X-Forwarded-For`, which the API's rate limits key on. It is
+ * read from the one header `CLIENT_IP_HEADER` names, the one the platform in
+ * front overwrites on every request; nothing is sent when that is unset (local
+ * `next dev`), and the API then sees this server's address.
  */
 const REQUEST_HEADERS = ["accept", "content-type", "cookie"];
 const RESPONSE_HEADERS = [
@@ -21,21 +25,6 @@ const RESPONSE_HEADERS = [
   "x-request-id",
 ];
 
-/**
- * The visitor's address as the platform in front reports it. The last
- * `X-Forwarded-For` entry is the one the nearest proxy appended, so it is the
- * one a visitor cannot forge. Null with nothing in front (local `next dev`);
- * the API then sees this server's address.
- */
-function clientAddress(request: NextRequest): string | null {
-  const direct = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-real-ip");
-  if (direct) return direct.trim();
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (!forwarded) return null;
-  const last = forwarded.split(",").at(-1)?.trim();
-  return last || null;
-}
-
 async function proxy(request: NextRequest): Promise<Response> {
   const { pathname, search } = request.nextUrl;
   const target = new URL(pathname.replace(/^\/api/, "") + search, getApiUrl());
@@ -45,7 +34,7 @@ async function proxy(request: NextRequest): Promise<Response> {
     const value = request.headers.get(name);
     if (value !== null) headers.set(name, value);
   }
-  const address = clientAddress(request);
+  const address = clientAddress(request.headers);
   if (address !== null) headers.set("x-forwarded-for", address);
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
