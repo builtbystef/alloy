@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from alloy_api.auth.deps import VerifiedUserDep
+from alloy_api.auth.models import User
 from alloy_api.auth.tokens import hash_token, new_token
 from alloy_api.config import SettingsDep
 from alloy_api.db import SessionDep
@@ -63,11 +64,15 @@ def role_forbidden() -> HTTPException:
 
 
 async def count_owners(session: AsyncSession, workspace_id: UUID) -> int:
+    """Owners not scheduled for deletion: the purge job will take that seat, so it
+    must not be the one keeping the workspace afloat."""
     return (
         await session.scalar(
             select(func.count(WorkspaceMember.id))
+            .join(User, User.id == WorkspaceMember.user_id)
             .where(WorkspaceMember.workspace_id == workspace_id)
             .where(WorkspaceMember.role == WorkspaceRole.OWNER)
+            .where(User.deleted_at.is_(None))
         )
         or 0
     )

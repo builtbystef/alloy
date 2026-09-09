@@ -253,6 +253,11 @@ POST /auth/verify-email         {token}                   → 200 UserRead      
 POST /auth/resend-verification  cookie                    → 204                         (409 if already verified)
 POST /auth/forgot-password      {email}                   → 204, always                 (emails a reset link if the account exists)
 POST /auth/reset-password       {token, new_password}     → 200 UserRead + Set-Cookie   (404 unknown/used, 410 expired)
+
+POST   /auth/change-email       cookie {new_email, current_password} → 204              (401 wrong password, 409 taken or unchanged)
+DELETE /auth/change-email       cookie                    → 204                         (drops the pending change)
+POST   /auth/confirm-email      {token}                   → 200 UserRead                (404 unknown/used, 410 expired, 409 taken meanwhile)
+POST   /auth/delete-account     cookie {current_password} → 204, cookie cleared         (401 wrong password, 409 sole owner of a shared workspace)
 ```
 
 Logging in runs:
@@ -309,6 +314,33 @@ in voids it. Links point at `ALLOY_FRONTEND_URL/verify-email?token=` and
 `/reset-password?token=`; the pages confirm with a click, so a mail scanner
 that prefetches the link does not spend it.
 
+Changing the address works the same way. `/auth/change-email` takes the
+password and the new address, stores it as `pending_email` (shown in
+`UserRead`) next to a token, and emails `ALLOY_FRONTEND_URL/confirm-email?token=`
+to the new address (`ALLOY_EMAIL_CHANGE_TTL`, default 1 day). Following the
+link swaps the address in, marks the account verified (reaching the new inbox
+proved it), voids any verification link for the old address, and sends the
+old address a notice so a hijacked account is noticed. The address is checked
+against the `users` table both when the change is asked for and when the link
+is followed. It is allowed before the current address is verified, since a
+typo at signup is the usual reason to need it. Sessions stay logged in.
+Pending invitations match on the address, so one sent to the old address no
+longer fits; ask for a new one.
+
+Deleting the account is a two-step process. `/auth/delete-account` takes the
+password, stamps `deleted_at`, revokes every session, and emails the address
+that the account goes for good after `ALLOY_ACCOUNT_DELETION_GRACE` (default
+7 days). Logging in before then, with the password or a reset link, clears
+the stamp and brings the account back. Once the grace period has passed, the
+purge job deletes the row, which cascades to its sessions and seats, and
+deletes every workspace the user was the only member of, files included.
+Seats in shared workspaces are simply dropped. To keep a shared workspace
+from losing its last owner that way, the request is refused with 409, naming
+the workspaces, while the user is the only owner of one that has other
+members; and an owner whose account is scheduled for deletion no longer counts
+towards "at least one owner", so the remaining owner cannot leave or step
+down meanwhile. Until the purge, the address still counts as registered.
+
 ### Rate limits
 
 `ratelimit.py` guards what can be called without a login, plus the two
@@ -320,16 +352,17 @@ the counter. Routes attach `per_ip(limit)` as a dependency, or call the
 `Limiter` themselves when the subject is in the body or only failures should
 count.
 
-| Endpoint                                                             | Subject         | Limit         |
-| -------------------------------------------------------------------- | --------------- | ------------- |
-| `POST /auth/login`                                                   | address         | 20 per 15 min |
-| `POST /auth/login`                                                   | email, failures | 10 per 15 min |
-| `POST /auth/signup`                                                  | address         | 10 per hour   |
-| `POST /auth/forgot-password`                                         | address         | 10 per hour   |
-| `POST /auth/forgot-password`                                         | email           | 3 per hour    |
-| `POST /auth/resend-verification`                                     | user            | 3 per hour    |
-| `POST /auth/verify-email`, `/reset-password`, `GET /invites/{token}` | address         | 10 per minute |
-| `POST /invites/{token}/accept`                                       | user            | 10 per minute |
+| Endpoint                                                                               | Subject         | Limit         |
+| -------------------------------------------------------------------------------------- | --------------- | ------------- |
+| `POST /auth/login`                                                                     | address         | 20 per 15 min |
+| `POST /auth/login`                                                                     | email, failures | 10 per 15 min |
+| `POST /auth/signup`                                                                    | address         | 10 per hour   |
+| `POST /auth/forgot-password`                                                           | address         | 10 per hour   |
+| `POST /auth/forgot-password`                                                           | email           | 3 per hour    |
+| `POST /auth/resend-verification`                                                       | user            | 3 per hour    |
+| `POST /auth/change-email`                                                              | user            | 3 per hour    |
+| `POST /auth/verify-email`, `/reset-password`, `/confirm-email`, `GET /invites/{token}` | address         | 10 per minute |
+| `POST /invites/{token}/accept`                                                         | user            | 10 per minute |
 
 Login checks both counters before the password hash, which is slow by design,
 so a blocked attempt costs nothing; the email counter counts wrong passwords
@@ -492,9 +525,12 @@ a handler that queues an email has the message in `outbox` when it responds.
 
 The purge job removes rows the app stamps rather than deletes, once they have
 been dead for `ALLOY_PURGE_AFTER` (default 7 days): sessions revoked or
-expired, invitations accepted, revoked, or expired, verification and password
-reset links past their TTL, and attachment or import rows whose upload URL expired without a
-completion, along with any object that did land in storage.
+expired, invitations accepted, revoked, or expired, verification, password
+reset, and email change links past their TTL, and attachment or import rows
+whose upload URL expired without a completion, along with any object that did
+land in storage. It also removes accounts whose deletion grace period
+(`ALLOY_ACCOUNT_DELETION_GRACE`) has passed, together with the workspaces they
+were alone in (see Authentication).
 
 ### CSV imports
 

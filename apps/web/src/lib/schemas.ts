@@ -146,6 +146,15 @@ export const passwordChangeSchema = z
     path: ["confirm"],
   });
 
+export const emailChangeSchema = z.object({
+  new_email: z.email("Enter a valid email address"),
+  current_password: z.string().min(1, "Your password is required"),
+});
+
+export const accountDeletionSchema = z.object({
+  current_password: z.string().min(1, "Your password is required"),
+});
+
 export const workspaceSchema = z.object({
   name: requiredText("Name", 100),
 });
@@ -194,6 +203,8 @@ export type AuthFormInput = z.input<ReturnType<typeof authFormSchema>>;
 export type ForgotPasswordInput = z.input<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.input<typeof resetPasswordSchema>;
 export type PasswordChangeInput = z.input<typeof passwordChangeSchema>;
+export type EmailChangeInput = z.input<typeof emailChangeSchema>;
+export type AccountDeletionInput = z.input<typeof accountDeletionSchema>;
 export type WorkspaceInput = z.input<typeof workspaceSchema>;
 export type InviteInput = z.input<typeof inviteSchema>;
 export type CompanyInput = z.input<typeof companySchema>;

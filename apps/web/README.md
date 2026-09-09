@@ -22,7 +22,7 @@ apps/web/
     │   ├── globals.css   # Tailwind import, shadcn theme tokens
     │   ├── icon.svg, favicon.ico, apple-icon.png   # the logo, in the formats browsers ask for
     │   ├── api/[...path]/route.ts   # the proxy to the API; forwards the visitor's address
-    │   ├── (auth)/       # centered layout with the logo; login and signup share auth-form.tsx; verify-email/, forgot-password/, reset-password/ follow emailed links; invites/[token]/ accepts an invitation
+    │   ├── (auth)/       # centered layout with the logo; login and signup share auth-form.tsx; verify-email/, forgot-password/, reset-password/, confirm-email/ follow emailed links; invites/[token]/ accepts an invitation
     │   └── (app)/
     │       ├── page.tsx              # `/`: opens the last-used (cookie) or first workspace; offers to create one if none
     │       ├── workspace-form.tsx    # create a workspace (first sign-in and the switcher's dialog)
@@ -34,7 +34,7 @@ apps/web/
     │           ├── imports/          # CSV import card (kind, file, upload progress), history table polling while a job runs, details dialog
     │           ├── members/          # members table (roles, remove), invitations card (invite, revoke)
     │           ├── settings/         # rename, leave, delete the workspace
-    │           └── account/          # change password, log out everywhere
+    │           └── account/          # change email or password, log out everywhere, delete the account
     ├── components/
     │   ├── ui/           # shadcn/ui components, owned by this repo
     │   ├── form/         # useAppForm + TextField, TextareaField, SelectField, DateTimeField, SubmitButton

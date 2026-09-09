@@ -25,6 +25,14 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     # the password while logged in, clears it.
     password_reset_token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
     password_reset_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # A requested email change, kept the same way; `email` only changes once the
+    # link sent to the new address is followed.
+    pending_email: Mapped[str | None] = mapped_column(String(320))
+    email_change_token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    email_change_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Sessions are revoked at once, but the row stays for `account_deletion_grace`
+    # so logging in can undo the deletion. The purge job removes it after that.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
     def email_verified(self) -> bool:

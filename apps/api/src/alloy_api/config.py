@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     invite_ttl: timedelta = timedelta(days=7)
     verification_ttl: timedelta = timedelta(days=1)
     password_reset_ttl: timedelta = timedelta(hours=1)
+    email_change_ttl: timedelta = timedelta(days=1)
+
+    account_deletion_grace: timedelta = timedelta(days=7)
 
     frontend_url: HttpUrl = HttpUrl("http://localhost:3000")
 

@@ -374,6 +374,146 @@
         }
       }
     },
+    "/auth/change-email": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change Email",
+        "description": "Email a confirmation link to the new address; the account moves to it once\nthe link is followed. A new request replaces the pending one.\n\nAllowed before the current address is verified, since a typo at signup is\nthe most common reason to need this. 409 if the address is taken, or is the\naccount's own.",
+        "operationId": "auth-change_email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Cancel Email Change",
+        "description": "Drop the pending change; its link stops working. 204 even when there is none.",
+        "operationId": "auth-cancel_email_change",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ]
+      }
+    },
+    "/auth/confirm-email": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Confirm Email",
+        "description": "Follow the link sent to the new address: the account moves to it. No login\nneeded. Reaching the new inbox proves it, so the account counts as verified,\nand any verification link for the old address is voided. The old address is\ntold. 404 for an unknown or used token; 410 for an expired one; 409 if the\naddress was registered meanwhile.",
+        "operationId": "auth-confirm_email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/delete-account": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Delete Account",
+        "description": "Schedule the account for deletion and log out everywhere.\n\nThe row stays for `account_deletion_grace`, during which logging in brings\nthe account back; then the purge job removes it, together with every\nworkspace the user was the only member of. 409 while the user is the only\nowner of a workspace that has other members: those must be handed over or\ndeleted first, or they would be left with nobody to manage them.",
+        "operationId": "auth-delete_account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountDeletion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ]
+      }
+    },
     "/auth/me": {
       "get": {
         "tags": [
@@ -3250,6 +3390,19 @@
   },
   "components": {
     "schemas": {
+      "AccountDeletion": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "title": "Current Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_password"
+        ],
+        "title": "AccountDeletion"
+      },
       "ActivityCreate": {
         "properties": {
           "type": {
@@ -4035,6 +4188,42 @@
           "upcoming"
         ],
         "title": "DueFilter"
+      },
+      "EmailChangeConfirmation": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "EmailChangeConfirmation",
+        "description": "The token from the link sent to the new address."
+      },
+      "EmailChangeRequest": {
+        "properties": {
+          "new_email": {
+            "type": "string",
+            "format": "email",
+            "title": "New Email"
+          },
+          "current_password": {
+            "type": "string",
+            "title": "Current Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_email",
+          "current_password"
+        ],
+        "title": "EmailChangeRequest",
+        "description": "The address to move the account to, and the password to prove it is the\naccount holder asking."
       },
       "EmailVerification": {
         "properties": {
@@ -4990,6 +5179,17 @@
             ],
             "title": "Email Verified At"
           },
+          "pending_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Email"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -5001,6 +5201,7 @@
           "id",
           "email",
           "email_verified_at",
+          "pending_email",
           "created_at"
         ],
         "title": "UserRead"

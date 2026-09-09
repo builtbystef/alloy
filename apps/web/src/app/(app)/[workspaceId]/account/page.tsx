@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/page-header";
 import { FormSkeleton } from "@/components/skeletons";
 import { requireUser, requireWorkspace } from "@/lib/session";
 
+import { DeleteAccountCard } from "./delete-account-card";
+import { EmailForm } from "./email-form";
 import { PasswordForm } from "./password-form";
 import { SessionsCard } from "./sessions-card";
 
@@ -28,8 +30,10 @@ async function AccountContent({ params }: { params: Params }) {
   const [user] = await Promise.all([requireUser(), requireWorkspace(workspaceId)]);
   return (
     <div className="grid max-w-3xl gap-6 md:grid-cols-2">
+      <EmailForm email={user.email} pendingEmail={user.pending_email} />
       <PasswordForm email={user.email} />
       <SessionsCard />
+      <DeleteAccountCard />
     </div>
   );
 }

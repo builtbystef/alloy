@@ -169,6 +169,76 @@ def test_the_purge_task_runs_with_the_worker_resources(db: Database):
         "invites": 0,
         "verification_tokens": 0,
         "password_reset_tokens": 0,
+        "email_change_tokens": 0,
         "attachments": 0,
         "imports": 0,
+        "accounts": 0,
+        "workspaces": 0,
     }
+
+
+def test_purge_removes_deleted_accounts_and_the_workspaces_they_were_alone_in(  # noqa: PLR0913, PLR0917
+    client: TestClient,
+    alice: Actor,
+    join: Join,
+    outbox: Outbox,
+    db: Database,
+    object_store: MemoryObjectStore,
+    settings: Settings,
+):
+    # Carol is alone in her own workspace and a member of Alice's.
+    carol = join(alice, "carol@example.com", "member")
+    own = client.get("/workspaces/", headers=carol.headers).json()
+    own_id = next(w["id"] for w in own if w["id"] != alice.workspace)
+    contact = client.post(
+        f"/workspaces/{own_id}/contacts/", json={"name": "Dan"}, headers=carol.headers
+    ).json()
+    ticket = client.post(
+        f"/workspaces/{own_id}/contacts/{contact['id']}/attachments",
+        json={"filename": "a.pdf", "content_type": "application/pdf", "size": 1},
+        headers=carol.headers,
+    ).json()
+    key = object_store.key_of(ticket["upload_url"])
+    object_store.objects[key] = (b"x", "application/pdf")
+    assert (
+        client.post(
+            f"/workspaces/{own_id}/attachments/{ticket['attachment']['id']}/complete",
+            headers=carol.headers,
+        ).status_code
+        == 200
+    )
+    body = {"new_email": "caroline@example.com", "current_password": "correct horse battery"}
+    assert client.post("/auth/change-email", json=body, headers=carol.headers).status_code == 204
+    change = outbox[-1].text.split("/confirm-email?token=")[1].split()[0]
+
+    response = client.post(
+        "/auth/delete-account",
+        json={"current_password": "correct horse battery"},
+        headers=carol.headers,
+    )
+    assert response.status_code == 204, response.text
+
+    async def run(now) -> PurgeReport:
+        async with db.session() as session:
+            return await purge(session, object_store, settings, now=now)
+
+    report = db.run(run, utcnow())
+    assert (report.accounts, report.workspaces) == (0, 0)
+    assert client.post("/auth/confirm-email", json={"token": change}).status_code == 404
+
+    later = utcnow() + settings.account_deletion_grace + timedelta(hours=1)
+    report = db.run(run, later)
+    assert (report.accounts, report.workspaces) == (1, 1)
+    assert key not in object_store.objects
+    assert [m["email"] for m in alice.get("/members").json()] == [alice.email]
+    assert client.get("/workspaces/", headers=alice.headers).status_code == 200
+    login = client.post(
+        "/auth/login", json={"email": "carol@example.com", "password": "correct horse battery"}
+    )
+    assert login.status_code == 401
+    signup = client.post(
+        "/auth/signup", json={"email": "carol@example.com", "password": "correct horse battery"}
+    )
+    assert signup.status_code == 201
+    report = db.run(run, later)
+    assert (report.accounts, report.workspaces) == (0, 0)

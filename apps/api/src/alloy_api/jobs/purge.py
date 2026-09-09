@@ -3,8 +3,9 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
-from sqlalchemy import Result, delete, select, update
+from sqlalchemy import Result, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 from taskiq import TaskiqDepends
 
 from alloy_api.auth.models import User, UserSession
@@ -14,7 +15,7 @@ from alloy_api.jobs.broker import broker
 from alloy_api.jobs.deps import get_object_store, get_session, get_settings
 from alloy_api.models import utcnow
 from alloy_api.storage import ObjectStore
-from alloy_api.workspaces.models import WorkspaceInvite
+from alloy_api.workspaces.models import Workspace, WorkspaceInvite, WorkspaceMember
 
 if TYPE_CHECKING:
     from sqlalchemy import CursorResult
@@ -35,8 +36,11 @@ class PurgeReport:
     invites: int = 0
     verification_tokens: int = 0
     password_reset_tokens: int = 0
+    email_change_tokens: int = 0
     attachments: int = 0
     imports: int = 0
+    accounts: int = 0
+    workspaces: int = 0
 
 
 async def purge(
@@ -79,6 +83,14 @@ async def purge(
     )
     report.password_reset_tokens = affected(result)
 
+    result = await session.execute(
+        update(User)
+        .where(User.email_change_token_hash.is_not(None))
+        .where(User.email_change_sent_at < cutoff - settings.email_change_ttl)
+        .values(pending_email=None, email_change_token_hash=None, email_change_sent_at=None)
+    )
+    report.email_change_tokens = affected(result)
+
     # An upload URL outlives its row's creation by `storage_url_ttl`; after that,
     # a row still not completed will never be.
     abandoned_before = cutoff - settings.storage_url_ttl
@@ -101,6 +113,34 @@ async def purge(
         await store.delete(pending.key)
         await session.delete(pending)
         report.imports += 1
+
+    # A workspace the user was alone in goes with the account. A seat in a shared
+    # one is just dropped: the delete request already made sure it was not the
+    # only owner seat.
+    users = await session.scalars(
+        select(User).where(User.deleted_at < now - settings.account_deletion_grace)
+    )
+    for user in users:
+        other = aliased(WorkspaceMember)
+        others = (
+            select(func.count(other.id))
+            .where(other.workspace_id == Workspace.id)
+            .where(other.user_id != user.id)
+            .correlate(Workspace)
+            .scalar_subquery()
+        )
+        solo = await session.scalars(
+            select(Workspace)
+            .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+            .where(WorkspaceMember.user_id == user.id)
+            .where(others == 0)
+        )
+        for workspace in solo:
+            await store.delete_prefix(f"workspaces/{workspace.id}/")
+            await session.delete(workspace)
+            report.workspaces += 1
+        await session.delete(user)
+        report.accounts += 1
 
     await session.commit()
     return report

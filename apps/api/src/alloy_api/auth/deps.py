@@ -48,7 +48,7 @@ async def get_current_principal(session: SessionDep, token: SessionCookieDep) ->
         .where(UserSession.revoked_at.is_(None))
         .where(UserSession.expires_at > now)
     )
-    if user_session is None:
+    if user_session is None or user_session.user.deleted_at is not None:
         raise unauthorized()
     last_used = user_session.last_used_at
     if last_used is None or now - last_used > LAST_USED_RESOLUTION:

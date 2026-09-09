@@ -7,10 +7,15 @@ from alloy_api.auth.cookies import SESSION_COOKIE
 from alloy_api.config import Settings
 
 if TYPE_CHECKING:
-    from fastapi.testclient import TestClient
-    from tests.conftest import Outbox
+    from collections.abc import Callable
 
-CREDENTIALS = {"email": "ada@example.com", "password": "correct horse battery"}
+    from fastapi.testclient import TestClient
+    from tests.conftest import Actor, Outbox
+
+    Join = Callable[[Actor, str, str], Actor]
+
+PASSWORD = "correct horse battery"  # noqa: S105 - the one conftest's users use too
+CREDENTIALS = {"email": "ada@example.com", "password": PASSWORD}
 
 
 def verification_token(outbox: Outbox) -> str:
@@ -309,3 +314,189 @@ class TestExpiredReset:
         assert client.post("/auth/reset-password", json=body).status_code == 410
         # The password is unchanged and the old login still works.
         assert client.post("/auth/login", json=CREDENTIALS).status_code == 200
+
+
+def change_token(outbox: Outbox) -> str:
+    return outbox[-1].text.split("/confirm-email?token=")[1].split()[0]
+
+
+class TestEmailChange:
+    def test_the_link_moves_the_account_to_the_new_address(
+        self, client: TestClient, outbox: Outbox
+    ):
+        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/verify-email", json={"token": verification_token(outbox)})
+
+        wrong = client.post(
+            "/auth/change-email",
+            json={"new_email": "lovelace@example.com", "current_password": "not it"},
+        )
+        assert wrong.status_code == 401
+        assert len(outbox) == 1
+
+        body = {"new_email": "Lovelace@example.com", "current_password": CREDENTIALS["password"]}
+        response = client.post("/auth/change-email", json=body)
+        assert response.status_code == 204, response.text
+        assert client.get("/auth/me").json()["email"] == "ada@example.com"
+        assert client.get("/auth/me").json()["pending_email"] == "lovelace@example.com"
+        email = outbox[-1]
+        assert email.to == "lovelace@example.com"
+        assert email.subject == "Confirm your new email"
+        assert "1 day" in email.text
+        token = change_token(outbox)
+
+        client.cookies.clear()
+        confirmed = client.post("/auth/confirm-email", json={"token": token})
+        assert confirmed.status_code == 200, confirmed.text
+        assert confirmed.json()["email"] == "lovelace@example.com"
+        assert confirmed.json()["pending_email"] is None
+        assert client.post("/auth/confirm-email", json={"token": token}).status_code == 404
+        notice = outbox[-1]
+        assert notice.to == "ada@example.com"
+        assert notice.subject == "Your email address was changed"
+        assert "lovelace@example.com" in notice.text
+        assert client.post("/auth/login", json=CREDENTIALS).status_code == 401
+        login = client.post("/auth/login", json={**CREDENTIALS, "email": "lovelace@example.com"})
+        assert login.status_code == 200
+
+    def test_confirming_verifies_an_unverified_account(self, client: TestClient, outbox: Outbox):
+        """A typo at signup: the fix is a new address, which the link proves."""
+        client.post("/auth/signup", json={**CREDENTIALS, "email": "ada@exmaple.com"})
+        assert client.get("/workspaces/").status_code == 403
+        body = {"new_email": "ada@example.com", "current_password": CREDENTIALS["password"]}
+        assert client.post("/auth/change-email", json=body).status_code == 204
+        old_link = outbox[0].text.split("/verify-email?token=")[1].split()[0]
+        confirmed = client.post("/auth/confirm-email", json={"token": change_token(outbox)})
+        assert confirmed.status_code == 200
+        assert confirmed.json()["email_verified_at"] is not None
+        assert client.get("/workspaces/").status_code == 200
+        assert client.post("/auth/verify-email", json={"token": old_link}).status_code == 404
+
+    def test_a_taken_or_unchanged_address_is_refused(self, client: TestClient, outbox: Outbox):
+        client.post("/auth/signup", json={**CREDENTIALS, "email": "grace@example.com"})
+        client.cookies.clear()
+        client.post("/auth/signup", json=CREDENTIALS)
+        password = CREDENTIALS["password"]
+        same = client.post(
+            "/auth/change-email",
+            json={"new_email": "ADA@example.com", "current_password": password},
+        )
+        assert same.status_code == 409
+        taken = client.post(
+            "/auth/change-email",
+            json={"new_email": "grace@example.com", "current_password": password},
+        )
+        assert taken.status_code == 409
+        assert len(outbox) == 2  # no confirmation email went out
+
+    def test_an_address_registered_meanwhile_blocks_the_link(
+        self, client: TestClient, outbox: Outbox
+    ):
+        client.post("/auth/signup", json=CREDENTIALS)
+        body = {"new_email": "grace@example.com", "current_password": CREDENTIALS["password"]}
+        assert client.post("/auth/change-email", json=body).status_code == 204
+        token = change_token(outbox)
+        client.cookies.clear()
+        client.post("/auth/signup", json={**CREDENTIALS, "email": "grace@example.com"})
+        assert client.post("/auth/confirm-email", json={"token": token}).status_code == 409
+
+    def test_a_new_request_replaces_the_pending_one_and_cancel_drops_it(
+        self, client: TestClient, outbox: Outbox
+    ):
+        client.post("/auth/signup", json=CREDENTIALS)
+        password = CREDENTIALS["password"]
+        client.post(
+            "/auth/change-email",
+            json={"new_email": "one@example.com", "current_password": password},
+        )
+        first = change_token(outbox)
+        client.post(
+            "/auth/change-email",
+            json={"new_email": "two@example.com", "current_password": password},
+        )
+        second = change_token(outbox)
+        assert first != second
+        assert client.get("/auth/me").json()["pending_email"] == "two@example.com"
+        assert client.post("/auth/confirm-email", json={"token": first}).status_code == 404
+
+        assert client.delete("/auth/change-email").status_code == 204
+        assert client.get("/auth/me").json()["pending_email"] is None
+        assert client.post("/auth/confirm-email", json={"token": second}).status_code == 404
+        assert client.delete("/auth/change-email").status_code == 204  # nothing pending
+
+
+class TestExpiredEmailChange:
+    @pytest.fixture
+    def settings(self) -> Settings:
+        return Settings(app_name="Test API", email_change_ttl=timedelta(seconds=-1))
+
+    def test_expired_link(self, client: TestClient, outbox: Outbox):
+        client.post("/auth/signup", json=CREDENTIALS)
+        body = {"new_email": "grace@example.com", "current_password": CREDENTIALS["password"]}
+        assert client.post("/auth/change-email", json=body).status_code == 204
+        token = change_token(outbox)
+        assert client.post("/auth/confirm-email", json={"token": token}).status_code == 410
+        assert client.get("/auth/me").json()["email"] == "ada@example.com"
+
+
+class TestAccountDeletion:
+    def test_deleting_logs_out_everywhere_and_login_brings_it_back(
+        self, client: TestClient, outbox: Outbox
+    ):
+        client.post("/auth/signup", json=CREDENTIALS)
+        other = {"Cookie": f"{SESSION_COOKIE}={client.cookies[SESSION_COOKIE]}"}
+        client.cookies.clear()
+        client.post("/auth/login", json=CREDENTIALS)
+
+        wrong = client.post("/auth/delete-account", json={"current_password": "not it"})
+        assert wrong.status_code == 401
+        assert client.get("/auth/me").status_code == 200
+
+        token = client.cookies[SESSION_COOKIE]
+        response = client.post(
+            "/auth/delete-account", json={"current_password": CREDENTIALS["password"]}
+        )
+        assert response.status_code == 204, response.text
+        assert SESSION_COOKIE not in client.cookies
+        assert client.get("/auth/me", headers=other).status_code == 401
+        assert (
+            client.get("/auth/me", headers={"Cookie": f"{SESSION_COOKIE}={token}"}).status_code
+            == 401
+        )
+        email = outbox[-1]
+        assert email.to == "ada@example.com"
+        assert email.subject == "Your account will be deleted"
+        assert "7 days" in email.text
+        assert client.post("/auth/signup", json=CREDENTIALS).status_code == 409
+
+        login = client.post("/auth/login", json=CREDENTIALS)
+        assert login.status_code == 200
+        assert client.get("/auth/me").status_code == 200
+
+    def test_the_only_owner_of_a_shared_workspace_must_hand_it_over_first(
+        self, client: TestClient, alice: Actor, join: Join
+    ):
+        bob = join(alice, "bob@example.com", "admin")
+        alice.patch("", json={"name": "Shared"})
+        body = {"current_password": PASSWORD}
+        refused = client.post("/auth/delete-account", json=body, headers=alice.headers)
+        assert refused.status_code == 409
+        assert "Shared" in refused.json()["detail"]
+        assert client.get("/auth/me", headers=alice.headers).status_code == 200
+
+        seat = next(m for m in alice.get("/members").json() if m["email"] == bob.email)
+        assert alice.patch(f"/members/{seat['id']}", json={"role": "owner"}).status_code == 200
+        response = client.post("/auth/delete-account", json=body, headers=alice.headers)
+        assert response.status_code == 204, response.text
+        # Alice's seat no longer counts as an owner, so Bob is the last one.
+        assert bob.post("/leave").status_code == 409
+
+    def test_a_member_who_owns_nothing_shared_can_go(
+        self, client: TestClient, alice: Actor, join: Join
+    ):
+        """Alone in the signup workspace, and a plain member elsewhere."""
+        carol = join(alice, "carol@example.com", "member")
+        response = client.post(
+            "/auth/delete-account", json={"current_password": PASSWORD}, headers=carol.headers
+        )
+        assert response.status_code == 204, response.text

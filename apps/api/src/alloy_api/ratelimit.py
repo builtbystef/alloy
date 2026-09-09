@@ -34,6 +34,7 @@ SIGNUP_PER_IP = Limit("signup:ip", 10, timedelta(hours=1))
 FORGOT_PASSWORD_PER_IP = Limit("forgot-password:ip", 10, timedelta(hours=1))
 FORGOT_PASSWORD_PER_EMAIL = Limit("forgot-password:email", 3, timedelta(hours=1))
 RESEND_VERIFICATION_PER_USER = Limit("resend-verification:user", 3, timedelta(hours=1))
+CHANGE_EMAIL_PER_USER = Limit("change-email:user", 3, timedelta(hours=1))
 # Not against guessing (tokens are 32 random bytes): keeps scanners off the database.
 TOKEN_PER_IP = Limit("token:ip", 10, timedelta(minutes=1))
 INVITE_ACCEPT_PER_USER = Limit("invite-accept:user", 10, timedelta(minutes=1))
@@ -205,6 +206,7 @@ def per_ip(limit: Limit) -> Callable[[Request, Limiter], Awaitable[None]]:
 
 
 __all__ = [
+    "CHANGE_EMAIL_PER_USER",
     "FORGOT_PASSWORD_PER_EMAIL",
     "FORGOT_PASSWORD_PER_IP",
     "INVITE_ACCEPT_PER_USER",

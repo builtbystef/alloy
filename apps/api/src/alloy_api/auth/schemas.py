@@ -36,10 +36,24 @@ class PasswordReset(BaseModel):
     new_password: str = Password
 
 
+class EmailChangeRequest(BaseModel):
+    new_email: EmailStr
+    current_password: str
+
+
+class EmailChangeConfirmation(BaseModel):
+    token: str = Token
+
+
+class AccountDeletion(BaseModel):
+    current_password: str
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     email: str
     email_verified_at: datetime | None
+    pending_email: str | None
     created_at: datetime
