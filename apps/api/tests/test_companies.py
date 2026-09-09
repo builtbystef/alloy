@@ -68,4 +68,5 @@ def test_users_only_see_their_own_companies(alice: Actor, bob: Actor):
 def test_validation(alice: Actor):
     assert alice.post("/companies/", json={"name": ""}).status_code == 422
     assert alice.post("/companies/", json={"website": "x"}).status_code == 422
+    assert alice.post("/companies/", json={**ACME, "notes": "x" * 10_001}).status_code == 422
     assert alice.get("/companies/not-a-uuid").status_code == 422

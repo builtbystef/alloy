@@ -22,6 +22,7 @@ Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max
 Short = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)]
 Phone = Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)]
 Industry = Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)]
+Notes = Annotated[str, StringConstraints(max_length=10_000)]
 
 
 def check_url(value: str) -> str:
@@ -43,14 +44,14 @@ class CompanyCreate(BaseModel):
     name: Name
     website: Website | None = None
     industry: Industry | None = None
-    notes: str | None = None
+    notes: Notes | None = None
 
 
 class CompanyUpdate(BaseModel):
     name: Name | None = None
     website: Website | None = None
     industry: Industry | None = None
-    notes: str | None = None
+    notes: Notes | None = None
 
 
 class CompanyRef(ReadModel):
@@ -106,7 +107,7 @@ class ContactRead(ContactRef):
 
 class ActivityCreate(BaseModel):
     type: ActivityType
-    notes: str | None = None
+    notes: Notes | None = None
 
 
 class ActivityRead(ReadModel):
@@ -123,7 +124,7 @@ class TaskCreate(BaseModel):
     status: TaskStatus = TaskStatus.OPEN
     contact_id: UUID | None = None
     company_id: UUID | None = None
-    notes: str | None = None
+    notes: Notes | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -132,7 +133,7 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = None
     contact_id: UUID | None = None
     company_id: UUID | None = None
-    notes: str | None = None
+    notes: Notes | None = None
 
 
 class TaskRead(ReadModel):

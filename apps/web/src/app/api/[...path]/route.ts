@@ -15,7 +15,11 @@ import { clientAddress } from "@/lib/client-address";
  * read from the one header `CLIENT_IP_HEADER` names, the one the platform in
  * front overwrites on every request; nothing is sent when that is unset (local
  * `next dev`), and the API then sees this server's address.
+ *
+ * A body above `MAX_BODY_BYTES` is refused before it is buffered; the API
+ * enforces the same limit (errors.py), this only spares this server the memory.
  */
+const MAX_BODY_BYTES = 1024 * 1024;
 const REQUEST_HEADERS = ["accept", "content-type", "cookie"];
 const RESPONSE_HEADERS = [
   "content-type",
@@ -26,6 +30,9 @@ const RESPONSE_HEADERS = [
 ];
 
 async function proxy(request: NextRequest): Promise<Response> {
+  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) {
+    return Response.json({ detail: "Request body too large." }, { status: 413 });
+  }
   const { pathname, search } = request.nextUrl;
   const target = new URL(pathname.replace(/^\/api/, "") + search, getApiUrl());
 

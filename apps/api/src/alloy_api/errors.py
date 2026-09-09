@@ -3,6 +3,7 @@ import secrets
 from typing import TYPE_CHECKING
 
 from starlette import status
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
 from alloy_api.logs import request_id
@@ -16,6 +17,11 @@ REQUEST_ID_HEADER = "X-Request-ID"
 _MAX_REQUEST_ID_LENGTH = 128
 
 INTERNAL_ERROR_DETAIL = "Something went wrong. Quote the request ID when reporting it."
+
+# Files go to storage on presigned URLs, never through the API, so its bodies are
+# small JSON. The web app's proxy route refuses the same size before buffering.
+MAX_BODY_BYTES = 1024 * 1024
+BODY_TOO_LARGE_DETAIL = "Request body too large."
 
 
 def new_request_id() -> str:
@@ -79,3 +85,41 @@ class RequestIdMiddleware:
             await response(scope, receive, send_with_id)
         finally:
             request_id.reset(token)
+
+
+class BodySizeLimitMiddleware:
+    """413 for a body above `limit`: on `Content-Length` before reading anything,
+    and on the bytes actually received when the length was not declared."""
+
+    def __init__(self, app: ASGIApp, limit: int = MAX_BODY_BYTES) -> None:
+        self.app = app
+        self.limit = limit
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        for name, value in scope["headers"]:
+            if name == b"content-length" and value.isdigit() and int(value) > self.limit:
+                response = JSONResponse(
+                    {"detail": BODY_TOO_LARGE_DETAIL},
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                )
+                await response(scope, receive, send)
+                return
+
+        received = 0
+
+        async def receive_limited() -> Message:
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.limit:
+                    # Raised inside the endpoint's body read, where Starlette's
+                    # exception handling turns it into the 413.
+                    raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, BODY_TOO_LARGE_DETAIL)
+            return message
+
+        await self.app(scope, receive_limited, send)

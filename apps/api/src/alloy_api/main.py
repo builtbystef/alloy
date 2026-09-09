@@ -11,7 +11,7 @@ from alloy_api.auth.router import router as auth_router
 from alloy_api.config import SettingsDep, get_settings
 from alloy_api.crm.router import router as crm_router
 from alloy_api.db import DatabaseState, create_database_state
-from alloy_api.errors import RequestIdMiddleware
+from alloy_api.errors import BodySizeLimitMiddleware, RequestIdMiddleware
 from alloy_api.jobs.broker import broker
 from alloy_api.jobs.deps import configure as configure_jobs
 from alloy_api.mail import Mailer, create_mailer
@@ -89,6 +89,7 @@ if telemetry.enabled(settings):
     telemetry.instrument_app(app)
 # Innermost: inside the Logfire span, so the request ID reaches its logs, and
 # inside CORS, so a 500 still carries the CORS headers.
+app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
