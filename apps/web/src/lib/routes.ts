@@ -15,6 +15,8 @@ export function workspacePaths(workspaceId: string) {
     companyEdit: (id: string) => `${base}/companies/${id}/edit` as const,
     companyNew: `${base}/companies/new` as const,
     tasks: `${base}/tasks` as const,
+    assistant: `${base}/assistant` as const,
+    assistantChat: (id: string) => `${base}/assistant/${id}` as const,
     imports: `${base}/imports` as const,
     members: `${base}/members` as const,
     settings: `${base}/settings` as const,

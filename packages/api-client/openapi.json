@@ -3446,6 +3446,467 @@
         }
       }
     },
+    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/uploads": {
+      "post": {
+        "tags": [
+          "agent",
+          "agent"
+        ],
+        "summary": "Create Upload",
+        "description": "Start a chat upload: the row is created and an upload URL returned. Same size\nlimit as attachments; 413 above it.",
+        "operationId": "agent-create_upload",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatUploadCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatUploadTicket"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/agent/uploads/{upload_id}/complete": {
+      "post": {
+        "tags": [
+          "agent",
+          "agent"
+        ],
+        "summary": "Complete Upload",
+        "description": "Called after the `PUT`. 409 when the object is not in the store yet; 413, and\nthe object removed, when it is bigger than allowed. Repeating it is harmless.",
+        "operationId": "agent-complete_upload",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Upload Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatUploadRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/agent/uploads/{upload_id}": {
+      "delete": {
+        "tags": [
+          "agent",
+          "agent"
+        ],
+        "summary": "Delete Upload",
+        "description": "Discard a chat upload the user removed before sending: the row and the\nobject. 409 once it has become an attachment, which owns the object then.",
+        "operationId": "agent-delete_upload",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Upload Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/agent/conversations": {
+      "get": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "List Conversations",
+        "description": "The caller's conversations in this workspace, most recently active first.",
+        "operationId": "agent-list_conversations",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationRead"
+                  },
+                  "title": "Response Agent-List Conversations"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Create Conversation",
+        "description": "A new, empty conversation. An existing one with no messages is returned\ninstead, so \"New chat\" pressed twice does not pile up empty rows.",
+        "operationId": "agent-create_conversation",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}": {
+      "get": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Get Conversation",
+        "description": "The conversation with its transcript as `UIMessage`s. A tool call still\nwaiting for approval comes back in the `approval-requested` state.",
+        "operationId": "agent-get_conversation",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Delete Conversation",
+        "description": "Removes the transcript and the chat's files that were never attached to a\nrecord. Attachments made from the chat stay on their records.",
+        "operationId": "agent-delete_conversation",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/messages": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Send Message",
+        "description": "Send a message, retry the last reply, or answer an approval request, and\nstream the assistant's reply as server-sent events (the Vercel AI data-stream\nprotocol; `useChat` reads it).\n\nThe body is what `useChat` sends. Only its last message is used: a `user`\nmessage is the new turn (files go as `upload_ids` in its `metadata`), an\n`assistant` message carries approval responses. `trigger: regenerate-message`\nrepeats the last user turn. 503 when no model is configured, 429 past the\nper-user limit.",
+        "operationId": "agent-send_message",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Read Root",
@@ -3545,6 +4006,17 @@
             ],
             "description": "Who logged it; for `task_completed`, who completed the task."
           },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RowSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the assistant logged it."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3558,6 +4030,7 @@
           "type",
           "notes",
           "created_by",
+          "source",
           "created_at"
         ],
         "title": "ActivityRead"
@@ -3713,6 +4186,184 @@
         "title": "AttachmentUpload",
         "description": "Step one of an upload: `PUT` the file to `upload_url` with the `Content-Type`\nand `size` given at creation (the URL accepts nothing else), then\n`POST .../attachments/{id}/complete`."
       },
+      "ChatMessageRequest": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "trigger": {
+            "type": "string",
+            "title": "Trigger",
+            "default": "submit-message"
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "tz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz"
+          },
+          "messageId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messageid"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "messages"
+        ],
+        "title": "ChatMessageRequest",
+        "description": "What `useChat` posts: the chat id, the trigger, and the messages the browser\nhas. Only the last message is read; the server holds the history. `tz` is the\nuser's IANA time zone."
+      },
+      "ChatUploadCreate": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "content_type": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[\\w.+-]+/[\\w.+-]+$",
+            "title": "Content Type"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Size",
+            "description": "Bytes."
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "content_type",
+          "size"
+        ],
+        "title": "ChatUploadCreate",
+        "description": "What the browser knows before uploading a file into the chat."
+      },
+      "ChatUploadRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "uploaded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded At"
+          },
+          "attachment_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachment Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conversation_id",
+          "filename",
+          "content_type",
+          "size",
+          "uploaded_at",
+          "attachment_id",
+          "created_at"
+        ],
+        "title": "ChatUploadRead"
+      },
+      "ChatUploadTicket": {
+        "properties": {
+          "upload": {
+            "$ref": "#/components/schemas/ChatUploadRead"
+          },
+          "upload_url": {
+            "type": "string",
+            "title": "Upload Url"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upload",
+          "upload_url",
+          "expires_at"
+        ],
+        "title": "ChatUploadTicket",
+        "description": "Step one of a chat upload: `PUT` the file to `upload_url` with the\n`Content-Type` and `size` given at creation, then `POST .../uploads/{id}/complete`."
+      },
       "CompanyCreate": {
         "properties": {
           "name": {
@@ -3818,6 +4469,17 @@
               }
             ]
           },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RowSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the assistant or an import made the row."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3837,6 +4499,7 @@
           "industry",
           "notes",
           "created_by",
+          "source",
           "created_at",
           "updated_at"
         ],
@@ -4084,6 +4747,17 @@
               }
             ]
           },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RowSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the assistant or an import made the row."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4106,6 +4780,7 @@
           "last_contacted_at",
           "company",
           "created_by",
+          "source",
           "created_at",
           "updated_at"
         ],
@@ -4237,6 +4912,94 @@
         },
         "type": "object",
         "title": "ContactUpdate"
+      },
+      "ConversationDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "Null until the first message names it."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Messages",
+            "description": "The transcript as Vercel AI SDK `UIMessage`s, for `useChat`."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at",
+          "messages"
+        ],
+        "title": "ConversationDetail"
+      },
+      "ConversationRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "Null until the first message names it."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ConversationRead"
       },
       "Credentials": {
         "properties": {
@@ -5003,6 +5766,15 @@
         ],
         "title": "RowError"
       },
+      "RowSource": {
+        "type": "string",
+        "enum": [
+          "agent",
+          "import"
+        ],
+        "title": "RowSource",
+        "description": "How a row came to be, when not typed in by hand: the assistant or a CSV import.\nNull for rows made in the UI."
+      },
       "SortOrder": {
         "type": "string",
         "enum": [
@@ -5145,6 +5917,17 @@
               }
             ]
           },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RowSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the assistant or an import made the row."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -5166,6 +5949,7 @@
           "contact",
           "company",
           "created_by",
+          "source",
           "created_at",
           "updated_at"
         ],

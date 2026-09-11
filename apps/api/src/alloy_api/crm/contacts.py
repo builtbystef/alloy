@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
@@ -7,23 +7,9 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from alloy_api.crm.attachments import delete_with_objects
-from alloy_api.crm.common import (
-    Page,
-    PageOf,
-    SortOrder,
-    check_owned,
-    fetch_owned,
-    paginate,
-    sorted_by,
-)
-from alloy_api.crm.models import (
-    CONTACT_ACTIVITY_TYPES,
-    Activity,
-    Company,
-    Contact,
-    ContactStatus,
-)
+from alloy_api.crm import service
+from alloy_api.crm.common import Page, PageOf, SortOrder, fetch_owned, paginate, sorted_by
+from alloy_api.crm.models import Activity, Company, Contact, ContactStatus
 from alloy_api.crm.schemas import (
     ActivityCreate,
     ActivityRead,
@@ -32,9 +18,13 @@ from alloy_api.crm.schemas import (
     ContactUpdate,
 )
 from alloy_api.db import SessionDep
-from alloy_api.models import utcnow
 from alloy_api.storage import ObjectStoreDep
 from alloy_api.workspaces.deps import CanReadCrm, CanWriteCrm
+
+if TYPE_CHECKING:
+    from sqlalchemy import Select
+
+    from alloy_api.workspaces.deps import Membership
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
@@ -64,12 +54,8 @@ class ContactFilters(Page):
     order: SortOrder = SortOrder.ASC
 
 
-@router.get("/")
-async def list_contacts(
-    session: SessionDep, membership: CanReadCrm, filters: Annotated[ContactFilters, Query()]
-) -> PageOf[ContactRead]:
-    """Sorted by name unless `sort` says otherwise; contacts without a value for the
-    sort column come last either way."""
+def contacts_query(membership: Membership, filters: ContactFilters) -> Select[tuple[Contact]]:
+    """The workspace's contacts, filtered and sorted. Shared with the assistant."""
     query = (
         select(Contact).options(WITH_COMPANY).where(Contact.workspace_id == membership.workspace.id)
     )
@@ -88,19 +74,23 @@ async def list_contacts(
         query = query.where(Contact.status == filters.status)
     if filters.company_id is not None:
         query = query.where(Contact.company_id == filters.company_id)
-    query = sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Contact.id)
-    return await paginate(session, query, filters, ContactRead)
+    return sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Contact.id)
+
+
+@router.get("/")
+async def list_contacts(
+    session: SessionDep, membership: CanReadCrm, filters: Annotated[ContactFilters, Query()]
+) -> PageOf[ContactRead]:
+    """Sorted by name unless `sort` says otherwise; contacts without a value for the
+    sort column come last either way."""
+    return await paginate(session, contacts_query(membership, filters), filters, ContactRead)
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_contact(
     body: ContactCreate, session: SessionDep, membership: CanWriteCrm
 ) -> ContactRead:
-    await check_owned(session, Company, body.company_id, membership)
-    contact = Contact(
-        workspace_id=membership.workspace.id, created_by=membership.user, **body.model_dump()
-    )
-    session.add(contact)
+    contact = await service.create_contact(session, membership, body)
     await session.commit()
     await session.refresh(contact, ["company"])
     return ContactRead.model_validate(contact)
@@ -118,12 +108,7 @@ async def read_contact(
 async def update_contact(
     contact_id: UUID, body: ContactUpdate, session: SessionDep, membership: CanWriteCrm
 ) -> ContactRead:
-    contact = await fetch_owned(session, Contact, contact_id, membership)
-    changes = body.model_dump(exclude_unset=True)
-    if "company_id" in changes:
-        await check_owned(session, Company, changes["company_id"], membership)
-    for field, value in changes.items():
-        setattr(contact, field, value)
+    contact = await service.update_contact(session, membership, contact_id, body)
     await session.commit()
     await session.refresh(contact, ["company"])
     return ContactRead.model_validate(contact)
@@ -136,7 +121,7 @@ async def delete_contact(
     """The contact's activities and attachments go with it; tasks are kept, with the
     link cleared."""
     contact = await fetch_owned(session, Contact, contact_id, membership)
-    await delete_with_objects(session, store, contact)
+    await service.delete_with_objects(session, store, contact)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -159,17 +144,6 @@ async def create_activity(
     contact_id: UUID, body: ActivityCreate, session: SessionDep, membership: CanWriteCrm
 ) -> ActivityRead:
     """A call, email, meeting, or follow-up also marks the contact as contacted now."""
-    contact = await fetch_owned(session, Contact, contact_id, membership)
-    now = utcnow()
-    activity = Activity(
-        contact_id=contact.id,
-        type=body.type,
-        notes=body.notes,
-        created_by=membership.user,
-        created_at=now,
-    )
-    session.add(activity)
-    if body.type in CONTACT_ACTIVITY_TYPES:
-        contact.last_contacted_at = now
+    activity = await service.create_activity(session, membership, contact_id, body)
     await session.commit()
     return ActivityRead.model_validate(activity)

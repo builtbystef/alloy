@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from taskiq import InMemoryBroker
 
 from alloy_api import logs, telemetry
+from alloy_api.agent.router import router as agent_router
 from alloy_api.auth.router import router as auth_router
 from alloy_api.config import SettingsDep, get_settings
 from alloy_api.crm.router import router as crm_router
@@ -87,6 +88,7 @@ app = FastAPI(
 )
 if telemetry.enabled(settings):
     telemetry.instrument_app(app)
+    telemetry.instrument_agents()
 # Innermost: inside the Logfire span, so the request ID reaches its logs, and
 # inside CORS, so a 500 still carries the CORS headers.
 app.add_middleware(BodySizeLimitMiddleware)
@@ -103,6 +105,7 @@ app.include_router(auth_router)
 app.include_router(workspaces_router)
 app.include_router(invites_router)
 app.include_router(crm_router)
+app.include_router(agent_router)
 
 
 @app.get("/")

@@ -58,6 +58,7 @@ def string_enum[E: StrEnum](enum_type: type[E]) -> Enum:
 
 
 # Autogenerate only sees models on `Base.metadata`. Imported last: they import `Base`.
+from alloy_api.agent import models as _agent_models  # noqa: E402, F401
 from alloy_api.auth import models as _auth_models  # noqa: E402, F401
 from alloy_api.crm import models as _crm_models  # noqa: E402, F401
 from alloy_api.workspaces import models as _workspace_models  # noqa: E402, F401

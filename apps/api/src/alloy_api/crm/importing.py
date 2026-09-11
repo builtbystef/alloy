@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from alloy_api.crm.models import Company, Contact, Import, ImportKind, ImportStatus
+from alloy_api.crm.models import Company, Contact, Import, ImportKind, ImportStatus, RowSource
 from alloy_api.crm.schemas import CompanyCreate, ContactCreate
 from alloy_api.models import utcnow
 
@@ -109,6 +109,7 @@ async def import_companies(
             Company(
                 workspace_id=workspace_id,
                 created_by_user_id=created_by_user_id,
+                source=RowSource.IMPORT,
                 **body.model_dump(),
             )
         )
@@ -146,7 +147,10 @@ async def import_contacts(
             report.skipped += 1
             continue
         contact = Contact(
-            workspace_id=workspace_id, created_by_user_id=created_by_user_id, **body.model_dump()
+            workspace_id=workspace_id,
+            created_by_user_id=created_by_user_id,
+            source=RowSource.IMPORT,
+            **body.model_dump(),
         )
         if company_name is not None:
             company = companies.get(company_name.lower())
@@ -154,6 +158,7 @@ async def import_contacts(
                 company = Company(
                     workspace_id=workspace_id,
                     created_by_user_id=created_by_user_id,
+                    source=RowSource.IMPORT,
                     name=company_name[:200],
                 )
                 session.add(company)

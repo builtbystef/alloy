@@ -12,11 +12,13 @@
     "typegen": "next typegen"
   },
   "dependencies": {
+    "@ai-sdk/react": "catalog:",
     "@alloy/api-client": "workspace:*",
     "@base-ui/react": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
+    "ai": "catalog:",
     "class-variance-authority": "catalog:",
     "cn": "catalog:",
     "lucide-react": "catalog:",
@@ -26,6 +28,7 @@
     "react-dom": "^19.2.8",
     "server-only": "catalog:",
     "sonner": "catalog:",
+    "streamdown": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

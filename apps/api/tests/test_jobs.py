@@ -213,6 +213,7 @@ def test_the_purge_task_runs_with_the_worker_resources(db: Database):
         "password_reset_tokens": 0,
         "email_change_tokens": 0,
         "attachments": 0,
+        "chat_uploads": 0,
         "imports": 0,
         "timed_out_imports": 0,
         "accounts": 0,

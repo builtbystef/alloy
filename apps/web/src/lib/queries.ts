@@ -133,6 +133,13 @@ export const attachmentKeys = {
       : ([...attachmentKeys.all, ws, "company", parent.companyId] as const),
 };
 
+/** The assistant's conversations: the caller's own, per workspace. */
+export const conversationKeys = {
+  all: ["conversations"] as const,
+  list: (ws: string) => [...conversationKeys.all, ws, "list"] as const,
+  detail: (ws: string, id: string) => [...conversationKeys.all, ws, "detail", id] as const,
+};
+
 export const importKeys = {
   all: ["imports"] as const,
   /** Every page of the list: what to invalidate after an upload. */
@@ -279,6 +286,32 @@ export function attachmentsQuery(api: ApiClient, ws: string, parent: AttachmentP
               params: { path: { workspace_id: ws, company_id: parent.companyId }, query: ALL_ROWS },
             }),
           ),
+  });
+}
+
+/** Most recently active first. */
+export function conversationListQuery(api: ApiClient, ws: string) {
+  return queryOptions({
+    queryKey: conversationKeys.list(ws),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/agent/conversations", {
+          params: { path: { workspace_id: ws } },
+        }),
+      ),
+  });
+}
+
+/** One conversation with its transcript as AI SDK messages. */
+export function conversationQuery(api: ApiClient, ws: string, id: string) {
+  return queryOptions({
+    queryKey: conversationKeys.detail(ws, id),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/agent/conversations/{conversation_id}", {
+          params: { path: { workspace_id: ws, conversation_id: id } },
+        }),
+      ),
   });
 }
 

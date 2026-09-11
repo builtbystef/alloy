@@ -9,13 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from alloy_api.config import SettingsDep
+from alloy_api.crm import service
 from alloy_api.crm.common import Page, PageOf, fetch_owned, not_found, paginate
 from alloy_api.crm.models import Attachment, Company, Contact
 from alloy_api.crm.schemas import AttachmentCreate, AttachmentRead, AttachmentUpload
 from alloy_api.db import SessionDep
 from alloy_api.models import utcnow
 from alloy_api.storage import ObjectStore, ObjectStoreDep
-from alloy_api.storage.cleanup import delete_stored, storage_prefix
+from alloy_api.storage.cleanup import storage_prefix
 from alloy_api.workspaces.deps import CanReadCrm, CanWriteCrm
 
 if TYPE_CHECKING:
@@ -74,18 +75,6 @@ def get_attachment_storage(store: ObjectStoreDep, settings: SettingsDep) -> Atta
 
 
 StorageDep = Annotated[AttachmentStorage, Depends(get_attachment_storage)]
-
-
-async def delete_with_objects(
-    session: AsyncSession, store: ObjectStore, parent: Contact | Company
-) -> None:
-    """Delete a contact or company and commit, then remove the stored files of the
-    attachments that went with it."""
-    query = select(Attachment.key).where(parent_column(parent) == parent.id)
-    keys = list(await session.scalars(query))
-    await session.delete(parent)
-    await session.commit()
-    await delete_stored(store, keys=keys)
 
 
 async def _list(
@@ -218,8 +207,5 @@ async def delete_attachment(
     attachment_id: UUID, session: SessionDep, storage: StorageDep, membership: CanWriteCrm
 ) -> Response:
     """Removes the row, then the file from the store."""
-    attachment = await fetch_owned(session, Attachment, attachment_id, membership)
-    await session.delete(attachment)
-    await session.commit()
-    await delete_stored(storage.store, keys=[attachment.key])
+    await service.delete_attachment(session, storage.store, membership, attachment_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

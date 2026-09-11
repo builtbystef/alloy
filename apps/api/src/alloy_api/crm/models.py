@@ -40,6 +40,14 @@ class ImportStatus(StrEnum):
     FAILED = "failed"
 
 
+class RowSource(StrEnum):
+    """How a row came to be, when not typed in by hand: the assistant or a CSV import.
+    Null for rows made in the UI."""
+
+    AGENT = "agent"
+    IMPORT = "import"
+
+
 class ActivityType(StrEnum):
     NOTE = "note"
     CALL = "call"
@@ -70,6 +78,7 @@ class CreatedBy:
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), sort_order=90
     )
+    source: Mapped[RowSource | None] = mapped_column(string_enum(RowSource), sort_order=91)
 
     @declared_attr
     def created_by(self) -> Mapped[User | None]:

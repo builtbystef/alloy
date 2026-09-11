@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
@@ -7,13 +7,18 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from alloy_api.crm.attachments import delete_with_objects
+from alloy_api.crm import service
 from alloy_api.crm.common import Page, PageOf, SortOrder, fetch_owned, paginate, sorted_by
 from alloy_api.crm.models import Company, Contact
 from alloy_api.crm.schemas import CompanyCreate, CompanyRead, CompanyUpdate, ContactRead
 from alloy_api.db import SessionDep
 from alloy_api.storage import ObjectStoreDep
 from alloy_api.workspaces.deps import CanReadCrm, CanWriteCrm
+
+if TYPE_CHECKING:
+    from sqlalchemy import Select
+
+    from alloy_api.workspaces.deps import Membership
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -37,12 +42,8 @@ class CompanyFilters(Page):
     order: SortOrder = SortOrder.ASC
 
 
-@router.get("/")
-async def list_companies(
-    session: SessionDep, membership: CanReadCrm, filters: Annotated[CompanyFilters, Query()]
-) -> PageOf[CompanyRead]:
-    """Sorted by name unless `sort` says otherwise; companies without a value for the
-    sort column come last either way."""
+def companies_query(membership: Membership, filters: CompanyFilters) -> Select[tuple[Company]]:
+    """The workspace's companies, filtered and sorted. Shared with the assistant."""
     query = select(Company).where(Company.workspace_id == membership.workspace.id)
     if filters.q:
         pattern = f"%{filters.q}%"
@@ -51,18 +52,23 @@ async def list_companies(
             | Company.website.ilike(pattern)
             | Company.industry.ilike(pattern)
         )
-    query = sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Company.id)
-    return await paginate(session, query, filters, CompanyRead)
+    return sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Company.id)
+
+
+@router.get("/")
+async def list_companies(
+    session: SessionDep, membership: CanReadCrm, filters: Annotated[CompanyFilters, Query()]
+) -> PageOf[CompanyRead]:
+    """Sorted by name unless `sort` says otherwise; companies without a value for the
+    sort column come last either way."""
+    return await paginate(session, companies_query(membership, filters), filters, CompanyRead)
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_company(
     body: CompanyCreate, session: SessionDep, membership: CanWriteCrm
 ) -> CompanyRead:
-    company = Company(
-        workspace_id=membership.workspace.id, created_by=membership.user, **body.model_dump()
-    )
-    session.add(company)
+    company = await service.create_company(session, membership, body)
     await session.commit()
     return CompanyRead.model_validate(company)
 
@@ -78,9 +84,7 @@ async def read_company(
 async def update_company(
     company_id: UUID, body: CompanyUpdate, session: SessionDep, membership: CanWriteCrm
 ) -> CompanyRead:
-    company = await fetch_owned(session, Company, company_id, membership)
-    for field, value in body.model_dump(exclude_unset=True).items():
-        setattr(company, field, value)
+    company = await service.update_company(session, membership, company_id, body)
     await session.commit()
     return CompanyRead.model_validate(company)
 
@@ -92,7 +96,7 @@ async def delete_company(
     """Contacts and tasks at the company are kept, with the link cleared; its
     attachments go with it."""
     company = await fetch_owned(session, Company, company_id, membership)
-    await delete_with_objects(session, store, company)
+    await service.delete_with_objects(session, store, company)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

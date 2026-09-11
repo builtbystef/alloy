@@ -137,7 +137,8 @@ apps/api/
 │   ├── mail/                 # Mailer protocol + ConsoleMailer
 │   ├── storage/              # ObjectStore protocol + S3ObjectStore (aiobotocore); ObjectStoreDep
 │   ├── jobs/                 # Taskiq broker (Redis streams or in-memory), worker deps; tasks: emails, purge, imports
-│   └── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, attachments, imports, dashboard
+│   ├── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, attachments, imports, dashboard
+│   └── agent/                # the assistant: a Pydantic AI agent over the CRM, conversations, chat uploads, streaming
 └── tests/                    # TestClient fixture: settings overridden, one rolled-back transaction
 ```
 
@@ -545,7 +546,8 @@ been dead for `ALLOY_PURGE_AFTER` (default 7 days): sessions revoked or
 expired, invitations accepted, revoked, or expired, verification, password
 reset, and email change links past their TTL, and attachment or import rows
 whose upload URL expired without a completion, along with any object that did
-land in storage. It also removes accounts whose deletion grace period
+land in storage. Files dropped into the assistant's chat but never attached to
+a record go after `ALLOY_CHAT_UPLOAD_TTL` (default one day). It also removes accounts whose deletion grace period
 (`ALLOY_ACCOUNT_DELETION_GRACE`) has passed, together with the workspaces they
 were alone in (see Authentication).
 
@@ -582,6 +584,67 @@ The web app's Imports page (`apps/web/src/app/(app)/[workspaceId]/imports/`)
 drives this handshake: pick the kind and a file, watch the upload, then the
 history table polls every two seconds while a job is queued or running and
 opens the row errors in a dialog once it is done.
+
+### Assistant
+
+`agent/` lets a user say "add Jane from Acme as a contact", "which companies
+have we not contacted recently?", or "attach this contract to Acme" in a chat, and have the
+app do it. One [Pydantic AI](https://pydantic.dev/docs/ai/) agent
+(`agent/agent.py`), a short instruction prompt, and 21 typed tools
+(`agent/tools.py`) that call the same `crm/service.py` functions the routes
+call, so the assistant can do nothing the UI cannot. The model is OpenAI's
+`gpt-5.6-luna` over the Responses API; `ALLOY_OPENAI_API_KEY` turns it on
+(unset, the endpoints answer 503 and the web app shows the assistant as
+unavailable), `ALLOY_AGENT_MODEL` and `ALLOY_AGENT_REASONING_EFFORT` (default
+`low`) tune it.
+
+```text
+                  /workspaces/{workspace_id}/agent/...   every route needs crm:read
+
+GET/POST          .../conversations                     the caller's own; POST reuses an empty one
+GET/DELETE        .../conversations/{id}                the transcript as AI SDK messages / delete it and its loose uploads
+POST              .../conversations/{id}/messages       send a message, an approval, or a retry; streams server-sent events
+POST              .../conversations/{id}/uploads        start a chat upload (presigned PUT, same limit as attachments)
+POST              .../uploads/{id}/complete             after the PUT
+```
+
+- **The server owns the conversation.** The browser posts only its newest
+  message; `agent_messages` holds the transcript, one Pydantic AI message per
+  row, and each run gets it as history. The reply streams back in the Vercel AI
+  data-stream protocol, which `useChat` in the web app reads. Conversations
+  past 20 user turns are trimmed at a turn boundary before the model sees them.
+- **Three tiers of tools.** Reads always run, and viewers are offered nothing
+  else. A single create, update, log, or attach runs at once and the reply says
+  what changed, with links. A delete, or a call with more than one item, raises
+  `ApprovalRequired`: the run pauses, the browser shows an approval card with a
+  table of what is about to happen (an `ApprovalPreviewEvent` the tool emits),
+  and the run resumes with the same message history when the user clicks
+  Approve or Deny. Bulk calls are capped at 100 items. Rows the assistant
+  creates carry `created_by` and `source = agent`.
+- **Files in the chat.** A file dropped into the chat uploads to
+  `workspaces/{ws}/chat-uploads/{id}` with the attachment handshake and is
+  named in the message's metadata as an upload id. Images and PDFs under
+  `ALLOY_AGENT_FILE_READ_MAX_BYTES` (4 MB) are shown to the model in that turn
+  only; the stored transcript keeps a note, not the bytes. `create_contacts`,
+  `create_companies`, and `attach_files` turn an upload into a normal
+  attachment pointing at the same object, so no bytes are copied. Unattached
+  uploads are purged after `ALLOY_CHAT_UPLOAD_TTL`, and deleting a conversation
+  purges its own at once.
+- **Guardrails.** Every tool checks the membership's permission and filters by
+  workspace; the instructions say that record text and file contents are data,
+  never instructions; `UsageLimits` bound each run; the message endpoint is
+  rate limited per user (60 an hour); and the 1 MB body cap applies. With
+  Logfire on, every run, model request, and tool call is a span under the
+  request.
+- **Tests and evals.** `tests/test_agent.py` drives the endpoint with a
+  scripted `FunctionModel`, so no network is involved: single writes run,
+  bulk writes and deletes pause, viewers cannot write, another user's upload is
+  refused, and uploads go through start, complete, attach, and purge.
+  `evals/` is a Pydantic Evals dataset of real prompts that runs
+  against the live model on demand (`uv run python -m evals.run`), in a
+  database of its own (`alloy_evals`, created and migrated on first use) with
+  a workspace it seeds and removes; rerun it after changing the prompt or a
+  tool description.
 
 ### Tiny CRM (demo)
 
@@ -636,7 +699,9 @@ GET/POST          .../imports/                                  CSV imports of c
   email): the caller who made the row, the requester for imported rows, and
   for a `task_completed` activity whoever completed the task. Null once the
   user is gone, and for rows older than the column. The web app shows it as
-  "by …" on detail pages, in the activity feed, and on tasks.
+  "by …" on detail pages, in the activity feed, and on tasks. `source` says
+  when a row was not typed in by hand: `agent` for the assistant, `import`
+  for a CSV import, null otherwise.
 - "Today" depends on where the user is, so `tz` takes an IANA zone (default
   `UTC`). Overdue means due before today, upcoming means due after it, and
   undated tasks are neither. `due` and `status` filter independently; the
@@ -704,7 +769,7 @@ including `vp check` and `vp pack`, stays on TypeScript 7.
 
 A [Next.js](https://nextjs.org/docs) 16 app (App Router, Turbopack, TypeScript),
 package `@alloy/web`: the front end for the Tiny CRM, with login, a dashboard,
-contacts, companies, tasks, and CSV imports.
+contacts, companies, tasks, CSV imports, and the assistant's chat.
 
 ```text
 apps/web/
@@ -722,9 +787,10 @@ apps/web/
     │   ├── layout.tsx, providers.tsx   # font, QueryClientProvider, next-themes, toasts
     │   ├── api/[...path]/route.ts      # forwards /api/* to the FastAPI service with the cookie
     │   ├── (auth)/login, signup        # one shared client form
-    │   └── (app)/                      # sidebar layout with nav + user menu; dashboard, contacts, companies, tasks, imports, settings
+    │   └── (app)/                      # sidebar layout with nav + user menu; dashboard, contacts, companies, tasks, assistant, imports, settings
     ├── components/
     │   ├── ui/               # shadcn/ui components, added with `pnpm dlx shadcn@latest add`
+    │   ├── chat/             # the assistant's chat components (conversation, message, prompt input, tool cards, approval)
     │   ├── form/             # TanStack Form hook bound to shadcn Field components
     │   └── data-table.tsx    # TanStack Table v9 with sorting and paging
     └── lib/
@@ -769,6 +835,11 @@ Choices worth knowing, all from the Next.js 16 docs:
   See `apps/web/README.md` for the theme layout and how to add components.
 - No ESLint. Next 16 no longer lints during `next build`; oxlint via `vp check`
   covers the app like every other package.
+- The assistant's chat is `useChat` from AI SDK 7 (`@ai-sdk/react`, `ai`) over
+  the API's streaming endpoint, rendered with Vercel's AI Elements ported to
+  Base UI in `src/components/chat/`. Component tests run under Vitest
+  with jsdom; the `@/` alias and the JSX transform they need are in the root
+  `vite.config.ts`.
 - TypeScript 7 from the catalog: `next build` runs the project-local `tsc` CLI
   by default, which is what makes TS 7 work.
 - `next-env.d.ts`, `.next/`, and `out/` are gitignored. `tsconfig.json` includes
@@ -854,6 +925,7 @@ ALLOY_FRONTEND_URL=https://app.example.com       # links in emails
 ALLOY_CORS_ORIGINS='["https://app.example.com"]'
 ALLOY_LOGFIRE_TOKEN=...                          # optional; empty turns telemetry off
 ALLOY_LOGFIRE_ENVIRONMENT=production
+ALLOY_OPENAI_API_KEY=...                         # optional; empty turns the assistant off
 API_URL=http://api.internal:8000                 # web only: the API's private address
 CLIENT_IP_HEADER=x-forwarded-for                 # web only: the header the host sets to the visitor's address
 ```

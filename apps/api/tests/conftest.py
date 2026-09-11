@@ -77,7 +77,8 @@ def test_database() -> None:
 
 @pytest.fixture
 def settings() -> Settings:
-    return Settings(app_name="Test API")
+    # No OpenAI key, whatever a local `.env` says: tests never call the model.
+    return Settings(app_name="Test API", openai_api_key=None)
 
 
 @pytest.fixture

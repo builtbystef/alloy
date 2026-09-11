@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 from taskiq import TaskiqDepends
 
+from alloy_api.agent.models import ChatUpload
 from alloy_api.auth.models import User, UserSession
 from alloy_api.config import Settings
 from alloy_api.crm.models import Attachment, Import, ImportStatus
@@ -39,6 +40,7 @@ class PurgeReport:
     password_reset_tokens: int = 0
     email_change_tokens: int = 0
     attachments: int = 0
+    chat_uploads: int = 0
     imports: int = 0
     timed_out_imports: int = 0
     accounts: int = 0
@@ -112,6 +114,19 @@ async def purge(
         keys.append(attachment.key)
         await session.delete(attachment)
         report.attachments += 1
+
+    # A file dropped into the chat but never attached to a record: the row goes with
+    # its object once `chat_upload_ttl` has passed. Attached ones belong to the
+    # attachment now and stay for as long as it does.
+    chat_uploads = await session.scalars(
+        select(ChatUpload)
+        .where(ChatUpload.attachment_id.is_(None))
+        .where(ChatUpload.created_at < now - settings.chat_upload_ttl)
+    )
+    for upload in chat_uploads:
+        keys.append(upload.key)
+        await session.delete(upload)
+        report.chat_uploads += 1
 
     imports = await session.scalars(
         select(Import)

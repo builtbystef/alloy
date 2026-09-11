@@ -32,12 +32,14 @@ apps/web/
     │           ├── contacts/         # page, contacts-table, contact-columns, contact-form, [id]/ (detail, activity feed), new/, [id]/edit/
     │           ├── companies/        # same shape as contacts
     │           ├── tasks/            # page, tasks-table, task-dialog + task-form, task-list (used on detail pages)
+    │           ├── assistant/        # the chat: layout with the conversation list, [conversationId]/ page, chat-panel, approval-card, uploads
     │           ├── imports/          # CSV import card (kind, file, upload progress), history table polling while a job runs, details dialog
     │           ├── members/          # members table (roles, remove), invitations card (invite, revoke)
     │           ├── settings/         # rename, leave, delete the workspace
     │           └── account/          # change email or password, log out everywhere, delete the account
     ├── components/
     │   ├── ui/           # shadcn/ui components, owned by this repo
+    │   ├── chat/         # chat components (conversation, message, prompt-input, tool, confirmation, ...) for the assistant
     │   ├── form/         # useAppForm + TextField, TextareaField, SelectField, DateTimeField, SubmitButton
     │   ├── data-table.tsx, confirm-dialog.tsx, page-header.tsx, status-badge.tsx, skeletons.tsx
     │   └── logo.tsx, time-zone-sync.tsx, remember-workspace.tsx

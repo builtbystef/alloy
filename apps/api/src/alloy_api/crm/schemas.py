@@ -1,7 +1,3 @@
-"""Request and response bodies. `*Update` models are PATCH bodies: fields left out are
-untouched, fields sent as `null` are cleared.
-"""
-
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
@@ -16,7 +12,14 @@ from pydantic import (
     StringConstraints,
 )
 
-from alloy_api.crm.models import ActivityType, ContactStatus, ImportKind, ImportStatus, TaskStatus
+from alloy_api.crm.models import (
+    ActivityType,
+    ContactStatus,
+    ImportKind,
+    ImportStatus,
+    RowSource,
+    TaskStatus,
+)
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 Short = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)]
@@ -73,6 +76,9 @@ class CompanyRead(CompanyRef):
     industry: str | None
     notes: str | None
     created_by: UserRef | None
+    source: RowSource | None = Field(
+        description="Set when the assistant or an import made the row."
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -110,6 +116,9 @@ class ContactRead(ContactRef):
     last_contacted_at: datetime | None
     company: CompanyRef | None
     created_by: UserRef | None
+    source: RowSource | None = Field(
+        description="Set when the assistant or an import made the row."
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -127,6 +136,7 @@ class ActivityRead(ReadModel):
     created_by: UserRef | None = Field(
         description="Who logged it; for `task_completed`, who completed the task."
     )
+    source: RowSource | None = Field(description="Set when the assistant logged it.")
     created_at: datetime
 
 
@@ -157,6 +167,9 @@ class TaskRead(ReadModel):
     contact: ContactRef | None
     company: CompanyRef | None
     created_by: UserRef | None
+    source: RowSource | None = Field(
+        description="Set when the assistant or an import made the row."
+    )
     created_at: datetime
     updated_at: datetime
 

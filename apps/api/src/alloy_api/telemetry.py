@@ -72,6 +72,11 @@ def instrument_engine(engine: AsyncEngine) -> None:
     logfire.instrument_sqlalchemy(engine=engine.sync_engine)
 
 
+def instrument_agents() -> None:
+    """One span per agent run, model request, and tool call, under the request."""
+    logfire.instrument_pydantic_ai()
+
+
 def _drop_endpoint_arguments(
     _request: Request | WebSocket, attributes: dict[str, Any]
 ) -> dict[str, Any]:

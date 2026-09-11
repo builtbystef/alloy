@@ -964,6 +964,148 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Upload
+         * @description Start a chat upload: the row is created and an upload URL returned. Same size
+         *     limit as attachments; 413 above it.
+         */
+        post: operations["agent-create_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/agent/uploads/{upload_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Upload
+         * @description Called after the `PUT`. 409 when the object is not in the store yet; 413, and
+         *     the object removed, when it is bigger than allowed. Repeating it is harmless.
+         */
+        post: operations["agent-complete_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/agent/uploads/{upload_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Upload
+         * @description Discard a chat upload the user removed before sending: the row and the
+         *     object. 409 once it has become an attachment, which owns the object then.
+         */
+        delete: operations["agent-delete_upload"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/agent/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Conversations
+         * @description The caller's conversations in this workspace, most recently active first.
+         */
+        get: operations["agent-list_conversations"];
+        put?: never;
+        /**
+         * Create Conversation
+         * @description A new, empty conversation. An existing one with no messages is returned
+         *     instead, so "New chat" pressed twice does not pile up empty rows.
+         */
+        post: operations["agent-create_conversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Conversation
+         * @description The conversation with its transcript as `UIMessage`s. A tool call still
+         *     waiting for approval comes back in the `approval-requested` state.
+         */
+        get: operations["agent-get_conversation"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Conversation
+         * @description Removes the transcript and the chat's files that were never attached to a
+         *     record. Attachments made from the chat stay on their records.
+         */
+        delete: operations["agent-delete_conversation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Message
+         * @description Send a message, retry the last reply, or answer an approval request, and
+         *     stream the assistant's reply as server-sent events (the Vercel AI data-stream
+         *     protocol; `useChat` reads it).
+         *
+         *     The body is what `useChat` sends. Only its last message is used: a `user`
+         *     message is the new turn (files go as `upload_ids` in its `metadata`), an
+         *     `assistant` message carries approval responses. `trigger: regenerate-message`
+         *     repeats the last user turn. 503 when no model is configured, 429 past the
+         *     per-user limit.
+         */
+        post: operations["agent-send_message"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -1013,6 +1155,8 @@ export interface components {
             notes: string | null;
             /** @description Who logged it; for `task_completed`, who completed the task. */
             created_by: components["schemas"]["UserRef"] | null;
+            /** @description Set when the assistant logged it. */
+            source: components["schemas"]["RowSource"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1082,6 +1226,89 @@ export interface components {
              */
             expires_at: string;
         };
+        /**
+         * ChatMessageRequest
+         * @description What `useChat` posts: the chat id, the trigger, and the messages the browser
+         *     has. Only the last message is read; the server holds the history. `tz` is the
+         *     user's IANA time zone.
+         */
+        ChatMessageRequest: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Trigger
+             * @default submit-message
+             */
+            trigger: string;
+            /** Messages */
+            messages: {
+                [key: string]: unknown;
+            }[];
+            /** Tz */
+            tz?: string | null;
+            /** Messageid */
+            messageId?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * ChatUploadCreate
+         * @description What the browser knows before uploading a file into the chat.
+         */
+        ChatUploadCreate: {
+            /** Filename */
+            filename: string;
+            /** Content Type */
+            content_type: string;
+            /**
+             * Size
+             * @description Bytes.
+             */
+            size: number;
+        };
+        /** ChatUploadRead */
+        ChatUploadRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /** Filename */
+            filename: string;
+            /** Content Type */
+            content_type: string;
+            /** Size */
+            size: number;
+            /** Uploaded At */
+            uploaded_at: string | null;
+            /** Attachment Id */
+            attachment_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ChatUploadTicket
+         * @description Step one of a chat upload: `PUT` the file to `upload_url` with the
+         *     `Content-Type` and `size` given at creation, then `POST .../uploads/{id}/complete`.
+         */
+        ChatUploadTicket: {
+            upload: components["schemas"]["ChatUploadRead"];
+            /** Upload Url */
+            upload_url: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
         /** CompanyCreate */
         CompanyCreate: {
             /** Name */
@@ -1109,6 +1336,8 @@ export interface components {
             /** Notes */
             notes: string | null;
             created_by: components["schemas"]["UserRef"] | null;
+            /** @description Set when the assistant or an import made the row. */
+            source: components["schemas"]["RowSource"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1186,6 +1415,8 @@ export interface components {
             last_contacted_at: string | null;
             company: components["schemas"]["CompanyRef"] | null;
             created_by: components["schemas"]["UserRef"] | null;
+            /** @description Set when the assistant or an import made the row. */
+            source: components["schemas"]["RowSource"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1232,6 +1463,59 @@ export interface components {
             status?: components["schemas"]["ContactStatus"] | null;
             /** Last Contacted At */
             last_contacted_at?: string | null;
+        };
+        /** ConversationDetail */
+        ConversationDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Title
+             * @description Null until the first message names it.
+             */
+            title: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Messages
+             * @description The transcript as Vercel AI SDK `UIMessage`s, for `useChat`.
+             */
+            messages: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** ConversationRead */
+        ConversationRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Title
+             * @description Null until the first message names it.
+             */
+            title: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** Credentials */
         Credentials: {
@@ -1575,6 +1859,13 @@ export interface components {
             message: string;
         };
         /**
+         * RowSource
+         * @description How a row came to be, when not typed in by hand: the assistant or a CSV import.
+         *     Null for rows made in the UI.
+         * @enum {string}
+         */
+        RowSource: "agent" | "import";
+        /**
          * SortOrder
          * @enum {string}
          */
@@ -1611,6 +1902,8 @@ export interface components {
             contact: components["schemas"]["ContactRef"] | null;
             company: components["schemas"]["CompanyRef"] | null;
             created_by: components["schemas"]["UserRef"] | null;
+            /** @description Set when the assistant or an import made the row. */
+            source: components["schemas"]["RowSource"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1747,6 +2040,10 @@ export type ActivityType = components['schemas']['ActivityType'];
 export type AttachmentCreate = components['schemas']['AttachmentCreate'];
 export type AttachmentRead = components['schemas']['AttachmentRead'];
 export type AttachmentUpload = components['schemas']['AttachmentUpload'];
+export type ChatMessageRequest = components['schemas']['ChatMessageRequest'];
+export type ChatUploadCreate = components['schemas']['ChatUploadCreate'];
+export type ChatUploadRead = components['schemas']['ChatUploadRead'];
+export type ChatUploadTicket = components['schemas']['ChatUploadTicket'];
 export type CompanyCreate = components['schemas']['CompanyCreate'];
 export type CompanyRead = components['schemas']['CompanyRead'];
 export type CompanyRef = components['schemas']['CompanyRef'];
@@ -1758,6 +2055,8 @@ export type ContactRef = components['schemas']['ContactRef'];
 export type ContactSort = components['schemas']['ContactSort'];
 export type ContactStatus = components['schemas']['ContactStatus'];
 export type ContactUpdate = components['schemas']['ContactUpdate'];
+export type ConversationDetail = components['schemas']['ConversationDetail'];
+export type ConversationRead = components['schemas']['ConversationRead'];
 export type Credentials = components['schemas']['Credentials'];
 export type Dashboard = components['schemas']['Dashboard'];
 export type DueFilter = components['schemas']['DueFilter'];
@@ -1787,6 +2086,7 @@ export type PasswordReset = components['schemas']['PasswordReset'];
 export type PasswordResetRequest = components['schemas']['PasswordResetRequest'];
 export type Permission = components['schemas']['Permission'];
 export type RowError = components['schemas']['RowError'];
+export type RowSource = components['schemas']['RowSource'];
 export type SortOrder = components['schemas']['SortOrder'];
 export type TaskCreate = components['schemas']['TaskCreate'];
 export type TaskRead = components['schemas']['TaskRead'];
@@ -3746,6 +4046,264 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "agent-create_upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatUploadCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatUploadTicket"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "agent-complete_upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                upload_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatUploadRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "agent-delete_upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                upload_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "agent-list_conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "agent-create_conversation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "agent-get_conversation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "agent-delete_conversation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "agent-send_message": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
                 };
             };
             /** @description Validation Error */

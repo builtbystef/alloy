@@ -61,12 +61,18 @@ runtime-evaluated-base-classes = [
   "ANN", # missing annotations
   "INP001", # implicit namespace package
 ]
+# Scripts run by hand, not a package.
+"**/evals/**" = ["INP001", "T201"]
 # Run by Alembic, not a package.
 "**/alembic/env.py" = ["INP001"]
 "**/alembic/versions/*.py" = [
   "INP001",
   "N999", # file names start with a timestamp
 ]
+# The assistant's tools answer the model with retry prompts, and the chat route
+# answers the browser with short reasons: the message is the point of the raise.
+"**/alloy_api/agent/tools.py" = ["EM", "TRY003"]
+"**/alloy_api/agent/router.py" = ["EM", "TRY003"]
 
 [tool.ruff.format]
 docstring-code-format = true

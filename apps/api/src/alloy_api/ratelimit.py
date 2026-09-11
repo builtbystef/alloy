@@ -39,6 +39,8 @@ INVITE_SEND_PER_USER = Limit("invite-send:user", 20, timedelta(hours=1))
 # Not against guessing (tokens are 32 random bytes): keeps scanners off the database.
 TOKEN_PER_IP = Limit("token:ip", 10, timedelta(minutes=1))
 INVITE_ACCEPT_PER_USER = Limit("invite-accept:user", 10, timedelta(minutes=1))
+# Each message to the assistant is a model run; this bounds what one user can spend.
+AGENT_MESSAGE_PER_USER = Limit("agent-message:user", 60, timedelta(hours=1))
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,6 +211,7 @@ def per_ip(limit: Limit) -> Callable[[Request, Limiter], Awaitable[None]]:
 
 
 __all__ = [
+    "AGENT_MESSAGE_PER_USER",
     "CHANGE_EMAIL_PER_USER",
     "FORGOT_PASSWORD_PER_EMAIL",
     "FORGOT_PASSWORD_PER_IP",

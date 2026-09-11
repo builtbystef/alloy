@@ -6,6 +6,7 @@ import {
   LayoutDashboardIcon,
   ListTodoIcon,
   SettingsIcon,
+  SparklesIcon,
   UsersIcon,
   UsersRoundIcon,
 } from "lucide-react";
@@ -17,7 +18,15 @@ import type { WorkspacePaths } from "@/lib/routes";
 import { useWorkspace } from "@/lib/workspace";
 
 type Section = "crm" | "workspace";
-type NavKey = "home" | "contacts" | "companies" | "tasks" | "imports" | "members" | "settings";
+type NavKey =
+  | "home"
+  | "contacts"
+  | "companies"
+  | "tasks"
+  | "assistant"
+  | "imports"
+  | "members"
+  | "settings";
 
 const sections: Record<Section, readonly { key: NavKey; label: string; icon: typeof UsersIcon }[]> =
   {
@@ -26,6 +35,7 @@ const sections: Record<Section, readonly { key: NavKey; label: string; icon: typ
       { key: "contacts", label: "Contacts", icon: UsersIcon },
       { key: "companies", label: "Companies", icon: Building2Icon },
       { key: "tasks", label: "Tasks", icon: ListTodoIcon },
+      { key: "assistant", label: "Assistant", icon: SparklesIcon },
       { key: "imports", label: "Imports", icon: FileUpIcon },
     ],
     workspace: [
