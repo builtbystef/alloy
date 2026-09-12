@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from tests.conftest import Actor
@@ -74,9 +76,13 @@ def test_due_views(alice: Actor):
     assert alice.get("/tasks/", params={"due": "later"}).status_code == 422
 
 
-def test_today_depends_on_the_timezone(alice: Actor):
-    # One minute into today in UTC is still yesterday twelve hours west of it.
-    start_of_today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+def test_today_depends_on_the_timezone(alice: Actor, monkeypatch: pytest.MonkeyPatch):
+    # Pin the clock to a UTC afternoon: one minute into today in UTC is then still
+    # yesterday twelve hours west of it. Before noon UTC that would not hold, and the
+    # task would count as today in both zones.
+    now = datetime(2026, 9, 12, 15, 0, tzinfo=UTC)
+    monkeypatch.setattr("alloy_api.crm.dates.utcnow", lambda: now)
+    start_of_today = now.replace(hour=0, minute=0)
     alice.post(
         "/tasks/", json={"title": "Early", "due_at": iso(start_of_today + timedelta(minutes=1))}
     )
