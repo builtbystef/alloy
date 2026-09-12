@@ -18,7 +18,6 @@ def create_mailer(settings: Settings) -> Mailer:
 
 
 async def get_mailer(request: Request) -> Mailer:
-    """The mailer the lifespan put on `request.state`."""
     mailer: Mailer = request.state.mailer
     return mailer
 

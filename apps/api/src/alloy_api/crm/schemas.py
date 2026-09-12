@@ -1,5 +1,3 @@
-"""Field types and read models shared by every CRM entity's schemas."""
-
 from typing import Annotated
 from uuid import UUID
 
@@ -32,7 +30,5 @@ class ReadModel(BaseModel):
 
 
 class UserRef(ReadModel):
-    """Enough to name the user who made or uploaded something."""
-
     id: UUID
     email: str

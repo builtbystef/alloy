@@ -1,7 +1,3 @@
-"""The upload handshake against the in-memory store. `upload()` plays the browser:
-it writes the bytes under the key the upload URL names, then reports completion.
-"""
-
 from typing import TYPE_CHECKING
 
 import pytest

@@ -4,10 +4,8 @@ import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { unwrap } from "@/lib/api/errors";
 
 /**
- * Query definitions shared by Server Components (which prefetch with the
- * session client) and Client Components (which read with the browser client).
- * The key is the identity, so both sides must build it the same way; the
- * client is a parameter rather than an import for that reason.
+ * Shared by server prefetches and client reads, which must build the same
+ * key: that is why the client is a parameter rather than an import.
  */
 
 export const workspaceKeys = {

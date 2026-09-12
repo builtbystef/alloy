@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 import { useImportUpload } from "@/features/crm/imports/hooks/use-import-upload";
 
-/** The columns `crm/importing.py` reads; anything else in the file is ignored. */
+/** The columns `crm/imports/loader.py` reads; anything else in the file is ignored. */
 const columns: Record<ImportKind, string> = {
   contacts: "name, email, phone, job_title, status, company",
   companies: "name, website, industry, notes",

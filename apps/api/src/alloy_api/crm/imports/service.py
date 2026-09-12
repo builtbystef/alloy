@@ -1,7 +1,3 @@
-"""The request side of an import: the same handshake as attachments. `POST` the
-file's name and size for an upload URL, `PUT` the CSV there, then `POST
-.../start` to queue the job, which runs `loader.run_import`."""
-
 import uuid
 from typing import TYPE_CHECKING, Any, cast
 
@@ -39,7 +35,6 @@ def too_large(settings: Settings) -> PayloadTooLargeError:
 
 
 def imports_query(membership: Membership) -> Select[tuple[Import]]:
-    """The workspace's imports, newest first, whatever their state."""
     return (
         select(Import)
         .options(WITH_REQUESTER)

@@ -26,16 +26,12 @@ def new_request_id() -> str:
 
 
 class RequestIdFilter(logging.Filter):
-    """Adds `request_id` to every record, for the formatters."""
-
     def filter(self, record: logging.LogRecord) -> bool:
         record.request_id = request_id.get()
         return True
 
 
 class TextFormatter(logging.Formatter):
-    """`TEXT_FORMAT` with a UTC timestamp to the millisecond."""
-
     def __init__(self) -> None:
         super().__init__(TEXT_FORMAT)
 
@@ -44,9 +40,6 @@ class TextFormatter(logging.Formatter):
 
 
 class JsonFormatter(logging.Formatter):
-    """One JSON object per line: time, level, logger, request ID, message, and the
-    exception when there is one."""
-
     def format(self, record: logging.LogRecord) -> str:
         line: dict[str, str] = {
             "time": _timestamp(record),

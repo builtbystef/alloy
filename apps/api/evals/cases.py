@@ -1,5 +1,3 @@
-"""The prompts the agent is run on and what each one must do."""
-
 from typing import Any
 
 from pydantic_evals import Case

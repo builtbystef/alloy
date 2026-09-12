@@ -33,8 +33,6 @@ def affected(result: Result[Any]) -> int:
 
 @dataclass(slots=True)
 class PurgeReport:
-    """How many rows each step removed."""
-
     sessions: int = 0
     invites: int = 0
     verification_tokens: int = 0

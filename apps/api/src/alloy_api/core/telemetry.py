@@ -68,12 +68,10 @@ def instrument_app(app: FastAPI) -> None:
 
 
 def instrument_engine(engine: AsyncEngine) -> None:
-    """One span per SQL statement, under the request or job that ran it."""
     logfire.instrument_sqlalchemy(engine=engine.sync_engine)
 
 
 def instrument_agents() -> None:
-    """One span per agent run, model request, and tool call, under the request."""
     logfire.instrument_pydantic_ai()
 
 

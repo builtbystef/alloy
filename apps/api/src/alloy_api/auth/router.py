@@ -44,7 +44,6 @@ CHANGE_EMAIL_PER_USER = Limit("change-email:user", 3, timedelta(hours=1))
 async def log_in(
     session: AsyncSession, settings: Settings, user: User, response: Response
 ) -> UserRead:
-    """Start a session and put its token in the cookie."""
     token = await service.start_session(session, settings, user)
     set_session_cookie(response, token, settings.session_ttl)
     return UserRead.model_validate(user)

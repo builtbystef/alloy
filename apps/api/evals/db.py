@@ -1,6 +1,3 @@
-"""The `alloy_evals` database: pointing settings at it, creating it, and
-migrating it."""
-
 import os
 from pathlib import Path
 
@@ -48,6 +45,5 @@ def _upgrade(connection: Connection) -> None:
 
 
 async def migrate(engine: AsyncEngine) -> None:
-    """Bring the eval database up to the current schema."""
     async with engine.begin() as connection:
         await connection.run_sync(_upgrade)

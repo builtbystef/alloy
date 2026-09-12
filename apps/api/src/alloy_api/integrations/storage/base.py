@@ -7,24 +7,17 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class ObjectInfo:
-    """What the store knows about one object."""
-
     key: str
     size: int
     content_type: str
 
 
 class ObjectStore(Protocol):
-    """What the app needs from object storage. Implement it to add a backend.
+    """Implement this to add a backend, then return it from `create_object_store`.
 
-    Keys are plain `/`-separated strings (`workspaces/{id}/attachments/{id}`). The
-    store holds bytes and a content type, nothing else: who may read an object is
-    decided by the app, which hands out short-lived URLs from `upload_url` and
-    `download_url` so the bytes never pass through the API.
-
-    Implementations take their configuration in `__init__` and are chosen by
-    `create_object_store` from `ALLOY_STORAGE_PROVIDER`; nothing else in the app
-    knows which one is in use.
+    The store holds bytes and a content type, nothing else. Access is decided by
+    the app, which hands out short-lived URLs so the bytes never pass through
+    the API.
     """
 
     async def ping(self) -> None:

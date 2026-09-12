@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 async def read_dashboard(
     session: AsyncSession, membership: Membership, options: DashboardOptions
 ) -> Dashboard:
-    """Counts of open tasks due today and overdue, plus who was and was not contacted lately."""
     own_contacts = select(Contact).where(Contact.workspace_id == membership.workspace.id)
     open_tasks = select(func.count(Task.id)).where(
         Task.workspace_id == membership.workspace.id, Task.status == TaskStatus.OPEN

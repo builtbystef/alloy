@@ -1,6 +1,3 @@
-"""Workspaces, seats, and invitations: what the routes do once the request is
-parsed. Signup creates a workspace through here too."""
-
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
@@ -78,7 +75,6 @@ def invite_read(invite: WorkspaceInvite) -> InviteRead:
 
 
 def workspaces_query(user: User) -> Select[tuple[WorkspaceMember]]:
-    """Every seat of the user, oldest workspace first, with the workspace loaded."""
     return (
         select(WorkspaceMember)
         .join(WorkspaceMember.workspace)
@@ -142,7 +138,6 @@ async def ensure_not_last_owner(session: AsyncSession, member: WorkspaceMember) 
 
 
 def members_query(membership: Membership) -> Select[tuple[WorkspaceMember]]:
-    """The workspace's seats, longest-standing first, with the user loaded."""
     return (
         select(WorkspaceMember)
         .options(WITH_USER)
@@ -219,7 +214,6 @@ def pending_invites(workspace_id: UUID) -> Select[tuple[WorkspaceInvite]]:
 
 
 def invites_query(membership: Membership) -> Select[tuple[WorkspaceInvite]]:
-    """Pending only, oldest first, with the inviter loaded."""
     return (
         pending_invites(membership.workspace.id)
         .options(WITH_INVITER)

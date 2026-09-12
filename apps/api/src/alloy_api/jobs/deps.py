@@ -1,12 +1,6 @@
-"""What a task can ask for, resolved from the broker state.
+"""Task dependencies, resolved from the broker state that `configure` fills.
 
-The worker has no request, so the FastAPI `*Dep` aliases do not apply. The
-resources are put on `TaskiqState` once per process by `configure` (the worker
-does it at startup; the API does it in its lifespan when the broker is
-in-memory; the tests do it with their transaction and doubles), and a task
-declares them as defaults: `session: AsyncSession = TaskiqDepends(get_session)`.
-
-Annotations here are read at runtime by taskiq-dependencies, so nothing they
+taskiq-dependencies reads the annotations here at runtime, so nothing they
 name may sit in a `TYPE_CHECKING` block.
 """
 
@@ -41,8 +35,7 @@ def configure(
 
 
 async def open_resources(state: TaskiqState, settings: Settings, stack: AsyncExitStack) -> None:
-    """Build every resource from `settings` and register their teardown on `stack`.
-    What the worker process does at startup."""
+    """The worker's startup: every resource, with its teardown on `stack`."""
     from alloy_api.db.session import create_database_state  # noqa: PLC0415 - avoids an import cycle
     from alloy_api.integrations.mail import create_mailer  # noqa: PLC0415
     from alloy_api.integrations.storage import create_object_store  # noqa: PLC0415

@@ -38,8 +38,6 @@ class Workspace(UUIDPrimaryKey, Timestamps, Base):
 
 
 class WorkspaceMember(UUIDPrimaryKey, Timestamps, Base):
-    """A user's seat in a workspace, with one role. A user has at most one seat per workspace."""
-
     __tablename__ = "workspace_members"
     __table_args__ = (UniqueConstraint("workspace_id", "user_id"),)
 

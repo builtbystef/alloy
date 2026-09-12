@@ -1,13 +1,3 @@
-"""Object storage behind one small interface.
-
-`ObjectStore` (base.py) is the contract, `S3ObjectStore` (s3.py) the only
-implementation so far; it covers RustFS locally and any hosted S3-compatible
-service. To add a backend that speaks something else: write a class with the
-same methods, add its name to `StorageProvider`, and return it from
-`create_object_store`. Handlers ask for an `ObjectStoreDep` and never see
-the provider.
-"""
-
 from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastapi import Depends, Request
@@ -24,7 +14,6 @@ StorageProvider = Literal["s3"]
 
 
 def create_object_store(settings: Settings) -> AbstractAsyncContextManager[ObjectStore]:
-    """The configured store, to be entered for the app's lifetime."""
     match settings.storage_provider:
         case "s3":
             return S3ObjectStore(
@@ -46,7 +35,6 @@ def url_or_none(url: object) -> str | None:
 
 
 async def get_object_store(request: Request) -> ObjectStore:
-    """The store the lifespan put on `request.state`."""
     store: ObjectStore = request.state.object_store
     return store
 

@@ -19,7 +19,6 @@ class Settings(BaseSettings):
 
     # --- App ---
     app_name: str = "Alloy API"
-    # Level for the app's own loggers.
     log_level: str = "INFO"
     # "text" for a terminal, "json" for a log collector.
     log_format: LogFormat = "text"
@@ -27,31 +26,23 @@ class Settings(BaseSettings):
     logfire_token: SecretStr | None = None
     # Shown in Logfire to tell deployments apart.
     logfire_environment: str = "development"
-    # Origins allowed to call the API from a browser.
     cors_origins: list[str] = ["http://localhost:3000"]
     # Where links in emails point.
     frontend_url: HttpUrl = HttpUrl("http://localhost:3000")
 
     # --- Database ---
     database_url: PostgresDsn = PostgresDsn("postgresql+psycopg://alloy:alloy@localhost:5432/alloy")
-    # Log every SQL statement.
     database_echo: bool = False
-    # Connections each process keeps open, and how many more it may open under load.
     database_pool_size: int = Field(5, ge=1)
     database_max_overflow: int = Field(10, ge=0)
     # PostgreSQL cancels any statement that runs longer than this.
     database_statement_timeout: timedelta = timedelta(seconds=30)
 
     # --- Sessions and tokens ---
-    # How long a login stays valid.
     session_ttl: timedelta = timedelta(days=30)
-    # How long an invitation link works.
     invite_ttl: timedelta = timedelta(days=7)
-    # How long an email verification link works.
     verification_ttl: timedelta = timedelta(days=1)
-    # How long a password reset link works.
     password_reset_ttl: timedelta = timedelta(hours=1)
-    # How long the link that confirms a new email address works.
     email_change_ttl: timedelta = timedelta(days=1)
     # How long a deleted account can still be brought back by logging in.
     account_deletion_grace: timedelta = timedelta(days=7)
@@ -74,13 +65,10 @@ class Settings(BaseSettings):
     storage_secret_key: SecretStr = SecretStr("rustfsadmin")
     # True: host/bucket/key URLs (RustFS, MinIO). False: bucket.host/key (AWS).
     storage_path_style: bool = True
-    # How long an upload or download URL stays valid.
     storage_url_ttl: timedelta = timedelta(minutes=15)
 
     # --- Attachments and imports ---
-    # Largest file a contact or company attachment may be.
     attachment_max_bytes: int = Field(25 * 1024 * 1024, ge=1)
-    # Largest CSV an import may be.
     import_max_bytes: int = Field(10 * 1024 * 1024, ge=1)
 
     # --- Background jobs ---
@@ -103,7 +91,6 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     # Addressed through the Responses API.
     agent_model: str = "gpt-5.6-luna"
-    # Low is enough for tool calling.
     agent_reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
     # Images and PDFs in the chat are shown to the model up to this size; bigger files by name only.
     agent_file_read_max_bytes: int = Field(4 * 1024 * 1024, ge=1)

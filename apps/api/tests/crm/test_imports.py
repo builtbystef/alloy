@@ -1,7 +1,3 @@
-"""CSV imports through the API, with the job running inline on the in-memory broker.
-`upload()` plays the browser: it writes the file under the key the upload URL names,
-then starts the import."""
-
 from typing import TYPE_CHECKING
 
 import pytest

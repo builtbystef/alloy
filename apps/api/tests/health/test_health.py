@@ -1,5 +1,3 @@
-"""The readiness probes: ok when the dependency answers, 503 when it does not."""
-
 from typing import TYPE_CHECKING
 
 import pytest

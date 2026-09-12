@@ -1,8 +1,5 @@
-"""Every feature's router, combined. `main.py` mounts this one.
-
-The order is the order of the OpenAPI schema, which `packages/api-client` is
-generated from; keep it stable.
-"""
+"""Router order is the OpenAPI schema order, which `packages/api-client` is
+generated from. Keep it stable."""
 
 from fastapi import APIRouter
 

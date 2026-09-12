@@ -31,8 +31,6 @@ def unauthorized() -> HTTPException:
 
 @dataclass(frozen=True, slots=True)
 class Principal:
-    """Who is calling, and through which login."""
-
     user: User
     session: UserSession
 

@@ -1,6 +1,3 @@
-"""Paged, sorted lists: the query parameters every list takes, the page they answer
-with, and running a query as one."""
-
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -26,8 +23,6 @@ class SortOrder(StrEnum):
 
 
 class PageOf[T](BaseModel):
-    """One page of a list, with the size of the whole list so a client can page it."""
-
     items: list[T]
     total: int = Field(description="Rows matching the filters, across every page.")
     limit: int
@@ -51,7 +46,6 @@ def sorted_by[S: Select](
 async def paginate[T: BaseModel](
     session: AsyncSession, query: Select, page: Page, schema: type[T]
 ) -> PageOf[T]:
-    """Run a filtered, ordered query twice: once for the count, once for the page."""
     total = await session.scalar(select(func.count()).select_from(query.order_by(None).subquery()))
     rows = await session.scalars(query.limit(page.limit).offset(page.offset))
     return PageOf[schema](  # ty: ignore[invalid-type-form]

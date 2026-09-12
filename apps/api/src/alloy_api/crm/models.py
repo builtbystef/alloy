@@ -1,6 +1,3 @@
-"""What every CRM table shares. Each entity's own tables are in its folder
-(`companies/models.py`, `contacts/models.py`, ...)."""
-
 import uuid
 from enum import StrEnum
 from typing import TYPE_CHECKING

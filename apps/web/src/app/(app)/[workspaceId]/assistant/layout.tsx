@@ -12,11 +12,6 @@ import { ConversationList } from "@/features/assistant/components/conversation-l
 
 type Params = Promise<{ workspaceId: string }>;
 
-/**
- * The assistant fills the page: a list of conversations on the left, the chat
- * on the right. The list streams in behind its own <Suspense>; the chat is the
- * page below.
- */
 export default function AssistantLayout({
   children,
   params,

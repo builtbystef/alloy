@@ -61,7 +61,6 @@ def contacts_query(membership: Membership, filters: ContactFilters) -> Select[tu
 
 
 def company_contacts_query(company: Company) -> Select[tuple[Contact]]:
-    """The contacts at one company, by name."""
     return (
         select(Contact)
         .options(WITH_COMPANY)
@@ -71,7 +70,6 @@ def company_contacts_query(company: Company) -> Select[tuple[Contact]]:
 
 
 def activities_query(contact: Contact) -> Select[tuple[Activity]]:
-    """A contact's feed, newest first."""
     return (
         select(Activity)
         .where(Activity.contact_id == contact.id)
@@ -80,7 +78,6 @@ def activities_query(contact: Contact) -> Select[tuple[Activity]]:
 
 
 async def get_contact(session: AsyncSession, membership: Membership, contact_id: UUID) -> Contact:
-    """The contact with its company loaded."""
     return await fetch_owned(session, Contact, contact_id, membership, WITH_COMPANY)
 
 

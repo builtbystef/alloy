@@ -5,12 +5,8 @@ import { unwrap } from "@/lib/api/errors";
 import { ALL_ROWS, PICKER_ROWS, queryParams, type ListPage } from "@/lib/lists";
 
 /**
- * Query definitions shared by Server Components (which prefetch with the
- * session client) and Client Components (which read with the browser client).
- * The key is the identity, so both sides must build it the same way; the
- * client is a parameter rather than an import for that reason. Every CRM
- * query is scoped to a workspace, so the workspace id is part of the key and
- * of the request path.
+ * Shared by server prefetches and client reads, which must build the same
+ * key: that is why the client is a parameter rather than an import.
  */
 
 export interface ContactListFilters extends ListPage {

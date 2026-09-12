@@ -1,6 +1,3 @@
-"""The application: settings, logging, the lifespan that opens the shared
-resources, the middleware, and the combined router from `api/router.py`."""
-
 import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING

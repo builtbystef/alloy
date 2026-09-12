@@ -204,7 +204,6 @@ async def _uploads_for(
 async def _file_content(
     store: ObjectStore, upload: ChatUpload, max_bytes: int
 ) -> BinaryContent | None:
-    """The bytes for the model, when the file is a kind it can read and small enough."""
     if upload.content_type not in READABLE_TYPES or upload.size > max_bytes:
         return None
     data = await store.get(upload.key)

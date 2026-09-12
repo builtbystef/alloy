@@ -1350,10 +1350,7 @@ export interface components {
              */
             updated_at: string;
         };
-        /**
-         * CompanyRef
-         * @description Enough to link to a company from a contact or task.
-         */
+        /** CompanyRef */
         CompanyRef: {
             /**
              * Id
@@ -1959,10 +1956,7 @@ export interface components {
              */
             created_at: string;
         };
-        /**
-         * UserRef
-         * @description Enough to name the user who made or uploaded something.
-         */
+        /** UserRef */
         UserRef: {
             /**
              * Id

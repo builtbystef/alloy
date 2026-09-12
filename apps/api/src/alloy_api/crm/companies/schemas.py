@@ -24,8 +24,6 @@ class CompanyUpdate(BaseModel):
 
 
 class CompanyRef(ReadModel):
-    """Enough to link to a company from a contact or task."""
-
     id: UUID
     name: str
 

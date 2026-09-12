@@ -1,6 +1,3 @@
-"""The workspace the agent is evaluated against, seeded before the run and
-removed after it."""
-
 import uuid
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -19,8 +16,6 @@ from alloy_api.workspaces.service import create_workspace
 
 @dataclass
 class Fixture:
-    """What the eval workspace holds. Names are chosen to be unmistakable."""
-
     workspace_id: uuid.UUID
     user_id: uuid.UUID
     ids: dict[str, uuid.UUID] = field(default_factory=dict)

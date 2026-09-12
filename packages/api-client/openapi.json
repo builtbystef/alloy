@@ -4522,8 +4522,7 @@
           "id",
           "name"
         ],
-        "title": "CompanyRef",
-        "description": "Enough to link to a company from a contact or task."
+        "title": "CompanyRef"
       },
       "CompanySort": {
         "type": "string",
@@ -6117,8 +6116,7 @@
           "id",
           "email"
         ],
-        "title": "UserRef",
-        "description": "Enough to name the user who made or uploaded something."
+        "title": "UserRef"
       },
       "ValidationError": {
         "properties": {

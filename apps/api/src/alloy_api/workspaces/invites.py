@@ -1,6 +1,3 @@
-"""The public side of invitations: the emailed link, previewed without a login
-and accepted with one. Sending and revoking them is in `router.py`."""
-
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends

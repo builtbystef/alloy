@@ -1,11 +1,9 @@
-"""Tests use the real PostgreSQL, in a database of their own: `alloy_test` on the
-configured server, created on first use. Each test runs in one transaction that is
-rolled back at the end, DDL included, so the database is left as it was found, and
-nothing left over from development is visible to a test.
+"""Tests use a real PostgreSQL database, `alloy_test`, created on first use. Each
+test runs in one transaction that is rolled back at the end, DDL included.
 
-Jobs run in-process on the in-memory broker, inline, with the test transaction
-and the same doubles the handlers get, so a handler that queues an email has the
-message in `outbox` by the time it responds.
+Jobs run inline on the in-memory broker, inside the test transaction and with
+the same doubles the handlers get, so a queued email is in `outbox` by the time
+the handler responds.
 """
 
 import os
@@ -92,8 +90,6 @@ def engine(settings: Settings) -> AsyncEngine:
 
 
 class Outbox(list[Email]):
-    """A `Mailer` that keeps what it is asked to send."""
-
     async def send(self, email: Email) -> None:
         self.append(email)
 

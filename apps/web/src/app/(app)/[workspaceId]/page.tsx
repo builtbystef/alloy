@@ -12,7 +12,6 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 type Params = Promise<{ workspaceId: string }>;
 
-/** The data component sits behind <Suspense> because it reads the session cookie. */
 export default function DashboardPage({ params }: { params: Params }) {
   return (
     <>

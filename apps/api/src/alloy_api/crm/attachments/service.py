@@ -1,8 +1,3 @@
-"""Attachments are uploaded straight to object storage on a presigned URL: the API
-creates the row and hands out the URL, the client `PUT`s the bytes, then reports
-the upload done. `AttachmentStorage` is the store plus the two settings that
-handshake needs."""
-
 import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -71,8 +66,6 @@ class AttachmentStorage:
 
 
 def attachments_query(parent: Contact | Company) -> Select[tuple[Attachment]]:
-    """A record's uploaded files, newest first. Files whose upload never completed
-    are left out."""
     return (
         select(Attachment)
         .options(WITH_UPLOADER)
@@ -140,7 +133,6 @@ async def complete_upload(
 async def download_url(
     session: AsyncSession, storage: AttachmentStorage, membership: Membership, attachment_id: UUID
 ) -> str:
-    """A short-lived URL that serves the file as a download."""
     attachment = await fetch_owned(session, Attachment, attachment_id, membership)
     if attachment.uploaded_at is None:
         raise not_found(Attachment)

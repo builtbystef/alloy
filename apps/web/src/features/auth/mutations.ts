@@ -9,11 +9,6 @@ import type {
 import { browserApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/errors";
 
-/**
- * The writes the account screens make, one function per API call. Components
- * hand these to `useMutation` and keep the toasts and navigation.
- */
-
 export async function login(credentials: Credentials): Promise<UserRead> {
   return unwrap(await browserApi.POST("/auth/login", { body: credentials }));
 }

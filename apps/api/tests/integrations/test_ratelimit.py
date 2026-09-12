@@ -1,6 +1,3 @@
-"""Route tests use the per-test in-memory store from conftest; the Redis store is
-checked against the Compose Redis, like the job queue."""
-
 import asyncio
 import uuid
 from datetime import timedelta

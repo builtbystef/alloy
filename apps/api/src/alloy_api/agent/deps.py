@@ -53,7 +53,6 @@ class AgentDeps:
         return self.membership.workspace.id
 
     def record_url(self, kind: str, record_id: UUID) -> str:
-        """Where the web app shows a contact, company, or task."""
         base = str(self.settings.frontend_url).rstrip("/")
         return f"{base}/{self.workspace_id}/{kind}/{record_id}"
 

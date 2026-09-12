@@ -1,11 +1,5 @@
-"""Errors the application raises and the HTTP boundary answers.
-
-Services and dependencies raise these instead of FastAPI's `HTTPException`, so
-they say what went wrong in the application's terms ("the contact is not in this
-workspace") and stay free of HTTP. `handle_app_error`, registered in `main.py`,
-turns each into the same `{"detail": ...}` body FastAPI gives an `HTTPException`,
-so clients see no difference.
-"""
+"""Raised by services instead of `HTTPException`, so they stay free of HTTP.
+`handle_app_error` answers each with the same `{"detail": ...}` body."""
 
 from typing import TYPE_CHECKING, ClassVar, cast
 
@@ -28,8 +22,6 @@ class AppError(Exception):
 
 
 class ForbiddenError(AppError):
-    """The caller is known but may not do this."""
-
     status_code = status.HTTP_403_FORBIDDEN
 
 
@@ -41,8 +33,6 @@ class NotFoundError(AppError):
 
 
 class ConflictError(AppError):
-    """The request contradicts the current state: a duplicate, a step out of order."""
-
     status_code = status.HTTP_409_CONFLICT
 
 

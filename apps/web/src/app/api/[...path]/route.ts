@@ -17,7 +17,8 @@ import { clientAddress } from "@/lib/client-address";
  * `next dev`), and the API then sees this server's address.
  *
  * A body above `MAX_BODY_BYTES` is refused before it is buffered; the API
- * enforces the same limit (errors.py), this only spares this server the memory.
+ * enforces the same limit (core/middleware.py), this only spares this server
+ * the memory.
  */
 const MAX_BODY_BYTES = 1024 * 1024;
 const REQUEST_HEADERS = ["accept", "content-type", "cookie"];

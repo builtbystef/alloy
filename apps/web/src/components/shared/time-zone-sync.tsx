@@ -7,7 +7,7 @@ import { TIME_ZONE_COOKIE } from "@/lib/time-zone/cookie";
 
 /**
  * Tells the server which zone the browser is in. The server reads the cookie
- * (see lib/time-zone.ts) for the API's `tz` parameter and for every date it
+ * (see lib/time-zone/server.ts) for the API's `tz` parameter and for every date it
  * renders; until the cookie exists it assumes UTC, so the first visit
  * re-renders once with the right zone.
  */

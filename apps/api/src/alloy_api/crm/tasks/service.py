@@ -53,7 +53,6 @@ def tasks_query(membership: Membership, filters: TaskFilters) -> Select[tuple[Ta
 
 
 async def get_task(session: AsyncSession, membership: Membership, task_id: UUID) -> Task:
-    """The task with its contact and company loaded."""
     return await fetch_owned(session, Task, task_id, membership, *WITH_RELATIONS)
 
 

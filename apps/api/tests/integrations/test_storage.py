@@ -1,9 +1,3 @@
-"""The `ObjectStore` contract, run against every implementation: the in-memory test
-double, so the route tests stay honest, and `S3ObjectStore` against the RustFS
-from compose.yaml (`vp run db:up`), which is what production-shaped storage
-looks like. The presigned URL tests need a real HTTP server, so they are S3-only.
-"""
-
 import uuid
 from contextlib import asynccontextmanager
 from datetime import timedelta

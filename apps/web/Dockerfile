@@ -3,8 +3,8 @@
 #
 #   docker build --file apps/web/Dockerfile --tag alloy-web .
 #
-# `API_URL` is read at runtime (see src/lib/api.ts), so one image serves every
-# environment and no secrets enter the build.
+# `API_URL` is read at runtime (see src/lib/api/server-client.ts), so one
+# image serves every environment and no secrets enter the build.
 
 # --- Dependencies -------------------------------------------------------------
 # The Node version from .node-version. pnpm is the version pinned in

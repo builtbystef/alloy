@@ -1,6 +1,3 @@
-"""Conversations and chat uploads: the rows the assistant's routes read and write.
-The agent run itself is in `agent.py` and `router.py`."""
-
 import uuid
 from typing import TYPE_CHECKING
 
@@ -27,7 +24,6 @@ if TYPE_CHECKING:
 
 
 def conversations_query(membership: Membership) -> Select[tuple[AgentConversation]]:
-    """The caller's conversations in this workspace, most recently active first."""
     return (
         select(AgentConversation)
         .where(AgentConversation.workspace_id == membership.workspace.id)
@@ -39,7 +35,6 @@ def conversations_query(membership: Membership) -> Select[tuple[AgentConversatio
 async def get_conversation(
     session: AsyncSession, membership: Membership, conversation_id: UUID
 ) -> AgentConversation:
-    """The caller's own conversation in this workspace; `NotFoundError` otherwise."""
     conversation = await session.scalar(
         select(AgentConversation)
         .where(AgentConversation.id == conversation_id)
@@ -128,8 +123,7 @@ async def start_upload(
     conversation: AgentConversation,
     body: ChatUploadCreate,
 ) -> ChatUpload:
-    """Create the row for a file dropped into the chat. Same size limit as
-    attachments. Commits; the caller hands out `storage.store.upload_url`."""
+    """Commits. The caller hands out the upload URL."""
     if body.size > storage.max_bytes:
         raise storage.too_large()
     upload_id = uuid.uuid7()

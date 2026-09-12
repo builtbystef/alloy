@@ -1,6 +1,3 @@
-"""Reading a row the caller's workspace owns. A row in another workspace answers
-exactly like a row that does not exist, so ids leak nothing."""
-
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select

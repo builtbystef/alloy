@@ -19,7 +19,6 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
  */
 export default function ResetPasswordPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    // The token is read at request time, so the page sits behind <Suspense>.
     <Suspense fallback={<Skeleton className="h-64 w-full" />}>
       <ResetPasswordContent searchParams={searchParams} />
     </Suspense>

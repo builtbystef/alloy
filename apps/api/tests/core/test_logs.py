@@ -1,5 +1,3 @@
-"""The log formats, and the request ID reaching a job's log lines."""
-
 import json
 import logging
 from typing import TYPE_CHECKING

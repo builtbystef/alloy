@@ -1,5 +1,3 @@
-"""What goes into and comes out of one agent run, and the checks made on it."""
-
 import uuid
 from dataclasses import dataclass
 
@@ -22,8 +20,6 @@ class Outcome(BaseModel):
 
 @dataclass
 class Called(Evaluator[Prompt, Outcome]):
-    """The agent called one of these tools."""
-
     any_of: tuple[str, ...]
 
     def evaluate(self, ctx: EvaluatorContext[Prompt, Outcome]) -> bool:
@@ -32,8 +28,6 @@ class Called(Evaluator[Prompt, Outcome]):
 
 @dataclass
 class Paused(Evaluator[Prompt, Outcome]):
-    """The run ended waiting for approval (or did not)."""
-
     expected: bool = True
 
     def evaluate(self, ctx: EvaluatorContext[Prompt, Outcome]) -> bool:
@@ -50,8 +44,6 @@ class NoWriteRan(Evaluator[Prompt, Outcome]):
 
 @dataclass
 class Mentions(Evaluator[Prompt, Outcome]):
-    """The reply mentions every one of these, case-insensitively."""
-
     words: tuple[str, ...]
 
     def evaluate(self, ctx: EvaluatorContext[Prompt, Outcome]) -> bool:

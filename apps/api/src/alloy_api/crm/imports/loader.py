@@ -1,7 +1,3 @@
-"""Loading a CSV of contacts or companies into a workspace: what the `imports.run`
-job does. The file format is documented on `CONTACT_COLUMNS` and `COMPANY_COLUMNS`:
-a header row, matched case-insensitively, that must include `name`."""
-
 import csv
 import io
 import logging
@@ -76,7 +72,7 @@ def read_rows(data: bytes, columns: frozenset[str]) -> Iterator[tuple[int, dict[
     wanted = [(index, name) for index, name in enumerate(header) if name in columns]
     for values in reader:
         if not any(value.strip() for value in values):
-            continue  # a blank line
+            continue
         row = {
             name: values[index].strip()
             for index, name in wanted
@@ -95,7 +91,6 @@ def validation_message(exc: ValidationError) -> str:
 async def import_companies(
     session: AsyncSession, workspace_id: UUID, data: bytes, created_by_user_id: UUID | None
 ) -> ImportReport:
-    """Rows are credited to the user who requested the import."""
     report = ImportReport()
     existing = {
         name.lower()

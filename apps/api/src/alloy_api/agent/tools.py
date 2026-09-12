@@ -88,7 +88,6 @@ permitted_toolset: FilteredToolset[AgentDeps] = FilteredToolset(toolset, _visibl
 
 
 def retry(message: str) -> ModelRetry:
-    """Tell the model what was wrong with the call so it can correct it."""
     return ModelRetry(message)
 
 

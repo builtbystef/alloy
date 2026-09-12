@@ -1,5 +1,3 @@
-"""The task under evaluation: one agent run turned into an `Outcome`."""
-
 import uuid
 from dataclasses import dataclass
 
@@ -21,8 +19,7 @@ from .fixture import Fixture, member_id
 
 @dataclass
 class AgentTask:
-    """Runs the agent on one prompt as the seeded member. Pydantic Evals calls
-    `__call__` once per case."""
+    """Pydantic Evals calls `__call__` once per case."""
 
     session_factory: async_sessionmaker[AsyncSession]
     fixture: Fixture

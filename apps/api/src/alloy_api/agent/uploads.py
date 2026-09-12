@@ -1,7 +1,3 @@
-"""Files dropped into the chat. Uploaded like an attachment (row first, then a
-presigned `PUT`, then `complete`); a tool turns one into an attachment on a
-record, and the purge job removes the ones that never were."""
-
 from uuid import UUID
 
 from fastapi import APIRouter, status

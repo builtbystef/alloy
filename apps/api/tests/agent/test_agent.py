@@ -1,11 +1,3 @@
-"""The assistant: conversations, the streaming message endpoint, tool behaviour, the
-approval round-trip, chat uploads, and the purge of stale uploads.
-
-The model is a scripted `FunctionModel`: each test lists the turns it wants the
-model to take (a tool call or a text reply), so no network is involved. Tools run
-for real against the rolled-back test transaction.
-"""
-
 import asyncio
 import json
 from datetime import timedelta
@@ -100,7 +92,6 @@ def scripted_model(script: Script) -> None:
 
 
 def events(text: str) -> list[dict[str, Any]]:
-    """The chunks of a data-stream response, in order."""
     return [
         json.loads(line[6:])
         for line in text.splitlines()

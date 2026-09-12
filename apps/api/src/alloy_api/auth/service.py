@@ -1,7 +1,3 @@
-"""Accounts, logins, and the emailed links: what the auth routes do once the
-request is parsed. Nothing here knows about HTTP; the router turns the errors
-raised into responses and owns the cookie."""
-
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select, update

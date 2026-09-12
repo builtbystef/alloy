@@ -1,8 +1,3 @@
-"""The job runner: which broker `Settings` picks, that a queued email is sent, and
-what the purge job removes. Jobs run inline on the in-memory broker with the
-test transaction (see conftest), so a handler's side effects are visible at once.
-"""
-
 import asyncio
 from datetime import timedelta
 from typing import TYPE_CHECKING

@@ -69,7 +69,6 @@ def context_instructions(ctx: RunContext[AgentDeps]) -> str:
     return "\n".join(lines)
 
 
-# Keep this many of the most recent user turns; older ones are dropped with a note.
 HISTORY_TURNS = 20
 
 
@@ -105,20 +104,18 @@ USAGE_LIMITS = UsageLimits(request_limit=20, tool_calls_limit=40, total_tokens_l
 
 @lru_cache(maxsize=4)
 def _model_for(api_key: str, model_name: str) -> Model:
-    """One client per key and model name, shared by every request."""
     return OpenAIResponsesModel(model_name, provider=OpenAIProvider(api_key=api_key))
 
 
 def build_model(settings: Settings) -> Model | None:
-    """The configured model, or None when no key is set."""
     if settings.openai_api_key is None:
         return None
     return _model_for(settings.openai_api_key.get_secret_value(), settings.agent_model)
 
 
 def model_settings(settings: Settings, deps: AgentDeps) -> OpenAIResponsesModelSettings:
-    """Low effort for tool calling, and a per-workspace cache key so the instruction
-    and tool prefix is served from the provider's cache."""
+    """The per-workspace cache key lets the provider serve the instruction and tool
+    prefix from its cache."""
     return OpenAIResponsesModelSettings(
         openai_reasoning_effort=settings.agent_reasoning_effort,
         openai_prompt_cache_key=f"alloy:{deps.workspace_id}",

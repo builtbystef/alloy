@@ -1,13 +1,6 @@
-"""Fixed-window rate limiting behind one small interface.
-
-`RateLimitStoreProtocol` (base.py) is the contract, `RedisRateLimitStore`
-(redis.py) the store every API instance shares, `MemoryRateLimitStore`
-(memory.py) the one for development and tests. A `Limit` names a policy; the
-feature that enforces it owns the constant (`auth/router.py` has the login
-limits, say). Routes attach `per_ip(limit)` as a dependency, or ask for a
-`LimiterDep` and call it when the subject is in the body or only failures
-should count.
-"""
+"""Fixed-window rate limiting. Each feature owns its `Limit` constants. Routes
+attach `per_ip(limit)` as a dependency, or use `LimiterDep` when the subject is
+in the body or only failures should count."""
 
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
@@ -44,7 +37,6 @@ def create_rate_limit_store(settings: Settings) -> RateLimitStoreProtocol:
 
 
 async def get_limiter(request: Request) -> Limiter:
-    """The limiter over the store the lifespan put on `request.state`."""
     store: RateLimitStoreProtocol = request.state.rate_limit_store
     return Limiter(store)
 

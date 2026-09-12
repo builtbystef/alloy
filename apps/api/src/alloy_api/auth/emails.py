@@ -123,7 +123,6 @@ def account_deletion_email(user: User, frontend_url: str, grace: timedelta) -> E
 
 
 def describe_duration(duration: timedelta) -> str:
-    """`timedelta(hours=1)` → "1 hour"; `timedelta(days=2)` → "2 days"; else minutes."""
     seconds = int(duration.total_seconds())
     for unit, size in (("day", 86400), ("hour", 3600), ("minute", 60)):
         if seconds >= size and seconds % size == 0:
