@@ -1,12 +1,9 @@
 # Alloy
 
-An opinionated template for creating web apps using Typescript + Next.js and Python + FastAPI.
-
-Extending carbon-fiber template (https://github.com/builtbystef/carbon-fiber)
-
-A template for any kind of project: apps, libraries, CLIs, services, in
-TypeScript, Python, or both. Each language has one toolchain that handles
-dependencies, formatting, linting, type checking, and tests:
+An opinionated template for web apps: TypeScript + Next.js in front, Python +
+FastAPI behind. Extends [carbon-fiber](https://github.com/builtbystef/carbon-fiber).
+Each language has one toolchain for dependencies, formatting, linting, type
+checking, and tests:
 
 | Concern    | TypeScript                                    | Python                          |
 | ---------- | --------------------------------------------- | ------------------------------- |
@@ -19,97 +16,40 @@ dependencies, formatting, linting, type checking, and tests:
 
 ## Requirements
 
-- Node ≥ 24 (pinned in `.node-version`, enforced at install)
-- Python ≥ 3.14 (pinned in `.python-version`; uv downloads it on demand)
-- uv ≥ 0.12 (`required-version` in `pyproject.toml`)
-- Docker with Compose, for the local PostgreSQL, Redis, and RustFS object
-  storage that `apps/api` and its tests use
+- Node ≥ 24 (`.node-version`), Python ≥ 3.14 (`.python-version`, uv downloads it), uv ≥ 0.12
+- Docker with Compose, for the local PostgreSQL, Redis, and RustFS that `apps/api` and its tests use
 
 ## Commands
 
-The root `package.json` scripts cover both languages:
-
 ```sh
-vp run check        # format + lint + typecheck, both languages
-vp run check:fix
-vp run test         # Vitest + pytest
+vp run check         # format + lint + typecheck, both languages (check:fix to apply fixes)
+vp run test          # Vitest + pytest
 vp run build
-vp run ci           # everything CI runs
-vp run db:up        # PostgreSQL, Redis, and RustFS in Docker, waits until they accept connections
-vp run db:migrate   # apply pending Alembic migrations
-vp run db:down      # stop PostgreSQL (data is kept; add --volumes to wipe it)
-vp run dev:api      # FastAPI with reload, http://127.0.0.1:8000
-vp run dev:worker   # Taskiq worker with reload: runs the background jobs
-vp run dev:scheduler # Taskiq scheduler: fires the hourly purge (run one)
-vp run dev:web      # Next.js with Turbopack, http://localhost:3000
+vp run ci            # everything CI runs
+vp run db:up         # PostgreSQL, Redis, and RustFS in Docker; waits until ready
+vp run db:migrate    # alembic upgrade head
+vp run db:down       # stop (data is kept; add --volumes to wipe it)
+vp run dev:api       # FastAPI with reload, http://127.0.0.1:8000/docs
+vp run dev:worker    # Taskiq worker: the background jobs
+vp run dev:scheduler # Taskiq scheduler: the hourly purge (run exactly one)
+vp run dev:web       # Next.js, http://localhost:3000
 ```
 
-Each language is also available on its own:
-
-```sh
-vp install          # install Node dependencies
-vp add / remove     # change Node dependencies
-vp check [--fix]    # oxfmt + oxlint + tsc          (vp run check:ts)
-vp test             # Vitest                         (vp run test:ts)
-vp run -r build     # dependency-aware, cached task runner
-
-uv sync --all-packages   # create .venv, install every Python project
-uv add / remove          # change Python dependencies (run inside the project)
-uv run ruff format .     # format                     (vp run check:py)
-uv run ruff check .      # lint
-uv run ty check          # type check
-uv run pytest            # tests                      (vp run test:py)
-```
-
-A pre-commit hook (`.vite-hooks/`) runs `vp check --fix` on staged files and
-`ruff check --fix` + `ruff format` on staged `*.py` files. Only the hook itself
-is tracked; the shims and `core.hooksPath` are local to each clone, so run
-`vp config` once after cloning to activate it.
+Per language: `vp install / add / remove / check [--fix] / test` and
+`uv sync --all-packages / add / remove / run ruff / run ty check / run pytest`.
+A pre-commit hook in `.vite-hooks/` runs `vp check --fix` and Ruff on staged
+files; run `vp config` once after cloning to activate it.
 
 ## Adding projects
 
-Drop projects into `apps/*`, `packages/*`, or `tools/*`; the workspace globs
-already cover them. Each project extends a TypeScript preset from `tsconfig/`:
-
-```text
-tsconfig/
-├── base.json      # shared strictness (never extended directly)
-├── node.json      # Node apps, CLIs, workers
-├── browser.json   # browser apps with DOM libs
-└── library.json   # published packages with declarations + maps
-```
-
-```json
-{
-  "extends": "../../tsconfig/node.json",
-  "compilerOptions": { "outDir": "./dist" },
-  "include": ["src"]
-}
-```
-
-Shared dev dependency versions come from the catalog in `pnpm-workspace.yaml`
-(`"typescript": "catalog:"` etc.). Libraries build with `"build": "vp pack"`
-(ESM, declarations, and source maps, configured once in the root
-`vite.config.ts`). A project only adds its own `vite.config.ts` when it needs
-runtime-specific behavior; a `build` script can also be anything else
-(`wrangler deploy`, `tsc -p .`) and `vp run -r build` still orchestrates it.
-
-### Python projects
-
-Python projects go in the same folders, but uv rejects a workspace glob that
-matches a directory without a `pyproject.toml`, so each one is listed in the
-root `pyproject.toml`:
-
-```toml
-[tool.uv.workspace]
-members = ["apps/api", "packages/core-py"]
-```
-
-`uv init --app --package apps/<name>` (or `--lib packages/<name>`) scaffolds a
-member with a `src/<package>/` layout and the `uv_build` backend. Put tests in
-`tests/`. Ruff, ty, and pytest read their settings from the root
-`pyproject.toml`, and the tools themselves are a root-level dependency group,
-so a member declares only its own metadata and runtime dependencies.
+Projects go in `apps/*`, `packages/*`, or `tools/*`. A TypeScript project
+extends a preset from `tsconfig/` (`node.json`, `browser.json`, or
+`library.json`), takes shared versions from the catalog in
+`pnpm-workspace.yaml` (`"typescript": "catalog:"`), and builds with `vp pack`
+unless it needs something else. A Python project is scaffolded with
+`uv init --app --package apps/<name>` (or `--lib packages/<name>`) and listed
+under `[tool.uv.workspace] members` in the root `pyproject.toml`, which also
+holds the Ruff, ty, and pytest settings.
 
 ## apps/api
 
@@ -117,305 +57,120 @@ A [FastAPI](https://fastapi.tiangolo.com) service, package `alloy_api`:
 
 ```text
 apps/api/
-├── pyproject.toml            # fastapi, pydantic-settings, sqlalchemy, psycopg, alembic, pwdlib, taskiq, taskiq-redis, redis; [tool.alembic]
-├── compose.yaml              # local PostgreSQL 18, Redis 8, and RustFS (S3-compatible object storage)
-├── Dockerfile                # the production image for the API, worker, and scheduler (see Deploying)
-├── alembic.ini               # Alembic logging only
-├── alembic/                  # env.py (async, URL from Settings), script.py.mako, versions/
-├── .env.example
+├── compose.yaml              # local PostgreSQL 18, Redis 8, RustFS (S3-compatible storage)
+├── Dockerfile                # one image for the API, worker, and scheduler
+├── alembic/                  # env.py reads the URL from Settings; versions/
+├── .env.example              # every ALLOY_* setting, documented
 ├── src/alloy_api/
-│   ├── main.py               # app, lifespan (database engine), CORS, request IDs, router includes
-│   ├── logs.py               # text and JSON log formats shared with the worker; the request_id context variable
-│   ├── errors.py             # RequestIdMiddleware: X-Request-ID on every response, unhandled errors → plain 500
-│   ├── config.py             # Settings (pydantic-settings) + get_settings dependency
-│   ├── db.py                 # engine, session factory, get_session / SessionDep
-│   ├── models.py             # declarative Base, naming convention, id/timestamp mixins; imports every model
-│   ├── routers/health.py     # GET /health/ (liveness); /health/db, /health/redis, /health/storage (readiness, 503 when down)
-│   ├── ratelimit.py          # fixed-window counters in Redis (or memory); the auth and invitation limits; per_ip / LimiterDep
-│   ├── auth/                 # sign up, log in, log out; cookie sessions in Postgres; CurrentUserDep
-│   ├── workspaces/           # workspaces, members, roles and permissions, invitations; CurrentMembership
-│   ├── mail/                 # Mailer protocol + ConsoleMailer
-│   ├── storage/              # ObjectStore protocol + S3ObjectStore (aiobotocore); ObjectStoreDep
-│   ├── jobs/                 # Taskiq broker (Redis streams or in-memory), worker deps; tasks: emails, purge, imports
-│   ├── crm/                  # the Tiny CRM demo: companies, contacts, activities, tasks, attachments, imports, dashboard
-│   └── agent/                # the assistant: a Pydantic AI agent over the CRM, conversations, chat uploads, streaming
-└── tests/                    # TestClient fixture: settings overridden, one rolled-back transaction
+│   ├── main.py               # app, lifespan (engine, store, broker), middleware, the AppError handler
+│   ├── config.py             # Settings (pydantic-settings) + get_settings
+│   ├── api/router.py         # the HTTP composition root: includes every feature router
+│   ├── core/                 # exceptions.py (AppError family + handler), middleware.py (request IDs, body limit), logs.py, telemetry.py
+│   ├── db/                   # session.py (engine, SessionDep), base.py (Base, mixins; imports every model)
+│   ├── integrations/         # ports and adapters: mail/, storage/, ratelimit/ (a protocol + implementations each)
+│   ├── health/               # GET /health/ (liveness); /health/{db,redis,storage} (readiness)
+│   ├── auth/                 # accounts, cookie sessions, emailed links; CurrentUserDep
+│   ├── workspaces/           # workspaces, members, roles, invitations; the Can* dependencies
+│   ├── crm/                  # the demo: companies/, contacts/, tasks/, attachments/, imports/, dashboard/ + shared mixins, pagination, ownership
+│   ├── agent/                # the assistant: a Pydantic AI agent over the CRM
+│   └── jobs/                 # Taskiq broker, worker deps; tasks: emails, purge, imports
+└── tests/                    # mirrors the package; one rolled-back transaction per test
 ```
 
-```sh
-vp run dev:api                # fastapi dev, reloads on change, http://127.0.0.1:8000/docs
-cd apps/api && uv run fastapi run   # production server, no reload, 0.0.0.0
-```
+Each feature package has only the files it needs: `router.py` (paths, status
+codes, dependencies, `commit`), `schemas.py` (Pydantic), `models.py`
+(SQLAlchemy), `service.py` (the work: takes a session and parsed input, owns
+the queries, raises `AppError`s rather than `HTTPException`s), and `deps.py`
+for dependencies other packages use. There is no repository layer: the
+session is the unit of work. The assistant's tools and the worker's jobs call
+the same service functions the routes do.
 
-In production the same command runs inside the image from `apps/api/Dockerfile`;
-see [Deploying](#deploying).
+Settings come from `ALLOY_*` environment variables or a local `.env`; tests
+override `get_settings`. Operation IDs are `{tag}-{function}`, and
+`python -m alloy_api.openapi` prints the schema for `packages/api-client`.
+The routes are documented at `/docs`; the sections below cover behaviour that
+is not obvious from them.
 
-`[tool.fastapi] entrypoint` in `apps/api/pyproject.toml` tells the CLI where
-the app is, so `fastapi dev` and `fastapi run` take no arguments (the CLI reads
-it from the current directory, hence the `cd`). Settings come from environment
-variables prefixed `ALLOY_` or a local `.env`; see `.env.example`. Tests override
-`get_settings` through `app.dependency_overrides`, so the host environment never
-leaks in.
+### Errors, logs, and request IDs
 
-FastAPI is pinned to a minor range (`>=0.141.1,<0.142`) because it is still
-0.x and minor releases can break; Dependabot proposes the bump. Starlette is
-not pinned, as the FastAPI docs advise. The `standard` extra without
-`fastapi-cloud-cli` is used, since the template does not target FastAPI Cloud.
-`httpx2` is a dev dependency because Starlette ≥ 1.6 prefers it for
-`TestClient` and warns on `httpx`, which pytest treats as an error here.
-
-Operation IDs are `{tag}-{function}` (`health-read_health`) via
-`generate_unique_id_function`, the form the FastAPI docs recommend for
-generated clients. `python -m alloy_api.openapi` prints the schema without
-starting a server; `packages/api-client` uses it.
-
-### Logs, errors, and request IDs
-
-Every log line from the API, the worker, and the scheduler has the same shape:
-a UTC timestamp, the level, the logger, the request ID, and the message.
-`ALLOY_LOG_FORMAT` picks `text` (the default, for a terminal) or `json` (one
-object per line with those fields, for a log collector). Uvicorn's loggers are
-routed through the same handler, and its access log is replaced by one line
-per request from `alloy_api.access`: method, path, status, and duration, with
-the request ID. Health checks are left out, as they are polled.
-
-Every response carries an `X-Request-ID` header: the caller's, if it sent a
-short printable one, otherwise 16 hex characters made for the request. The same
-ID is on every log line written while handling the request (`logs.py` puts it
-in a context variable and the log format), so a user's report finds its log
-lines. A job queued by the request carries the ID in its message labels and
-logs under it in the worker (`jobs/context.py`); a job the scheduler queues
-gets an ID of its own, so its lines still group. An exception nothing handled
-becomes
-
-```json
-{ "detail": "Something went wrong. Quote the request ID when reporting it.", "request_id": "…" }
-```
-
-with status 500, one traceback in the log under that ID, and no internals in the
-body. `RequestIdMiddleware` in `errors.py` does both; it sits inside CORS, so
-the 500 still carries the CORS headers, and inside Logfire's span, so when a
-token is set the ID reaches Logfire too. `apps/web` shows the ID after the
-message on a 5xx and keeps it on `ApiError.requestId` for the others. Handled
-errors (`HTTPException`) are unchanged: `{"detail": "..."}` with their status.
+Every response carries `X-Request-ID` (the caller's, or one made for the
+request), and the same ID is on every log line the request writes, including
+in the worker for jobs it queues. Logs are one shape everywhere;
+`ALLOY_LOG_FORMAT=json` makes them one object per line. An unhandled
+exception becomes a plain 500 with the request ID and no internals. Services
+raise `AppError` subclasses (`NotFoundError`, `ConflictError`,
+`RateLimitedError`, ...) and `handle_app_error` gives them the same
+`{"detail": ...}` body an `HTTPException` gets.
 
 ### Database
 
-PostgreSQL 18 runs in Docker from `apps/api/compose.yaml`, with
-[SQLAlchemy](https://docs.sqlalchemy.org) 2 in async mode over
-[psycopg 3](https://www.psycopg.org/psycopg3/docs/) and
-[Alembic](https://alembic.sqlalchemy.org) for migrations:
+SQLAlchemy 2 async over psycopg 3, migrations with Alembic:
 
 ```sh
-vp run db:up                  # start PostgreSQL, Redis, and RustFS, waits until healthy (127.0.0.1:5432, alloy/alloy)
-vp run db:migrate             # alembic upgrade head
-cd apps/api && uv run alembic revision --autogenerate -m "add widget"   # after changing models.py
+cd apps/api && uv run alembic revision --autogenerate -m "add widget"
 cd apps/api && uv run alembic downgrade -1
-vp run db:down                # stop; `docker compose down --volumes` in apps/api wipes the data
 ```
 
-`psycopg[binary]` ships its own libpq, which the psycopg docs recommend for
-most users; a production image that already has `libpq` can switch to
-`psycopg[c]` to link against the system library instead. The URL scheme
-`postgresql+psycopg` serves both sync and async engines, so scripts can use
-the same driver without an event loop.
+`ALLOY_DATABASE_URL` is the one place the connection is configured; Alembic
+reads the same `Settings`. Handlers take a `SessionDep` and commit
+explicitly. `db/base.py` holds the `Base` (naming convention, UUIDv7 keys,
+timestamps) and imports every model so autogenerate sees them.
 
-`ALLOY_DATABASE_URL` (default: the Compose database) is the one place the
-connection is configured: the app reads it through `Settings`, and
-`alembic/env.py` reads the same `Settings`, so `alembic.ini` holds no URL.
-Alembic's own options live in `[tool.alembic]` in `pyproject.toml`. New
-migration files are date-prefixed and run through Ruff by post-write hooks.
-
-The engine is opened in the app lifespan and shared through `request.state`.
-Handlers take a `SessionDep` and get one `AsyncSession` per request; commit
-explicitly. `models.py` holds the `Base` (with a naming convention, so
-constraints can be dropped by name in later migrations) plus the
-`UUIDPrimaryKey` (UUIDv7, generated client-side) and `Timestamps` mixins, and
-imports every feature's models at the bottom, because autogenerate only sees
-what is on `Base.metadata`. Ruff is told that `Base` and `pydantic.BaseModel`
-subclasses evaluate their annotations at runtime, and that the modules
-exporting `*Dep` aliases are never moved into `TYPE_CHECKING` blocks, since
-FastAPI reads dependency annotations at import time.
-
-Tests use the real PostgreSQL, never SQLite, in a database of their own:
-`alloy_test` on the same server as `ALLOY_DATABASE_URL`, created by the test
-session if it is missing, so rows left over from manual testing in the
-development database are never counted by a test. The `client` fixture opens
-one connection, begins a transaction, runs `create_all` inside it, and hands
-out sessions that join it with savepoints; the fixture rolls everything back,
-so tests are isolated and the database is left as it was found (DDL is
-transactional in PostgreSQL). `test_migrations_match_models` upgrades to head
-inside such a transaction and diffs the result against `Base.metadata`, so a
-model change without a migration fails CI. CI runs a `postgres:18` service
-container with the same credentials.
+Tests run against real PostgreSQL in their own `alloy_test` database, inside
+one transaction that the fixture rolls back. `test_migrations_match_models`
+diffs `upgrade head` against the models, so a model change without a
+migration fails CI.
 
 ### Authentication
 
-`auth/` is a small, self-contained login system, kept apart from the demo so
-it can stay when the CRM goes. Sessions are opaque and server-side: the
-browser holds a random token in an `HttpOnly` cookie, PostgreSQL holds its
-hash, and there are no JWTs to expire or rotate.
+Sessions are opaque and server-side: a random token in an `HttpOnly`
+`__Host-session` cookie, its SHA-256 in `user_sessions`. No JWTs. Passwords
+are Argon2id via pwdlib, hashed off the event loop. `SameSite=Lax` plus
+JSON-only bodies is the CSRF defence; CORS uses the explicit
+`ALLOY_CORS_ORIGINS` list. Logout revokes the row rather than deleting it;
+the purge job removes old rows later.
 
-```text
-POST /auth/signup      {email, password}                  → 201 UserRead + Set-Cookie
-POST /auth/login       {email, password}                  → 200 UserRead + Set-Cookie   (401 on a bad email or password)
-POST /auth/logout      cookie                             → 204, cookie cleared         (revokes this session)
-POST /auth/logout-all  cookie                             → 204, cookie cleared         (revokes every session of the user)
-POST /auth/password    cookie {current_password, new_password} → 204                    (revokes every other session)
-GET  /auth/me          cookie                             → 200 UserRead
-
-POST /auth/verify-email         {token}                   → 200 UserRead                (404 unknown/used, 410 expired)
-POST /auth/resend-verification  cookie                    → 204                         (409 if already verified)
-POST /auth/forgot-password      {email}                   → 204, always                 (emails a reset link if the account exists)
-POST /auth/reset-password       {token, new_password}     → 200 UserRead + Set-Cookie   (404 unknown/used, 410 expired)
-
-POST   /auth/change-email       cookie {new_email, current_password} → 204              (401 wrong password, 409 taken or unchanged)
-DELETE /auth/change-email       cookie                    → 204                         (drops the pending change)
-POST   /auth/confirm-email      {token}                   → 200 UserRead                (404 unknown/used, 410 expired, 409 taken meanwhile)
-POST   /auth/delete-account     cookie {current_password} → 204, cookie cleared         (401 wrong password, 409 sole owner of a shared workspace)
-```
-
-Logging in runs:
-
-```text
-verify password (Argon2id)
-  → token = secrets.token_urlsafe(32)
-  → INSERT user_sessions (token_hash = sha256(token), expires_at = now + ALLOY_SESSION_TTL)
-  → Set-Cookie: __Host-session=<token>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=...
-```
-
-and every authenticated request runs the reverse: cookie → hash → session
-row (not revoked, not expired) → user → `Principal`. `CurrentUserDep` in
-`auth/deps.py` is what a protected handler asks for; `CurrentPrincipal` also
-gives the session, which logout needs. A missing, unknown, revoked, or
-expired cookie is a 401. Logout sets `revoked_at` rather than deleting the
-row, and `last_used_at` is refreshed at most every five minutes. Rows for
-old sessions stay for `ALLOY_PURGE_AFTER` and are then removed by the purge
-job (see Background jobs).
-
-The cookie name's `__Host-` prefix makes browsers refuse it unless it is
-`Secure`, has `Path=/`, and has no `Domain`, so it cannot be planted by a
-sibling subdomain. Chrome and Firefox treat `http://localhost` as secure, so
-`next dev` works as is; Safari does not, so use `next dev --experimental-https`
-there. `SameSite=Lax` plus JSON-only bodies is the CSRF defence: a cross-site
-form post neither carries the cookie nor passes body validation, and no `GET`
-changes state. CORS is configured with `allow_credentials=True` and the
-explicit `ALLOY_CORS_ORIGINS` list a credentialed request requires.
-
-The Next.js side needs no auth library. Whether it calls the API from the
-browser (`credentials: "include"`) or from a Route Handler that forwards the
-`Cookie` and `Set-Cookie` headers, the cookie is the whole session, and the
-API stays the authority on who is logged in.
-
-Passwords are hashed with Argon2id through [pwdlib](https://frankie567.github.io/pwdlib/),
-which the FastAPI security tutorial recommends, in a worker thread so hashing
-never blocks the event loop. An unknown email is verified against a dummy
-hash so both failures take about as long. Emails are stored lower-cased and
-must be unique (409 on signup). The `APIKeyCookie` scheme is in the OpenAPI
-schema, so the generated client knows which endpoints are protected.
-
-Two flows run through an emailed link, and both work the same way as a
-session token: the email carries `secrets.token_urlsafe(32)`, the `users` row
-holds its SHA-256 plus a `*_sent_at` timestamp, and the link is spent by
-clearing both. Signup emails a verification link (`ALLOY_VERIFICATION_TTL`,
-default 1 day); until it is followed, everything past `/auth/*` answers 403.
-`/auth/forgot-password` emails a reset link (`ALLOY_PASSWORD_RESET_TTL`,
-default 1 hour) and answers 204 whether or not the address has an account, so
-it does not reveal who is registered. `/auth/reset-password` sets the
-password, revokes every session, and logs the browser in with a fresh one;
-following the link proves the address, so it also counts as verification. A
-new request replaces the pending link, and changing the password while logged
-in voids it. Links point at `ALLOY_FRONTEND_URL/verify-email?token=` and
-`/reset-password?token=`; the pages confirm with a click, so a mail scanner
-that prefetches the link does not spend it.
-
-Changing the address works the same way. `/auth/change-email` takes the
-password and the new address, stores it as `pending_email` (shown in
-`UserRead`) next to a token, and emails `ALLOY_FRONTEND_URL/confirm-email?token=`
-to the new address (`ALLOY_EMAIL_CHANGE_TTL`, default 1 day). Following the
-link swaps the address in, marks the account verified (reaching the new inbox
-proved it), voids any verification link for the old address, and sends the
-old address a notice so a hijacked account is noticed. The address is checked
-against the `users` table both when the change is asked for and when the link
-is followed. It is allowed before the current address is verified, since a
-typo at signup is the usual reason to need it. Sessions stay logged in.
-Pending invitations match on the address, so one sent to the old address no
-longer fits; ask for a new one.
-
-Deleting the account is a two-step process. `/auth/delete-account` takes the
-password, stamps `deleted_at`, revokes every session, and emails the address
-that the account goes for good after `ALLOY_ACCOUNT_DELETION_GRACE` (default
-7 days). Logging in before then, with the password or a reset link, clears
-the stamp and brings the account back. Once the grace period has passed, the
-purge job deletes the row, which cascades to its sessions and seats, and
-deletes every workspace the user was the only member of, files included.
-Seats in shared workspaces are simply dropped. To keep a shared workspace
-from losing its last owner that way, the request is refused with 409, naming
-the workspaces, while the user is the only owner of one that has other
-members; and an owner whose account is scheduled for deletion no longer counts
-towards "at least one owner", so the remaining owner cannot leave or step
-down meanwhile. Until the purge, the address still counts as registered.
+Email verification, password reset, and email change all work the same way:
+an emailed link carrying a random token whose hash sits on the `users` row
+until the link is followed. Signup emails a verification link
+(`ALLOY_VERIFICATION_TTL`); until it is followed, everything past `/auth/*`
+answers 403. `forgot-password` answers 204 whether or not the address exists.
+A password reset revokes every session and logs the browser in. Changing the
+address stores a `pending_email`, emails the new address, and notifies the
+old one once swapped. Deleting an account stamps `deleted_at`, revokes every
+session, and the purge job removes it after `ALLOY_ACCOUNT_DELETION_GRACE`
+(default 7 days); logging in before then brings it back. It is refused while
+the user is the sole owner of a workspace that has other members.
 
 ### Rate limits
 
-`ratelimit.py` guards what can be called without a login, plus the logged-in
-endpoints that send mail or take a token. Fixed-window counters:
-the first hit starts a window, each hit adds one, and past the limit the
-answer is 429 with `Retry-After` set to what is left of the window. A
-`Limit` names the policy; the subject (client address, email, user id) picks
-the counter. Routes attach `per_ip(limit)` as a dependency, or call the
-`Limiter` themselves when the subject is in the body or only failures should
-count.
+`integrations/ratelimit/` keeps fixed-window counters in Redis (or memory)
+and answers 429 with `Retry-After`. A `Limit` names the policy; the subject
+(client address, email, user) picks the counter. Routes attach
+`per_ip(limit)` or call the `Limiter` themselves; the `Limit`s sit next to
+the routes that use them.
 
-| Endpoint                                                                               | Subject         | Limit         |
-| -------------------------------------------------------------------------------------- | --------------- | ------------- |
-| `POST /auth/login`                                                                     | address         | 20 per 15 min |
-| `POST /auth/login`                                                                     | email, failures | 10 per 15 min |
-| `POST /auth/signup`                                                                    | address         | 10 per hour   |
-| `POST /auth/forgot-password`                                                           | address         | 10 per hour   |
-| `POST /auth/forgot-password`                                                           | email           | 3 per hour    |
-| `POST /auth/resend-verification`                                                       | user            | 3 per hour    |
-| `POST /auth/change-email`                                                              | user            | 3 per hour    |
-| `POST /auth/verify-email`, `/reset-password`, `/confirm-email`, `GET /invites/{token}` | address         | 10 per minute |
-| `POST /invites/{token}/accept`                                                         | user            | 10 per minute |
-| `POST /workspaces/{id}/invites`, `POST .../invites/{invite_id}/resend`                 | user            | 20 per hour   |
+| Endpoint                                                | Subject         | Limit         |
+| ------------------------------------------------------- | --------------- | ------------- |
+| `POST /auth/login`                                      | address         | 20 per 15 min |
+| `POST /auth/login`                                      | email, failures | 10 per 15 min |
+| `POST /auth/signup`, `/auth/forgot-password`            | address         | 10 per hour   |
+| `POST /auth/forgot-password`                            | email           | 3 per hour    |
+| `POST /auth/resend-verification`, `/auth/change-email`  | user            | 3 per hour    |
+| token endpoints (`verify-email`, `reset-password`, ...) | address         | 10 per minute |
+| `POST /invites/{token}/accept`                          | user            | 10 per minute |
+| `POST .../invites`, `.../invites/{id}/resend`           | user            | 20 per hour   |
+| `POST .../agent/conversations/{id}/messages`            | user            | 60 per hour   |
 
-Login checks both counters before the password hash, which is slow by design,
-so a blocked attempt costs nothing; the email counter counts wrong passwords
-only and is cleared by a right one, so a botnet working on one account is
-stopped without locking the real user out for good. `forgot-password` counts
-per address whether or not the account exists, so the limit reveals nothing
-the 204 hides. `change-email` counts before its 409 for a taken address, so
-it cannot be used to test addresses. Every trip is logged at WARNING with the limit's name and the
-subject.
-
-The counters live in Redis (`ALLOY_RATE_LIMIT_STORE=redis`, the default, on
-`ALLOY_REDIS_URL`), so every API instance shares them; `memory` keeps them in
-the process for development without Redis, and the tests use a fresh
-in-memory store per test. The address is `request.client`, which Uvicorn
-fills from `X-Forwarded-For` when the peer is in `FORWARDED_ALLOW_IPS`: the
-web app's proxy route sets that header to the visitor's address, and the API
-image trusts every peer because only that route can reach it (see Deploying).
-Unset the trust and every request counts against the proxy's one address.
+The client address is `request.client`, which Uvicorn fills from
+`X-Forwarded-For` for peers in `FORWARDED_ALLOW_IPS`; the web app's proxy
+route sets that header to the visitor's address (see Deploying).
 
 ### Workspaces, roles, and invitations
 
-Every business record belongs to a workspace, and a user reaches it through a
-seat in that workspace (`workspace_members`) with one of four roles. Signing
-up creates a first workspace with the new user as owner.
-
-```text
-GET/POST          /workspaces/                              the caller's workspaces (with role and permissions) / create one as owner
-GET/PATCH/DELETE  /workspaces/{id}                          read · rename (workspace:manage) · delete with everything in it (workspace:delete)
-POST              /workspaces/{id}/leave                    give up your seat; the last owner cannot
-GET               /workspaces/{id}/members                  members:read
-PATCH/DELETE      /workspaces/{id}/members/{member_id}      change role · remove (members:manage)
-GET/POST          /workspaces/{id}/invites                  pending invitations · email a link {email, role} (members:manage)
-POST              /workspaces/{id}/invites/{invite_id}/resend  email a fresh link; the old one stops working
-DELETE            /workspaces/{id}/invites/{invite_id}      revoke
-GET               /invites/{token}                          preview, no login (404 unknown/used/revoked, 410 expired)
-POST              /invites/{token}/accept                   take the seat; the account's email must match
-```
+Every business record belongs to a workspace, reached through a seat in
+`workspace_members` with one of four roles. Signing up creates a first
+workspace with the user as owner.
 
 | Role   | Permissions                                                                   |
 | ------ | ----------------------------------------------------------------------------- |
@@ -424,575 +179,220 @@ POST              /invites/{token}/accept                   take the seat; the a
 | member | `crm:read`, `crm:write`, `members:read`                                       |
 | viewer | `crm:read`, `members:read`                                                    |
 
-`workspaces/permissions.py` is the one place roles map to permissions.
-Handlers never ask for a role: they take one of the `Can*` dependencies from
-`workspaces/deps.py` (`CanReadCrm`, `CanWriteCrm`, `CanManageMembers`, ...),
-each of which loads the caller's membership of `{workspace_id}` (404 for
-non-members, so ids leak nothing) and returns 403 when the role lacks the
-permission. Managing seats follows one rule, `can_manage_role`: owners manage
-everyone, others only roles below their own, and a workspace always keeps at
-least one owner (409 otherwise).
+Handlers never ask for a role: they take a `Can*` dependency from
+`workspaces/deps.py`, which loads the caller's membership (404 for
+non-members, so ids leak nothing) and answers 403 when the role lacks the
+permission. Owners manage everyone, others only roles below their own, and a
+workspace always keeps at least one owner. Invitations are emailed links
+(`ALLOY_INVITE_TTL`, default 7 days) that only the invited address can
+accept; the token's hash is stored and the row is stamped, not deleted.
 
-Invitations are emailed links. The token is random, only its SHA-256 is
-stored, and the row is stamped `accepted_at` or `revoked_at` rather than
-deleted. A link works for `ALLOY_INVITE_TTL` (default 7 days) and only for the
-invited address, which the accepting account's email must match. The link
-points at `ALLOY_FRONTEND_URL/invites/{token}`.
+### Email and object storage
 
-### Email
+Both are ports in `integrations/`. `Mailer` has one method, `send(Email)`;
+`ConsoleMailer` logs the message, which is what development and tests use.
+Handlers never send directly: they queue `send_email.kiq(email)`, so only
+the worker holds the mailer. `ALLOY_MAIL_PROVIDER` picks the implementation.
 
-`mail/` keeps the app one step away from any email provider. `Mailer`
-(`mail/base.py`) is a protocol with a single `send(Email)` method;
-`ConsoleMailer` implements it by logging the message at INFO, which is what
-`fastapi dev` and the tests use. `create_mailer(settings)` picks the
-implementation from `ALLOY_MAIL_PROVIDER`. Handlers never call it: they build
-the `Email` and queue it with `send_email.kiq(email)` (see Background jobs),
-so a slow or failing provider never delays a response, and the worker is the
-only process that holds the mailer. To add Resend or another provider: write
-a class with the same `send` method, add its name to `MailProvider`, return it
-from `create_mailer`, and read its credentials from `Settings`. Nothing else
-changes. Tests give the in-memory broker an outbox as its mailer and read the
-invitation token out of the message body.
-
-### Object storage
-
-`storage/` keeps the app one step away from any storage service, the way
-`mail/` does for email. `ObjectStore` (`storage/base.py`) is a protocol with
-`put`, `get`, `head`, `delete`, `delete_prefix`, `upload_url`, and
-`download_url`. `S3ObjectStore` (`storage/s3.py`) implements it over
-[aiobotocore](https://github.com/aio-libs/aiobotocore) and is the only
-implementation, because every candidate speaks S3: [RustFS](https://rustfs.com)
-locally (Apache 2.0, from `compose.yaml`), and AWS S3, Cloudflare R2, Garage,
-or SeaweedFS when hosted. Switching is configuration:
+`ObjectStore` has `put`, `get`, `head`, `delete`, `delete_prefix`,
+`upload_url`, and `download_url`. `S3ObjectStore` (aiobotocore) is the only
+implementation because every candidate speaks S3: RustFS locally, then AWS
+S3, R2, or any compatible service. `MemoryObjectStore` is the test double,
+and `tests/integrations/test_storage.py` runs the same contract against both.
 
 ```sh
 ALLOY_STORAGE_ENDPOINT_URL=null          # AWS itself; a URL for anything S3-compatible
-ALLOY_STORAGE_PUBLIC_ENDPOINT_URL=...    # only when the browser reaches storage at another address than the API does
+ALLOY_STORAGE_PUBLIC_ENDPOINT_URL=...    # only if the browser reaches storage at another address
 ALLOY_STORAGE_PATH_STYLE=false           # AWS; true (default) for RustFS and MinIO
 ALLOY_STORAGE_REGION / _BUCKET / _ACCESS_KEY / _SECRET_KEY
 ```
 
-`create_object_store(settings)` builds the store, the lifespan enters it,
-and handlers take an `ObjectStoreDep`. To add a backend that does not speak
-S3: write a class with the same methods, add its name to `StorageProvider`,
-return it from `create_object_store`. `tests/test_storage.py` is the contract:
-the same tests run against `MemoryObjectStore` (`storage/memory.py`, the
-test double the route tests use) and against the RustFS from Compose, plus
-presigned-URL tests that need the real server.
-
-Bytes never pass through the API. The browser uploads with a presigned `PUT`
-and downloads through a presigned `GET`, both signed by the store for
-`ALLOY_STORAGE_URL_TTL` (default 15 minutes). A presigned `PUT` pins the
-`Content-Type` and the `Content-Length` the client declared, so storage refuses
-a body of another type or size before writing it, and the object key never
-comes from the client. Keys are `workspaces/{id}/attachments/{id}`, so
-deleting a workspace clears its files with one `delete_prefix`. The `storage-init`
-Compose service creates the bucket and sets its CORS rule for
-`http://localhost:3000`; a hosted bucket needs the same rule for the web
-app's origin. The RustFS console is at http://localhost:9001 (`rustfsadmin` /
-`rustfsadmin`).
+Bytes never pass through the API: uploads are a presigned `PUT` that pins
+the declared type and size, downloads a presigned `GET`, both valid for
+`ALLOY_STORAGE_URL_TTL`. Keys are `workspaces/{id}/...`, so deleting a
+workspace clears its files with one `delete_prefix`. The bucket needs a
+CORS rule for the web app's origin; Compose sets one for `localhost:3000`.
 
 ### Background jobs
 
-`jobs/` runs work outside the request on [Taskiq](https://taskiq-python.github.io)
-with [taskiq-redis](https://github.com/taskiq-python/taskiq-redis). There
-are three tasks, one per module:
+`jobs/` runs on [Taskiq](https://taskiq-python.github.io):
 
-| Task            | Module            | Trigger                                                   | What it does                                                                                                        |
-| --------------- | ----------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `mail.send`     | `jobs/emails.py`  | signup, resend verification, forgot password, invitations | Hands the `Email` to the mailer; retried up to 5 times with backoff                                                 |
-| `purge.expired` | `jobs/purge.py`   | hourly (`schedule` label), or by hand                     | Deletes revoked/expired sessions, used/expired invitations, expired verification and reset links, abandoned uploads |
-| `imports.run`   | `jobs/imports.py` | `POST .../imports/{id}/start`                             | Loads a CSV of contacts or companies (`crm/importing.py`); records counts and per-row errors                        |
+| Task            | Trigger                       | What it does                                                              |
+| --------------- | ----------------------------- | ------------------------------------------------------------------------- |
+| `mail.send`     | anything that emails          | hands the `Email` to the mailer; retried with backoff                     |
+| `purge.expired` | hourly                        | removes stamped-dead rows and abandoned uploads after `ALLOY_PURGE_AFTER` |
+| `imports.run`   | `POST .../imports/{id}/start` | loads a CSV of contacts or companies                                      |
 
-```sh
-vp run dev:worker             # taskiq worker alloy_api.jobs.broker:broker --reload
-vp run dev:scheduler          # taskiq scheduler alloy_api.jobs.broker:scheduler --skip-first-run
-cd apps/api && uv run taskiq worker alloy_api.jobs.broker:broker --workers 4   # production
-```
-
-`ALLOY_JOBS_BROKER` picks the broker in `create_broker(settings)`:
-
-- `redis` (default): `RedisStreamBroker` on `ALLOY_REDIS_URL`. Streams, not
-  lists or pub/sub, because they have acknowledgements: a message is removed
-  only when a worker has finished it, so a crashed worker's message is
-  redelivered. Results go to a `RedisAsyncResultBackend` with a one-hour
-  expiry. `SmartRetryMiddleware` retries tasks labelled `retry_on_error`
-  with exponential backoff and jitter; the stream broker cannot delay a
-  message itself, so a retry is put on a `ListRedisScheduleSource` and the
-  scheduler sends it when due.
-- `memory`: Taskiq's `InMemoryBroker`. The API process runs each task in the
-  background with its own engine, mailer, and store; no Redis, no worker, no
-  scheduler. Good for a laptop without Docker, and what the tests use.
-
-The worker and the scheduler are separate processes that import the same
-`jobs/broker.py`. The worker opens a database engine, a mailer, and an object
-store per process at `WORKER_STARTUP` and puts them on `TaskiqState`; tasks
-declare what they need as defaults (`session: AsyncSession =
-TaskiqDepends(get_session)`, from `jobs/deps.py`), never a request. The
-scheduler reads the `schedule` labels (`purge.expired` is
-`{"cron": "0 * * * *"}`) and the delayed retries; run exactly one, as the
-Taskiq docs say, or periodic tasks fire twice. `--skip-first-run` stops it
-from firing every cron task the moment it starts. `GET /health/redis` pings
-the Redis behind the queue for readiness probes.
-
-Tasks are ordinary async functions and stay callable as such. In tests the
-broker is in-memory with `await_inplace`, so `kiq()` runs the task before it
-returns, on the test transaction and with the same doubles the handlers get:
-a handler that queues an email has the message in `outbox` when it responds.
-`tests/test_jobs.py` also checks the Redis wiring against the Compose Redis.
-
-The purge job removes rows the app stamps rather than deletes, once they have
-been dead for `ALLOY_PURGE_AFTER` (default 7 days): sessions revoked or
-expired, invitations accepted, revoked, or expired, verification, password
-reset, and email change links past their TTL, and attachment or import rows
-whose upload URL expired without a completion, along with any object that did
-land in storage. Files dropped into the assistant's chat but never attached to
-a record go after `ALLOY_CHAT_UPLOAD_TTL` (default one day). It also removes accounts whose deletion grace period
-(`ALLOY_ACCOUNT_DELETION_GRACE`) has passed, together with the workspaces they
-were alone in (see Authentication).
+`ALLOY_JOBS_BROKER=redis` (default) uses Redis streams, so a crashed
+worker's message is redelivered; retries go through the scheduler.
+`memory` runs tasks inside the API process, for a laptop without Docker and
+for the tests, where `kiq()` runs the task before it returns. The worker and
+scheduler are separate processes on the same `jobs/broker.py`; run exactly
+one scheduler.
 
 ### CSV imports
 
-`POST .../imports` starts an import of contacts or companies the way an
-attachment upload does: the API returns an upload URL for the CSV
-(`text/csv`, at most `ALLOY_IMPORT_MAX_BYTES`, default 10 MB), the browser
-`PUT`s the file there, and `POST .../imports/{id}/start` confirms it is in the
-store and queues `imports.run`. `GET .../imports/{id}` shows the row move
-through `pending → queued → running → done | failed`, with counts of rows
-created, skipped, and failed, the first 100 row errors as `{row, message}`
-(`row` is the line in the file), and `error` when the file could not be read
-at all. The CSV is removed from storage when the job ends.
-
-```text
-GET/POST          .../imports/                   newest first / start an import {kind, filename, size} → upload URL
-GET               .../imports/{id}               progress and outcome
-POST              .../imports/{id}/start         after the PUT; 409 until the file is in the store or if already started
-```
-
-The file is UTF-8 (a BOM is fine) with a header row; headers match
-case-insensitively with spaces as underscores, and unknown columns are
-ignored. Contacts take `name, email, phone, job_title, status, company`;
-companies take `name, website, industry, notes`. Each row is validated as a
-`POST` body would be, so the rules match the forms. A contact whose email is
-already in the workspace and a company whose name is (case-insensitively) are
-skipped, not duplicated; a contact's `company` links an existing company or
-creates it once for the file. The rows are written in one transaction with
-the final status, so a run that dies halfway leaves nothing behind and is
-simply run again when the broker redelivers it.
-
-The web app's Imports page (`apps/web/src/app/(app)/[workspaceId]/imports/`)
-drives this handshake: pick the kind and a file, watch the upload, then the
-history table polls every two seconds while a job is queued or running and
-opens the row errors in a dialog once it is done.
+An import is the attachment handshake with a job at the end: `POST
+.../imports/` returns an upload URL for the CSV (at most
+`ALLOY_IMPORT_MAX_BYTES`), the browser `PUT`s it, and `POST .../{id}/start`
+queues `imports.run`. The row moves through `pending → queued → running →
+done | failed` with counts and the first 100 row errors. Headers match
+case-insensitively; contacts take `name, email, phone, job_title, status,
+company`, companies `name, website, industry, notes`. Rows are validated as
+a `POST` body would be, duplicates (contact email, company name) are
+skipped, and the file is written in one transaction, so a run that dies is
+simply redelivered.
 
 ### Assistant
 
-`agent/` lets a user say "add Jane from Acme as a contact", "which companies
-have we not contacted recently?", or "attach this contract to Acme" in a chat, and have the
-app do it. One [Pydantic AI](https://pydantic.dev/docs/ai/) agent
-(`agent/agent.py`), a short instruction prompt, and 21 typed tools
-(`agent/tools.py`) that call the same `crm/service.py` functions the routes
-call, so the assistant can do nothing the UI cannot. The model is OpenAI's
-`gpt-5.6-luna` over the Responses API; `ALLOY_OPENAI_API_KEY` turns it on
-(unset, the endpoints answer 503 and the web app shows the assistant as
-unavailable), `ALLOY_AGENT_MODEL` and `ALLOY_AGENT_REASONING_EFFORT` (default
-`low`) tune it.
+`agent/` is one [Pydantic AI](https://pydantic.dev/docs/ai/) agent with
+typed tools that call the same service functions the routes do, so it can
+do nothing the UI cannot. `ALLOY_OPENAI_API_KEY` turns it on (otherwise the
+endpoints answer 503); `ALLOY_AGENT_MODEL` and `ALLOY_AGENT_REASONING_EFFORT`
+tune it.
 
-```text
-                  /workspaces/{workspace_id}/agent/...   every route needs crm:read
-
-GET/POST          .../conversations                     the caller's own; POST reuses an empty one
-GET/DELETE        .../conversations/{id}                the transcript as AI SDK messages / delete it and its loose uploads
-POST              .../conversations/{id}/messages       send a message, an approval, or a retry; streams server-sent events
-POST              .../conversations/{id}/uploads        start a chat upload (presigned PUT, same limit as attachments)
-POST              .../uploads/{id}/complete             after the PUT
-```
-
-- **The server owns the conversation.** The browser posts only its newest
-  message; `agent_messages` holds the transcript, one Pydantic AI message per
-  row, and each run gets it as history. The reply streams back in the Vercel AI
-  data-stream protocol, which `useChat` in the web app reads. Conversations
-  past 20 user turns are trimmed at a turn boundary before the model sees them.
-- **Three tiers of tools.** Reads always run, and viewers are offered nothing
-  else. A single create, update, log, or attach runs at once and the reply says
-  what changed, with links. A delete, or a call with more than one item, raises
-  `ApprovalRequired`: the run pauses, the browser shows an approval card with a
-  table of what is about to happen (an `ApprovalPreviewEvent` the tool emits),
-  and the run resumes with the same message history when the user clicks
-  Approve or Deny. Bulk calls are capped at 100 items. Rows the assistant
+- The server owns the transcript (`agent_messages`); the browser posts only
+  its newest message and reads the reply as an AI SDK data stream.
+- Reads always run. A single write runs at once. A delete, or a call with
+  more than one item, pauses for approval: the browser shows what is about
+  to happen and the run resumes on Approve or Deny. Rows the assistant
   creates carry `created_by` and `source = agent`.
-- **Files in the chat.** A file dropped into the chat uploads to
-  `workspaces/{ws}/chat-uploads/{id}` with the attachment handshake and is
-  named in the message's metadata as an upload id. Images and PDFs under
-  `ALLOY_AGENT_FILE_READ_MAX_BYTES` (4 MB) are shown to the model in that turn
-  only; the stored transcript keeps a note, not the bytes. `create_contacts`,
-  `create_companies`, and `attach_files` turn an upload into a normal
-  attachment pointing at the same object, so no bytes are copied. Unattached
-  uploads are purged after `ALLOY_CHAT_UPLOAD_TTL`, and deleting a conversation
-  purges its own at once.
-- **Guardrails.** Every tool checks the membership's permission and filters by
-  workspace; the instructions say that record text and file contents are data,
-  never instructions; `UsageLimits` bound each run; the message endpoint is
-  rate limited per user (60 an hour); and the 1 MB body cap applies. With
-  Logfire on, every run, model request, and tool call is a span under the
-  request.
-- **Tests and evals.** `tests/test_agent.py` drives the endpoint with a
-  scripted `FunctionModel`, so no network is involved: single writes run,
-  bulk writes and deletes pause, viewers cannot write, another user's upload is
-  refused, and uploads go through start, complete, attach, and purge.
-  `evals/` is a Pydantic Evals dataset of real prompts that runs
-  against the live model on demand (`uv run python -m evals.run`), in a
-  database of its own (`alloy_evals`, created and migrated on first use) with
-  a workspace it seeds and removes; rerun it after changing the prompt or a
-  tool description.
+- Files dropped into the chat upload with the attachment handshake; images
+  and PDFs are shown to the model for that turn only. Tools can turn an
+  upload into a normal attachment without copying bytes. Unattached uploads
+  are purged after `ALLOY_CHAT_UPLOAD_TTL`.
+- Every tool checks the membership's permission and filters by workspace;
+  `UsageLimits` bound each run. `tests/agent/` drives the endpoint with a
+  scripted `FunctionModel`; `evals/` runs real prompts against the live
+  model on demand (`uv run python -m evals.run`).
 
 ### Tiny CRM (demo)
 
-`crm/` is a sample application on top of the template: contacts, companies,
-an activity feed per contact, tasks, and a dashboard, for freelancers and
-small teams. It exists to show the setup end to end and can be deleted as a
-unit (the package, its migration, its tests, and two lines in `main.py`).
-
-Every row belongs to a workspace (`OwnedByWorkspace` mixin), every query
-filters on the workspace in the URL, and a row from another workspace is a
-404, whether it is addressed in the path or referenced from a body
-(`company_id`, `contact_id`). Reads need `crm:read`, writes `crm:write`
-(403 for viewers). Lists take `limit` (≤ 500) and `offset` and answer with a
-page, `{items, total, limit, offset}`, where `total` counts every row the
-filters match, so a client can page through all of them. The contact, company,
-and task lists also take `sort` (a column of the table) and `order`
-(`asc` / `desc`); a row without a value for the sort column comes last either
-way, and ties keep creation order so pages never overlap. `PATCH` bodies are
-partial: a field left out is untouched, a field sent as `null` is cleared.
-
-```text
-                  /workspaces/{workspace_id}/...  every route below hangs off a workspace
-
-GET/POST          .../companies/                 ?q= &sort=name|industry|created_at &order=
-GET/PATCH/DELETE  .../companies/{id}                            delete keeps contacts and tasks, clears the link
-GET               .../companies/{id}/contacts
-
-GET/POST          .../contacts/                  ?q= &status= &company_id= &sort=name|company|status|last_contacted_at &order=
-GET/PATCH/DELETE  .../contacts/{id}                             delete removes the activity feed, keeps tasks
-GET/POST          .../contacts/{id}/activities                  newest first
-
-GET/POST          .../tasks/                     ?due=overdue|today|upcoming &tz= &status= &contact_id= &company_id= &sort=due_at|title|contact|company &order=
-GET/PATCH/DELETE  .../tasks/{id}
-
-GET               .../dashboard/                 ?tz= &stale_days=30 &limit=5
-GET/POST          .../contacts/{id}/attachments                  uploaded files, newest first / start an upload
-GET/POST          .../companies/{id}/attachments
-POST              .../attachments/{id}/complete                 after the PUT; 409 until the object is in the store
-GET               .../attachments/{id}/download                 307 to a short-lived storage URL
-DELETE            .../attachments/{id}                          removes the object, then the row
-GET/POST          .../imports/                                  CSV imports of contacts or companies (see above)
-```
-
-- Contact `status`: `lead`, `active`, `inactive`. Task `status`: `open`,
-  `done`. Activity `type`: `note`, `call`, `email`, `meeting`, `follow_up`,
-  `task_completed`. Enums are stored as `VARCHAR`, so adding a member needs
-  no migration.
-- Logging a call, email, meeting, or follow-up sets the contact's
-  `last_contacted_at`; a note does not. Marking a task `done` logs a
-  `task_completed` activity on its contact (once).
-- Companies, contacts, tasks, and activities carry `created_by` (id and
-  email): the caller who made the row, the requester for imported rows, and
-  for a `task_completed` activity whoever completed the task. Null once the
-  user is gone, and for rows older than the column. The web app shows it as
-  "by …" on detail pages, in the activity feed, and on tasks. `source` says
-  when a row was not typed in by hand: `agent` for the assistant, `import`
-  for a CSV import, null otherwise.
-- "Today" depends on where the user is, so `tz` takes an IANA zone (default
-  `UTC`). Overdue means due before today, upcoming means due after it, and
-  undated tasks are neither. `due` and `status` filter independently; the
-  dashboard counts only open tasks.
-- The dashboard lists the most recently contacted people and those not
-  contacted in `stale_days` (never-contacted last).
-- Attachments are files on a contact or a company, at most
-  `ALLOY_ATTACHMENT_MAX_BYTES` (default 25 MB). An upload is a handshake: `POST`
-  the filename, type, and size to get an upload URL (413 when too big), `PUT`
-  the file there, `POST .../complete` so the API confirms the object is in the
-  store, records the size storage actually received, and marks the row
-  uploaded. Rows whose upload never completed stay hidden. Deleting a contact,
-  company, or workspace deletes its files from storage first.
+`crm/` is the sample application: contacts, companies, an activity feed,
+tasks, attachments, imports, and a dashboard. It can be deleted as a unit.
+Every row belongs to a workspace and a row from another workspace is a 404,
+in the path or in a body. Lists answer with `{items, total, limit, offset}`
+and take `sort` and `order`; `PATCH` bodies are partial, with `null`
+clearing a field. Logging a call, email, meeting, or follow-up sets the
+contact's `last_contacted_at`; completing a task logs a `task_completed`
+activity. "Today" for tasks and the dashboard follows the `tz` query
+parameter. Rows carry `created_by` and `source` (`agent`, `import`, or
+null).
 
 ## packages/api-client
 
-A typed fetch client for `apps/api`, package `@alloy/api-client`, built on
-[openapi-fetch](https://openapi-ts.dev/openapi-fetch/) with types generated by
-[openapi-typescript](https://openapi-ts.dev):
-
-```text
-packages/api-client/
-├── package.json              # openapi-fetch; openapi-typescript + typescript 5 (dev)
-├── vite.config.ts            # generate / generate:check tasks, uncached
-├── scripts/generate.ts       # export schema from apps/api, generate types, or --check
-├── openapi.json              # committed: the exported schema
-└── src/
-    ├── generated/schema.ts   # committed: paths, components, operations types
-    ├── index.ts              # createApiClient() + re-exported types
-    └── index.test.ts
-```
+`@alloy/api-client`: [openapi-fetch](https://openapi-ts.dev/openapi-fetch/)
+with types generated by openapi-typescript from the API's schema. Both
+`openapi.json` and `src/generated/schema.ts` are committed, so consumers
+need no Python and schema changes show up in review.
 
 ```ts
 import { createApiClient } from "@alloy/api-client";
 
 const api = createApiClient({ baseUrl: "http://127.0.0.1:8000" });
-const { data, error } = await api.GET("/health/"); // data: { status: string }
+const { data, error } = await api.GET("/health/");
 ```
 
 ```sh
-vp run generate           # regenerate after changing a route or model in apps/api
-vp run check:generated    # fail if openapi.json or schema.ts is stale; CI runs this
+vp run generate           # after changing a route or model in apps/api
+vp run check:generated    # fails if the committed files are stale; CI runs this
 ```
 
-Both generated files are committed so consumers never need Python installed
-and schema changes show up in review.
-
-`exports` points at `src/index.ts`, so `apps/web` (whose bundler compiles
-workspace packages) consumes the source and `next dev` needs no build step;
-`publishConfig.exports` swaps in `dist/` if the package is ever published, and
-`vp pack` still builds it.
-
-`scripts/generate.ts` runs under Node's native type stripping, calls `uv run --package alloy-api python -m
-alloy_api.openapi`, and feeds the result to the openapi-typescript Node API
-with `rootTypes` on, so every component schema is also a top-level alias
-(`Health`, not only `components["schemas"]["Health"]`).
-
-openapi-typescript builds its output with the TypeScript JS compiler API, which
-the TypeScript 7 package (the Go port) no longer ships. The package therefore
-declares its own `typescript: ^5.9` dev dependency instead of the catalog, and
-pnpm resolves openapi-typescript's peer from it; the rest of the workspace,
-including `vp check` and `vp pack`, stays on TypeScript 7.
+`exports` points at the source, so `apps/web` consumes it without a build
+step. The package pins TypeScript 5 for openapi-typescript's compiler API;
+the rest of the workspace is on TypeScript 7.
 
 ## apps/web
 
-A [Next.js](https://nextjs.org/docs) 16 app (App Router, Turbopack, TypeScript),
-package `@alloy/web`: the front end for the Tiny CRM, with login, a dashboard,
-contacts, companies, tasks, CSV imports, and the assistant's chat.
+A [Next.js](https://nextjs.org/docs) 16 app, package `@alloy/web`: the
+front end for the CRM and the assistant.
 
 ```text
-apps/web/
-├── package.json              # next, react; @alloy/api-client; zod; @tanstack/react-{query,form,table}; tailwindcss; @base-ui/react, lucide-react, sonner
-├── next.config.ts            # cacheComponents, typedRoutes, reactCompiler, skipTrailingSlashRedirect, standalone output
-├── Dockerfile                # the production image (see Deploying)
-├── postcss.config.mjs        # @tailwindcss/postcss
-├── components.json           # shadcn/ui config: base-nova style, zinc, src/app/globals.css
-├── tsconfig.json             # tsconfig/browser.json + jsx, paths (@/*), next plugin
-├── .env.example              # API_URL, CLIENT_IP_HEADER
-└── src/
-    ├── proxy.ts              # redirects on the session cookie's presence (formerly middleware)
-    ├── instrumentation.ts    # server start: rejects an unknown CLIENT_IP_HEADER
-    ├── app/
-    │   ├── layout.tsx, providers.tsx   # font, QueryClientProvider, next-themes, toasts
-    │   ├── api/[...path]/route.ts      # forwards /api/* to the FastAPI service with the cookie
-    │   ├── (auth)/login, signup        # one shared client form
-    │   └── (app)/                      # sidebar layout with nav + user menu; dashboard, contacts, companies, tasks, assistant, imports, settings
-    ├── components/
-    │   ├── ui/               # shadcn/ui components, added with `pnpm dlx shadcn@latest add`
-    │   ├── chat/             # the assistant's chat components (conversation, message, prompt input, tool cards, approval)
-    │   ├── form/             # TanStack Form hook bound to shadcn Field components
-    │   └── data-table.tsx    # TanStack Table v9 with sorting and paging
-    └── lib/
-        ├── api.ts, session.ts, api-browser.ts   # the typed client, server-side and browser-side
-        ├── queries.ts        # TanStack Query definitions shared by both sides
-        ├── schemas.ts        # Zod schemas for every form and URL
-        └── dates.ts, time-zone.ts               # the user's zone, for "today"
+apps/web/src/
+├── proxy.ts                  # redirects on the session cookie's presence
+├── app/                      # routes only; each page composes feature components behind <Suspense>
+│   ├── api/[...path]/route.ts   # forwards /api/* to the API with the cookie and the visitor's address
+│   ├── (auth)/                  # login, signup, and the emailed-link pages
+│   └── (app)/[workspaceId]/     # sidebar layout; dashboard, contacts, companies, tasks, assistant, imports, members, settings, account
+├── features/                 # product code by domain, mirroring the API: auth, workspaces, crm/*, assistant
+│   └── <feature>/            # components/, hooks/, queries.ts, mutations.ts, schemas.ts, server.ts
+├── components/               # ui/ (shadcn) and shared/ (layout, form, chat, data-table, ...)
+├── hooks/                    # generic hooks
+└── lib/                      # infrastructure: api/, auth/session.ts, formatting/, time-zone/, lists.ts, validation.ts, routes.ts
 ```
 
-```sh
-vp run dev:web                # next dev, http://localhost:3000
-cd apps/web && vp run build   # next build (part of vp run -r build)
-cd apps/web && vp run start   # production server
-cd apps/web && vp run typegen # regenerate next-env.d.ts and .next/types without a build
-```
-
-The browser only talks to Next.js. `API_URL` is read on the server (no
-`NEXT_PUBLIC_` prefix), and `src/app/api/[...path]/route.ts` forwards `/api/*`
-to it with the session cookie, so one build can target a different API per
-environment and no CORS setup is needed. See `apps/web/README.md` for how the
+The browser only talks to Next.js: `API_URL` is read on the server and the
+proxy route forwards `/api/*` with the session cookie, so one build serves
+any environment and the API needs no CORS. `apps/web/README.md` covers how
 pages split between Server and Client Components, how data flows through
 TanStack Query, and how forms and tables are built.
 
-Choices worth knowing, all from the Next.js 16 docs:
-
-- `cacheComponents: true`: the current caching model. Routes prerender a static
-  shell; uncached reads go behind `<Suspense>` and stream, or opt in with
-  `"use cache"`. `next build` reports every route as Partial Prerender.
-- `typedRoutes: true`: `<Link href>` and `router.push()` are checked against the
-  routes generated in `.next/types`.
-- `reactCompiler: true`: the React Compiler memoizes components and values
-  automatically, so write plain React and reach for `useMemo`/`useCallback`
-  only for precise control, as the React docs advise. It runs as
-  `babel-plugin-react-compiler` on files with JSX or hooks only. The
-  Babel-free `experimental.turbopackRustReactCompiler` exists but is not yet
-  recommended for production.
-- `skipTrailingSlashRedirect: true`: the FastAPI collection routes end in a
-  slash (`/contacts/`), and Next.js would otherwise 308 `/api/contacts/` to
-  `/api/contacts` before the proxy route could forward it.
-- Tailwind CSS v4 through `@tailwindcss/postcss`, configured in CSS only, and
-  shadcn/ui (`base-nova` style on Base UI primitives) initialized from a preset.
-  See `apps/web/README.md` for the theme layout and how to add components.
-- No ESLint. Next 16 no longer lints during `next build`; oxlint via `vp check`
-  covers the app like every other package.
-- The assistant's chat is `useChat` from AI SDK 7 (`@ai-sdk/react`, `ai`) over
-  the API's streaming endpoint, rendered with Vercel's AI Elements ported to
-  Base UI in `src/components/chat/`. Component tests run under Vitest
-  with jsdom; the `@/` alias and the JSX transform they need are in the root
-  `vite.config.ts`.
-- TypeScript 7 from the catalog: `next build` runs the project-local `tsc` CLI
-  by default, which is what makes TS 7 work.
-- `next-env.d.ts`, `.next/`, and `out/` are gitignored. `tsconfig.json` includes
-  the generated types when present, and `vp check` passes on a fresh clone
-  without them.
-- The `vp run` task cache never hits for `@alloy/web#build` because `next build`
-  writes into the project directory; the API client and other packages still
-  cache.
+Configuration worth knowing: `cacheComponents` (static shell, dynamic parts
+behind `<Suspense>`), `typedRoutes`, `reactCompiler`, and
+`skipTrailingSlashRedirect` (the API's collection routes end in a slash).
+Tailwind v4 and shadcn/ui on Base UI. No ESLint: oxlint via `vp check`
+covers it. Tests run under Vitest with the `@/` alias from
+`apps/web/vite.config.ts`.
 
 ## Deploying
 
-The template does not pick a host. It ships what every host needs: an image
-per app, one command per process, settings from environment variables, and a
-migration step to run before new code starts.
+The template does not pick a host. It ships an image per app, one command
+per process, settings from environment variables, and a migration step.
 
-```text
-apps/api/Dockerfile           # API, worker, and scheduler: one image, three commands
-apps/web/Dockerfile           # Next.js standalone output
-.dockerignore                 # both build from the repository root (uv and pnpm workspaces)
-.github/workflows/images.yml  # builds and pushes ghcr.io/<owner>/<repo>/{api,web} after CI passes on main
-```
+| Process     | Image      | Command                                                  | Port | Instances |
+| ----------- | ---------- | -------------------------------------------------------- | ---- | --------- |
+| `api`       | `apps/api` | `fastapi run --port 8000 --proxy-headers` (default)      | 8000 | any       |
+| `worker`    | `apps/api` | `taskiq worker alloy_api.jobs.broker:broker --workers 2` | none | any       |
+| `scheduler` | `apps/api` | `taskiq scheduler alloy_api.jobs.broker:scheduler`       | none | exactly 1 |
+| `web`       | `apps/web` | `node apps/web/server.js` (default)                      | 3000 | any       |
 
-### Processes
+Plus managed PostgreSQL, Redis, and an S3-compatible bucket the browser can
+reach. Only `web` needs a public address; it forwards `/api/*` to the API
+over the private network. Give `api` a health check on `/health/`
+(`/health/{db,redis,storage}` for readiness). Run `alembic upgrade head`
+from `/app/apps/api` before new code starts (a pre-deploy command, release
+command, or init container); migrations are written to be safe to apply
+before the old code stops.
 
-| Process     | Image      | Command                                                  | Port | Health check   | Instances |
-| ----------- | ---------- | -------------------------------------------------------- | ---- | -------------- | --------- |
-| `api`       | `apps/api` | `fastapi run --port 8000 --proxy-headers` (the default)  | 8000 | `GET /health/` | any       |
-| `worker`    | `apps/api` | `taskiq worker alloy_api.jobs.broker:broker --workers 2` | none | none (no HTTP) | any       |
-| `scheduler` | `apps/api` | `taskiq scheduler alloy_api.jobs.broker:scheduler`       | none | none (no HTTP) | exactly 1 |
-| `web`       | `apps/web` | `node apps/web/server.js` (the default)                  | 3000 | `GET /`        | any       |
-
-The API image carries no `HEALTHCHECK` of its own, since the worker and
-scheduler share it and serve no HTTP: give `api` its check in the host's
-service config (`/health/` for liveness; `/health/db`, `/health/redis`, and
-`/health/storage` answer 503 when that dependency is down, for readiness).
-
-Plus PostgreSQL 18, Redis, and an S3-compatible bucket, which every host
-offers managed. Only `web` needs a public address: the browser talks to
-Next.js, and its proxy route forwards `/api/*` to the API over the host's
-private network, so the API stays internal and needs no CORS. The bucket must
-be reachable by the browser, since uploads and downloads use presigned URLs.
-
-The proxy route passes the visitor's address upstream as `X-Forwarded-For`,
-read from the one request header `CLIENT_IP_HEADER` names: the header the
-platform in front of `web` overwrites on every request, so a visitor cannot
-supply it. Set it to `cf-connecting-ip` behind Cloudflare, `x-real-ip` behind
-Nginx, or `x-forwarded-for` on Railway, Render, or Fly (the last entry is
-used, the one the nearest proxy appended). Any other header is ignored, and
-with the variable unset no address is sent, so the API counts every request
-against `web`'s own address rather than one a visitor chose; an unknown
-value stops the server at startup. The API image sets
-`FORWARDED_ALLOW_IPS=*` so Uvicorn believes the header from any peer. That
-is safe while the API is reachable only from `web`; if it ever gets a public
-address, set `FORWARDED_ALLOW_IPS` to the web service's address or network
-instead.
-
-### Migrations
-
-Run `alembic upgrade head` from `/app/apps/api` in the API image before the
-new `api`, `worker`, and `scheduler` start. Every host has a hook for this:
-Railway's pre-deploy command, Render's pre-deploy command, Fly's
-`release_command`, a Kubernetes init container or Job. If it fails, the deploy
-stops and the old code keeps running. Migrations are written to be safe to
-apply before the old code stops (add, backfill, drop in a later release), which
-is what makes this ordering enough.
-
-### Settings and secrets
+`CLIENT_IP_HEADER` names the one request header the platform in front of
+`web` overwrites with the visitor's address (`cf-connecting-ip`,
+`x-real-ip`, `x-forwarded-for`); the proxy route passes it upstream and the
+API's rate limits count against it. Unset, every request counts against
+`web`'s own address. The API image sets `FORWARDED_ALLOW_IPS=*`, which is
+safe while only `web` can reach it.
 
 Every process reads the same `ALLOY_*` variables, documented in
-`apps/api/.env.example`; `web` reads `API_URL` and `CLIENT_IP_HEADER`. Set them in the host's
-variables store, shared across the four processes. Nothing is baked into an
-image, so one image serves staging and production. The ones that change per
-environment:
+`apps/api/.env.example`; `web` reads `API_URL` and `CLIENT_IP_HEADER`. The
+ones that change per environment:
 
 ```sh
-ALLOY_DATABASE_URL=postgresql+psycopg://...      # from the managed PostgreSQL
-ALLOY_REDIS_URL=redis://...                      # from the managed Redis
-ALLOY_STORAGE_ENDPOINT_URL=...                   # the bucket's S3 endpoint; null for AWS S3
-ALLOY_STORAGE_PUBLIC_ENDPOINT_URL=...            # only if the browser reaches the bucket at a different address
-ALLOY_STORAGE_ACCESS_KEY=... ALLOY_STORAGE_SECRET_KEY=... ALLOY_STORAGE_BUCKET=...
-ALLOY_STORAGE_PATH_STYLE=false                   # AWS and most hosted S3; true for MinIO and RustFS
+ALLOY_DATABASE_URL=postgresql+psycopg://...
+ALLOY_REDIS_URL=redis://...
+ALLOY_STORAGE_ENDPOINT_URL=... ALLOY_STORAGE_BUCKET=... ALLOY_STORAGE_ACCESS_KEY=... ALLOY_STORAGE_SECRET_KEY=...
+ALLOY_STORAGE_PATH_STYLE=false                   # true for MinIO and RustFS
 ALLOY_FRONTEND_URL=https://app.example.com       # links in emails
 ALLOY_CORS_ORIGINS='["https://app.example.com"]'
-ALLOY_LOGFIRE_TOKEN=...                          # optional; empty turns telemetry off
-ALLOY_LOGFIRE_ENVIRONMENT=production
+ALLOY_LOGFIRE_TOKEN=...                          # optional
 ALLOY_OPENAI_API_KEY=...                         # optional; empty turns the assistant off
-API_URL=http://api.internal:8000                 # web only: the API's private address
-CLIENT_IP_HEADER=x-forwarded-for                 # web only: the header the host sets to the visitor's address
+API_URL=http://api.internal:8000                 # web only
+CLIENT_IP_HEADER=x-forwarded-for                 # web only
 ```
 
-Unset optionals may arrive as `""` from a variables UI; `Settings` ignores
-empty values, so that reads as the default.
-
-### Example: Railway
-
-Four services from one repository, each with its Dockerfile path set in the
-service settings (`apps/api/Dockerfile` for `api`, `worker`, and `scheduler`,
-with the commands above as start commands; `apps/web/Dockerfile` for `web`),
-plus the PostgreSQL and Redis plugins and an external bucket (S3, R2, or any
-S3-compatible service). Set `alembic upgrade head` as the pre-deploy command
-on `api`. Give `web` the public domain; `API_URL` is
-`http://api.railway.internal:8000` on the private network, and
-`CLIENT_IP_HEADER` is `x-forwarded-for`, the header Railway's edge sets. Railway builds from
-the repository, so the Images workflow is not needed; it serves hosts that
-pull from a registry instead.
-
-### Choices worth knowing
-
-- **One image for the API, worker, and scheduler.** They share code and
-  settings; only the command differs. uv installs from the lockfile in a build
-  stage, and the runtime stage is the plain `python:3.14-slim` image with the
-  virtualenv copied in, as a non-root user.
-- **Next.js standalone output.** `output: "standalone"` in `next.config.ts`
-  traces the files the server needs, so the runtime image holds no
-  `devDependencies` and no source. `API_URL` is read at runtime, so the build
-  takes no configuration.
-- **Images from CI, when a host wants them.** The Images workflow runs on
-  `workflow_run` after CI, so a red commit never gets an image, and tags
-  `latest` plus `sha-<short sha>` so a deploy can pin or roll back to an exact
-  build.
-- **Email is still the console mailer.** Invitation, verification, and password
-  reset links are printed in the worker's logs until a real provider is added; see
-  [Email](#email).
-- **No Compose file, no host config.** Both would tie the template to one
-  layout. The table above is the whole wiring; each host has a place for it.
+`.github/workflows/images.yml` builds `ghcr.io/<owner>/<repo>/{api,web}`
+after CI passes on `main`, tagged `latest` and `sha-<short sha>`, for hosts
+that pull from a registry. On Railway, four services from one repository
+with the Dockerfile paths and commands above, `alembic upgrade head` as the
+pre-deploy command on `api`, and `API_URL=http://api.railway.internal:8000`.
+Email is still the console mailer until a provider is added.
 
 ## Supply-chain policy
 
-Defined in `pnpm-workspace.yaml`:
-
-- `minimumReleaseAge: 5760`: new versions must be ≥ 4 days old before resolving
-- `strictDepBuilds` + `allowBuilds: {}`: no dependency runs lifecycle scripts
-  until explicitly reviewed and listed
-- `blockExoticSubdeps`: transitive deps must come from the registry
-- `trustPolicy: no-downgrade`: publisher trust levels may not regress.
-  `trustPolicyExclude` lists the exact versions that are known false positives
-  (currently `semver@6.3.1`, an old major that `@babel/core` still needs,
-  published without provenance days after a 7.x release that had it)
-- `verifyDepsBeforeRun`: scripts never run against a stale tree
-- `engineStrict`: Node version mismatch fails instead of warning
-
-And in `pyproject.toml`:
-
-- `exclude-newer = "4 days"`: new releases must be ≥ 4 days old before
-  resolving, recorded in `uv.lock` as a duration so the lockfile stays
-  reproducible
-- `required-version`: uv version mismatch fails instead of misbehaving
-
-CI (`.github/workflows/ci.yml`) uses least-privilege permissions, SHA-pinned
-actions, and frozen lockfiles. `setup-vp` installs Vite+, Node, and pnpm and
-caches the store; `setup-uv` does the same for Python. The `vp run` task cache
-is restored and saved around the build. Dependabot runs weekly on npm, uv, and
-GitHub Actions with a 4-day cooldown matching both policies.
+`pnpm-workspace.yaml`: `minimumReleaseAge` of 4 days, `strictDepBuilds` with
+an empty `allowBuilds`, `blockExoticSubdeps`, `trustPolicy: no-downgrade`,
+`verifyDepsBeforeRun`, `engineStrict`. `pyproject.toml`: `exclude-newer` of
+4 days and `required-version` for uv. CI uses least-privilege permissions,
+SHA-pinned actions, and frozen lockfiles; Dependabot runs weekly with a
+matching 4-day cooldown.
 
 ## License
 

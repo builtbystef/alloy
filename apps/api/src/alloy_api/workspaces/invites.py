@@ -1,39 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+"""The public side of invitations: the emailed link, previewed without a login
+and accepted with one. Sending and revoking them is in `router.py`."""
+
+from datetime import timedelta
+
+from fastapi import APIRouter, Depends
 
 from alloy_api.auth.deps import CurrentUserDep
-from alloy_api.auth.tokens import hash_token
-from alloy_api.db import SessionDep
-from alloy_api.models import utcnow
-from alloy_api.ratelimit import INVITE_ACCEPT_PER_USER, TOKEN_PER_IP, LimiterDep, per_ip
-from alloy_api.workspaces.models import WorkspaceInvite, WorkspaceMember
+from alloy_api.db.session import SessionDep
+from alloy_api.integrations.ratelimit import TOKEN_PER_IP, Limit, LimiterDep, per_ip
+from alloy_api.workspaces import service
 from alloy_api.workspaces.schemas import InvitePreview, WorkspaceRead
-from alloy_api.workspaces.service import workspace_read
 
 router = APIRouter(prefix="/invites", tags=["invites"])
 
-
-async def fetch_pending_invite(session: SessionDep, token: str) -> WorkspaceInvite:
-    """404 for an unknown, revoked, or used token; 410 for an expired one."""
-    invite = await session.scalar(
-        select(WorkspaceInvite)
-        .options(selectinload(WorkspaceInvite.workspace), selectinload(WorkspaceInvite.invited_by))
-        .where(WorkspaceInvite.token_hash == hash_token(token))
-        .where(WorkspaceInvite.revoked_at.is_(None))
-        .where(WorkspaceInvite.accepted_at.is_(None))
-    )
-    if invite is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
-    if invite.expires_at <= utcnow():
-        raise HTTPException(status.HTTP_410_GONE, "Invitation has expired")
-    return invite
+INVITE_ACCEPT_PER_USER = Limit("invite-accept:user", 10, timedelta(minutes=1))
 
 
 @router.get("/{token}", dependencies=[Depends(per_ip(TOKEN_PER_IP))])
 async def read_invite(token: str, session: SessionDep) -> InvitePreview:
-    """No login needed: the page shows who invited you where before you sign up."""
-    invite = await fetch_pending_invite(session, token)
+    """No login needed: the page shows who invited you where before you sign up.
+    404 for an unknown, revoked, or used token; 410 for an expired one."""
+    invite = await service.get_invite_by_token(session, token)
     return InvitePreview(
         workspace_name=invite.workspace.name,
         email=invite.email,
@@ -53,23 +40,6 @@ async def accept_invite(
     owns that address: an unverified account is marked verified here.
     """
     await limiter.hit(INVITE_ACCEPT_PER_USER, str(user.id))
-    invite = await fetch_pending_invite(session, token)
-    if user.email != invite.email:
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "This invitation was sent to a different email address"
-        )
-    if not user.email_verified:
-        user.email_verified_at = utcnow()
-        user.verification_token_hash = None
-        user.verification_sent_at = None
-    member = await session.scalar(
-        select(WorkspaceMember)
-        .where(WorkspaceMember.workspace_id == invite.workspace_id)
-        .where(WorkspaceMember.user_id == user.id)
-    )
-    if member is None:
-        member = WorkspaceMember(workspace=invite.workspace, user=user, role=invite.role)
-        session.add(member)
-    invite.accepted_at = utcnow()
-    await session.commit()
-    return workspace_read(invite.workspace, member.role)
+    invite = await service.get_invite_by_token(session, token)
+    member = await service.accept_invite(session, invite, user)
+    return service.workspace_read(invite.workspace, member.role)

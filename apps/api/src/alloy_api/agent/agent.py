@@ -10,7 +10,7 @@ from pydantic_ai.usage import UsageLimits
 
 from alloy_api.agent.deps import AgentDeps
 from alloy_api.agent.tools import permitted_toolset
-from alloy_api.models import utcnow
+from alloy_api.db.base import utcnow
 from alloy_api.workspaces.permissions import Permission
 
 if TYPE_CHECKING:

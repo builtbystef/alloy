@@ -3,9 +3,13 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/auth/session";
 
-import { AlreadyVerified, CheckInbox, ConfirmEmail } from "./verify-email-cards";
+import {
+  AlreadyVerified,
+  CheckInbox,
+  ConfirmEmail,
+} from "@/features/auth/components/verify-email-cards";
 
 export const metadata: Metadata = { title: "Verify your email" };
 

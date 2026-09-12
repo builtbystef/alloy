@@ -17,8 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import Context, TaskiqDepends, TaskiqState
 
 from alloy_api.config import Settings
-from alloy_api.mail import Mailer
-from alloy_api.storage import ObjectStore
+from alloy_api.integrations.mail import Mailer
+from alloy_api.integrations.storage import ObjectStore
 
 if TYPE_CHECKING:
     from contextlib import AsyncExitStack
@@ -43,9 +43,9 @@ def configure(
 async def open_resources(state: TaskiqState, settings: Settings, stack: AsyncExitStack) -> None:
     """Build every resource from `settings` and register their teardown on `stack`.
     What the worker process does at startup."""
-    from alloy_api.db import create_database_state  # noqa: PLC0415 - avoids an import cycle
-    from alloy_api.mail import create_mailer  # noqa: PLC0415
-    from alloy_api.storage import create_object_store  # noqa: PLC0415
+    from alloy_api.db.session import create_database_state  # noqa: PLC0415 - avoids an import cycle
+    from alloy_api.integrations.mail import create_mailer  # noqa: PLC0415
+    from alloy_api.integrations.storage import create_object_store  # noqa: PLC0415
 
     database = create_database_state(settings)
     engine: AsyncEngine = database["engine"]

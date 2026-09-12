@@ -2,15 +2,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { ApiError } from "@/lib/api-error";
-import { conversationQuery } from "@/lib/queries";
+import { ApiError } from "@/lib/api/errors";
+import { conversationQuery } from "@/features/assistant/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { ChatPanel } from "../chat-panel";
-import { ChatSkeleton } from "../chat-skeleton";
-import type { ChatMessage } from "../chat-types";
+import { ChatPanel } from "@/features/assistant/components/chat-panel";
+import { ChatSkeleton } from "@/features/assistant/components/chat-skeleton";
+import type { ChatMessage } from "@/features/assistant/types";
 
 export const metadata: Metadata = { title: "Assistant" };
 
@@ -34,7 +35,7 @@ async function ConversationContent({ params }: { params: Params }) {
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   let detail;
   try {
-    detail = await getQueryClient().fetchQuery(conversationQuery(api, workspaceId, conversationId));
+    detail = await getQueryClient().query(conversationQuery(api, workspaceId, conversationId));
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 422)) notFound();
     throw error;

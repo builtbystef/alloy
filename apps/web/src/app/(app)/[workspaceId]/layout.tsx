@@ -1,14 +1,14 @@
 import { Suspense, type ReactNode } from "react";
 
-import { RememberWorkspace } from "@/components/remember-workspace";
-import { TimeZoneSync } from "@/components/time-zone-sync";
+import { RememberWorkspace } from "@/features/workspaces/components/remember-workspace";
+import { TimeZoneSync } from "@/components/shared/time-zone-sync";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
-import { WorkspaceProvider } from "@/lib/workspace";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
+import { WorkspaceProvider } from "@/features/workspaces/workspace-provider";
 
-import { AppSidebar } from "./app-sidebar";
+import { AppSidebar } from "@/components/shared/layout/app-sidebar";
 
 type Params = Promise<{ workspaceId: string }>;
 

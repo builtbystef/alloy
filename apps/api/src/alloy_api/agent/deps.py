@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from alloy_api.config import Settings
-    from alloy_api.storage import ObjectStore
+    from alloy_api.integrations.storage import ObjectStore
     from alloy_api.workspaces.deps import Membership
 
 

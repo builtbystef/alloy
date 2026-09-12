@@ -1,13 +1,14 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { conversationListQuery } from "@/lib/queries";
+import { conversationListQuery } from "@/features/assistant/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { ConversationList } from "./conversation-list";
+import { ConversationList } from "@/features/assistant/components/conversation-list";
 
 type Params = Promise<{ workspaceId: string }>;
 
@@ -42,7 +43,7 @@ async function ConversationListContent({ params }: { params: Params }) {
   await requireWorkspace(workspaceId);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(conversationListQuery(api, workspaceId));
+  await queryClient.query(conversationListQuery(api, workspaceId)).catch(noop);
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <ConversationList timeZone={timeZone} />

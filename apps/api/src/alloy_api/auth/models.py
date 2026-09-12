@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from alloy_api.models import Base, Timestamps, UUIDPrimaryKey
+from alloy_api.db.base import Base, Timestamps, UUIDPrimaryKey
 
 
 class User(UUIDPrimaryKey, Timestamps, Base):

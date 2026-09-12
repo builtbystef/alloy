@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { FormSkeleton } from "@/components/skeletons";
-import { requireUser, requireWorkspace } from "@/lib/session";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { FormSkeleton } from "@/components/shared/skeletons";
+import { requireUser } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
 
-import { DeleteAccountCard } from "./delete-account-card";
-import { EmailForm } from "./email-form";
-import { PasswordForm } from "./password-form";
-import { SessionsCard } from "./sessions-card";
+import { DeleteAccountCard } from "@/features/auth/components/delete-account-card";
+import { EmailForm } from "@/features/auth/components/email-form";
+import { PasswordForm } from "@/features/auth/components/password-form";
+import { SessionsCard } from "@/features/auth/components/sessions-card";
 
 export const metadata: Metadata = { title: "Account" };
 

@@ -1,15 +1,16 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { FormSkeleton } from "@/components/skeletons";
-import { companyPickerQuery } from "@/lib/queries";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { FormSkeleton } from "@/components/shared/skeletons";
+import { companyPickerQuery } from "@/features/crm/companies/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { ContactForm } from "../contact-form";
+import { ContactForm } from "@/features/crm/contacts/components/contact-form";
 
 export const metadata: Metadata = { title: "New contact" };
 
@@ -45,7 +46,7 @@ async function NewContactForm({
   const { company_id } = await searchParams;
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(companyPickerQuery(api, workspaceId, ""));
+  await queryClient.query(companyPickerQuery(api, workspaceId, "")).catch(noop);
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <ContactForm

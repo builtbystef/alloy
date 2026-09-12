@@ -1,7 +1,7 @@
 from html import escape
 from typing import TYPE_CHECKING
 
-from alloy_api.mail import Email
+from alloy_api.integrations.mail import Email
 
 if TYPE_CHECKING:
     from alloy_api.workspaces.models import WorkspaceInvite

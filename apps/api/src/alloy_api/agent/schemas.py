@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from alloy_api.crm.schemas import AttachmentCreate
+from alloy_api.crm.attachments.schemas import AttachmentCreate
 
 
 class ReadModel(BaseModel):

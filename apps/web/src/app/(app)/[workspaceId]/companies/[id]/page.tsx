@@ -1,22 +1,20 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { DetailSkeleton } from "@/components/skeletons";
-import { ApiError } from "@/lib/api-error";
-import {
-  ALL_ROWS,
-  attachmentsQuery,
-  companyContactsQuery,
-  companyQuery,
-  taskListQuery,
-} from "@/lib/queries";
+import { DetailSkeleton } from "@/components/shared/skeletons";
+import { ApiError } from "@/lib/api/errors";
+import { ALL_ROWS } from "@/lib/lists";
+import { attachmentsQuery } from "@/features/crm/attachments/queries";
+import { companyContactsQuery, companyQuery } from "@/features/crm/companies/queries";
+import { taskListQuery } from "@/features/crm/tasks/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { CompanyDetail } from "./company-detail";
+import { CompanyDetail } from "@/features/crm/companies/components/company-detail";
 
 export const metadata: Metadata = { title: "Company" };
 
@@ -38,12 +36,12 @@ async function CompanyContent({ params }: { params: Params }) {
 
   try {
     await Promise.all([
-      queryClient.fetchQuery(companyQuery(api, workspaceId, id)),
-      queryClient.prefetchQuery(companyContactsQuery(api, workspaceId, id)),
-      queryClient.prefetchQuery(attachmentsQuery(api, workspaceId, { companyId: id })),
-      queryClient.prefetchQuery(
-        taskListQuery(api, workspaceId, { company_id: id, ...ALL_ROWS, tz: timeZone }),
-      ),
+      queryClient.query(companyQuery(api, workspaceId, id)),
+      queryClient.query(companyContactsQuery(api, workspaceId, id)).catch(noop),
+      queryClient.query(attachmentsQuery(api, workspaceId, { companyId: id })).catch(noop),
+      queryClient
+        .query(taskListQuery(api, workspaceId, { company_id: id, ...ALL_ROWS, tz: timeZone }))
+        .catch(noop),
     ]);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 422)) notFound();

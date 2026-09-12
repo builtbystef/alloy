@@ -1,16 +1,17 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { FormSkeleton } from "@/components/skeletons";
-import { companyPickerQuery } from "@/lib/queries";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { FormSkeleton } from "@/components/shared/skeletons";
+import { companyPickerQuery } from "@/features/crm/companies/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { ContactForm } from "../../contact-form";
+import { ContactForm } from "@/features/crm/contacts/components/contact-form";
 
 export const metadata: Metadata = { title: "Edit contact" };
 
@@ -36,7 +37,7 @@ async function EditContactForm({ params }: { params: Params }) {
     api.GET("/workspaces/{workspace_id}/contacts/{contact_id}", {
       params: { path: { workspace_id: workspaceId, contact_id: id } },
     }),
-    queryClient.prefetchQuery(companyPickerQuery(api, workspaceId, "")),
+    queryClient.query(companyPickerQuery(api, workspaceId, "")).catch(noop),
   ]);
   if (!contact) notFound();
   return (

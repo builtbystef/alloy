@@ -38,6 +38,9 @@ export default defineConfig({
   },
   test: {
     passWithNoTests: true,
+    // Each package is its own project, so `apps/web/vite.config.ts` (the `@/`
+    // alias) applies to its tests when run from the root too.
+    projects: ["apps/web", "packages/api-client"],
   },
   pack: {
     dts: true,

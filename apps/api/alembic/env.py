@@ -7,7 +7,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from alloy_api.config import get_settings
-from alloy_api.models import Base
+from alloy_api.db.base import Base
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Connection

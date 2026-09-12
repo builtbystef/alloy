@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from alloy_api.agent.agent import USAGE_LIMITS, agent, history_capability, model_settings
 from alloy_api.agent.deps import AgentDeps
 from alloy_api.config import Settings
-from alloy_api.storage.base import ObjectStore
+from alloy_api.integrations.storage.base import ObjectStore
 from alloy_api.workspaces.deps import Membership
 from alloy_api.workspaces.models import WorkspaceMember
 

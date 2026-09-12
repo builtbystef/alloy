@@ -1,6 +1,7 @@
 import logging
 from collections.abc import AsyncIterator
 from dataclasses import KW_ONLY, dataclass
+from datetime import timedelta
 from functools import cached_property
 from typing import TYPE_CHECKING, Annotated, Any
 from uuid import UUID
@@ -19,9 +20,9 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.ui.vercel_ai.request_types import FileUIPart, TextUIPart, UIMessage
-from sqlalchemy import exists, select
+from sqlalchemy import select
 
-from alloy_api.agent import uploads
+from alloy_api.agent import service, uploads
 from alloy_api.agent.agent import (
     USAGE_LIMITS,
     agent,
@@ -31,14 +32,13 @@ from alloy_api.agent.agent import (
 )
 from alloy_api.agent.deps import AgentDeps
 from alloy_api.agent.history import append_messages, load_history, truncate_after_last_prompt
-from alloy_api.agent.models import AgentConversation, AgentMessage, ChatUpload
+from alloy_api.agent.models import AgentConversation, ChatUpload
 from alloy_api.agent.schemas import ChatMessageRequest, ConversationDetail, ConversationRead
-from alloy_api.agent.uploads import fetch_conversation, purge_unattached
 from alloy_api.config import SettingsDep
-from alloy_api.db import SessionDep
-from alloy_api.logs import request_id
-from alloy_api.ratelimit import AGENT_MESSAGE_PER_USER, LimiterDep
-from alloy_api.storage import ObjectStoreDep
+from alloy_api.core.logs import request_id
+from alloy_api.db.session import SessionDep
+from alloy_api.integrations.ratelimit import Limit, LimiterDep
+from alloy_api.integrations.storage import ObjectStoreDep
 from alloy_api.workspaces.deps import CanReadCrm
 
 if TYPE_CHECKING:
@@ -47,13 +47,16 @@ if TYPE_CHECKING:
     from pydantic_ai.ui.vercel_ai.response_types import BaseChunk
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from alloy_api.storage import ObjectStore
+    from alloy_api.integrations.storage import ObjectStore
     from alloy_api.workspaces.deps import Membership
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/agent", tags=["agent"])
 router.include_router(uploads.router)
+
+# Each message to the assistant is a model run; this bounds what one user can spend.
+AGENT_MESSAGE_PER_USER = Limit("agent-message:user", 60, timedelta(hours=1))
 
 SDK_VERSION = 7
 TITLE_LENGTH = 80
@@ -89,12 +92,7 @@ def read_conversation(conversation: AgentConversation) -> ConversationRead:
 @router.get("/conversations")
 async def list_conversations(session: SessionDep, membership: CanReadCrm) -> list[ConversationRead]:
     """The caller's conversations in this workspace, most recently active first."""
-    rows = await session.scalars(
-        select(AgentConversation)
-        .where(AgentConversation.workspace_id == membership.workspace.id)
-        .where(AgentConversation.user_id == membership.user.id)
-        .order_by(AgentConversation.updated_at.desc(), AgentConversation.id.desc())
-    )
+    rows = await session.scalars(service.conversations_query(membership))
     return [read_conversation(c) for c in rows]
 
 
@@ -102,23 +100,7 @@ async def list_conversations(session: SessionDep, membership: CanReadCrm) -> lis
 async def create_conversation(session: SessionDep, membership: CanReadCrm) -> ConversationRead:
     """A new, empty conversation. An existing one with no messages is returned
     instead, so "New chat" pressed twice does not pile up empty rows."""
-    has_messages = exists().where(AgentMessage.conversation_id == AgentConversation.id)
-    empty = await session.scalar(
-        select(AgentConversation)
-        .where(AgentConversation.workspace_id == membership.workspace.id)
-        .where(AgentConversation.user_id == membership.user.id)
-        .where(~has_messages)
-        .order_by(AgentConversation.created_at.desc())
-        .limit(1)
-    )
-    if empty is not None:
-        return read_conversation(empty)
-    conversation = AgentConversation(
-        workspace_id=membership.workspace.id, user_id=membership.user.id
-    )
-    session.add(conversation)
-    await session.commit()
-    return read_conversation(conversation)
+    return read_conversation(await service.create_conversation(session, membership))
 
 
 @router.get("/conversations/{conversation_id}")
@@ -127,7 +109,7 @@ async def get_conversation(
 ) -> ConversationDetail:
     """The conversation with its transcript as `UIMessage`s. A tool call still
     waiting for approval comes back in the `approval-requested` state."""
-    conversation = await fetch_conversation(session, membership, conversation_id)
+    conversation = await service.get_conversation(session, membership, conversation_id)
     history = await load_history(session, conversation.id)
     messages = _merge_assistant_turns(
         VercelAIAdapter.dump_messages(history, sdk_version=SDK_VERSION)
@@ -162,10 +144,8 @@ async def delete_conversation(
 ) -> Response:
     """Removes the transcript and the chat's files that were never attached to a
     record. Attachments made from the chat stay on their records."""
-    conversation = await fetch_conversation(session, membership, conversation_id)
-    await purge_unattached(session, store, conversation)
-    await session.delete(conversation)
-    await session.commit()
+    conversation = await service.get_conversation(session, membership, conversation_id)
+    await service.delete_conversation(session, store, conversation)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -342,7 +322,7 @@ async def send_message(  # noqa: PLR0913, PLR0917
     per-user limit.
     """
     await limiter.hit(AGENT_MESSAGE_PER_USER, str(membership.user.id))
-    conversation = await fetch_conversation(session, membership, conversation_id)
+    conversation = await service.get_conversation(session, membership, conversation_id)
     body.id = body.id or str(conversation.id)
     try:
         run_input = VercelAIAdapter.build_run_input(body.model_dump_json(by_alias=True).encode())

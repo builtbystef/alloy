@@ -10,7 +10,7 @@ from pydantic_ai.messages import (
 from sqlalchemy import func, select
 
 from alloy_api.agent.models import AgentConversation, AgentMessage
-from alloy_api.models import utcnow
+from alloy_api.db.base import utcnow
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

@@ -4,7 +4,7 @@ import { AlertCircleIcon } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { errorMessage } from "@/lib/api-error";
+import { errorMessage } from "@/lib/api/errors";
 
 export default function AppError({ error, reset }: { error: Error; reset: () => void }) {
   return (

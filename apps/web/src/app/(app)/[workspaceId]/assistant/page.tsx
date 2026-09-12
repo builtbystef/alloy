@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { unwrap } from "@/lib/api-error";
+import { unwrap } from "@/lib/api/errors";
 import { workspacePaths } from "@/lib/routes";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
 
-import { ChatSkeleton } from "./chat-skeleton";
+import { ChatSkeleton } from "@/features/assistant/components/chat-skeleton";
 
 export const metadata: Metadata = { title: "Assistant" };
 

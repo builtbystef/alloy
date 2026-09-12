@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/auth/session";
 
-import { ConfirmEmailChange } from "./confirm-email-card";
+import { ConfirmEmailChange } from "@/features/auth/components/confirm-email-card";
 
 export const metadata: Metadata = { title: "Confirm your new email" };
 

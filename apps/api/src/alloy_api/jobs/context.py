@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 from taskiq import TaskiqMiddleware
 
-from alloy_api.logs import new_request_id, request_id
+from alloy_api.core.logs import new_request_id, request_id
 
 if TYPE_CHECKING:
     from taskiq import TaskiqMessage, TaskiqResult

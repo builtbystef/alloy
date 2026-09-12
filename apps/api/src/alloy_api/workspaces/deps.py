@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from alloy_api.auth.deps import VerifiedUserDep
-from alloy_api.db import SessionDep
+from alloy_api.db.session import SessionDep
 from alloy_api.workspaces.models import Workspace, WorkspaceMember, WorkspaceRole
 from alloy_api.workspaces.permissions import Permission, permissions_for
 

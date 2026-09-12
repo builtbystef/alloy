@@ -1,16 +1,17 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { TableSkeleton } from "@/components/skeletons";
-import { inviteListQuery, memberListQuery } from "@/lib/queries";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { TableSkeleton } from "@/components/shared/skeletons";
+import { inviteListQuery, memberListQuery } from "@/features/workspaces/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi, requireUser, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi, requireUser } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { InvitesCard } from "./invites-card";
-import { MembersTable } from "./members-table";
+import { InvitesCard } from "@/features/workspaces/components/invites-card";
+import { MembersTable } from "@/features/workspaces/components/members-table";
 
 export const metadata: Metadata = { title: "Members" };
 
@@ -34,9 +35,9 @@ async function MembersContent({ params }: { params: Params }) {
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
   await Promise.all([
-    queryClient.prefetchQuery(memberListQuery(api, workspaceId)),
+    queryClient.query(memberListQuery(api, workspaceId)).catch(noop),
     // The invitation list is admin-only; a viewer's request would be a 403.
-    canManage ? queryClient.prefetchQuery(inviteListQuery(api, workspaceId)) : null,
+    canManage ? queryClient.query(inviteListQuery(api, workspaceId)).catch(noop) : null,
   ]);
 
   return (

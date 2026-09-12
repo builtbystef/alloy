@@ -382,10 +382,10 @@ export interface paths {
         get: operations["workspaces-list_workspaces"];
         put?: never;
         /**
-         * Create Workspace Route
+         * Create Workspace
          * @description The caller becomes its owner.
          */
-        post: operations["workspaces-create_workspace_route"];
+        post: operations["workspaces-create_workspace"];
         delete?: never;
         options?: never;
         head?: never;
@@ -557,6 +557,7 @@ export interface paths {
         /**
          * Read Invite
          * @description No login needed: the page shows who invited you where before you sign up.
+         *     404 for an unknown, revoked, or used token; 410 for an expired one.
          */
         get: operations["invites-read_invite"];
         put?: never;
@@ -2583,7 +2584,7 @@ export interface operations {
             };
         };
     };
-    "workspaces-create_workspace_route": {
+    "workspaces-create_workspace": {
         parameters: {
             query?: never;
             header?: never;

@@ -38,15 +38,19 @@ from fastapi.testclient import TestClient  # noqa: E402
 from taskiq import InMemoryBroker  # noqa: E402
 
 from alloy_api.auth.cookies import SESSION_COOKIE  # noqa: E402
-from alloy_api.db import get_session  # noqa: E402
+from alloy_api.db.base import Base  # noqa: E402
+from alloy_api.db.session import get_session  # noqa: E402
+from alloy_api.integrations.mail import Email  # noqa: E402
+from alloy_api.integrations.ratelimit import (  # noqa: E402
+    Limiter,
+    MemoryRateLimitStore,
+    get_limiter,
+)
+from alloy_api.integrations.storage import get_object_store  # noqa: E402
+from alloy_api.integrations.storage.memory import MemoryObjectStore  # noqa: E402
 from alloy_api.jobs.broker import broker  # noqa: E402
 from alloy_api.jobs.deps import configure as configure_jobs  # noqa: E402
-from alloy_api.mail import Email  # noqa: E402
 from alloy_api.main import app  # noqa: E402
-from alloy_api.models import Base  # noqa: E402
-from alloy_api.ratelimit import Limiter, MemoryRateLimitStore, get_limiter  # noqa: E402
-from alloy_api.storage import get_object_store  # noqa: E402
-from alloy_api.storage.memory import MemoryObjectStore  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping

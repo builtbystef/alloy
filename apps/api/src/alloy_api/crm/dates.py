@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import Field
 
-from alloy_api.models import utcnow
+from alloy_api.db.base import utcnow
 
 if TYPE_CHECKING:
     from sqlalchemy import ColumnElement

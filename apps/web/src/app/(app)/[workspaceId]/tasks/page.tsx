@@ -1,16 +1,19 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { TableSkeleton } from "@/components/skeletons";
-import { paged, taskListQuery } from "@/lib/queries";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { TableSkeleton } from "@/components/shared/skeletons";
+import { paged } from "@/lib/lists";
+import { taskListQuery } from "@/features/crm/tasks/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { parseTaskSearch, toSearchString } from "@/lib/schemas";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
+import { parseTaskSearch } from "@/features/crm/tasks/schemas";
+import { toSearchString } from "@/lib/lists";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { TasksTable } from "./tasks-table";
+import { TasksTable } from "@/features/crm/tasks/components/tasks-table";
 
 export const metadata: Metadata = { title: "Tasks" };
 
@@ -46,9 +49,9 @@ async function TasksContent({
   const filters = parseTaskSearch(await searchParams);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(
-    taskListQuery(api, workspaceId, { ...paged(filters), tz: timeZone }),
-  );
+  await queryClient
+    .query(taskListQuery(api, workspaceId, { ...paged(filters), tz: timeZone }))
+    .catch(noop);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

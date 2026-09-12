@@ -1,22 +1,20 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { DetailSkeleton } from "@/components/skeletons";
-import { ApiError } from "@/lib/api-error";
-import {
-  ALL_ROWS,
-  contactActivitiesQuery,
-  attachmentsQuery,
-  contactQuery,
-  taskListQuery,
-} from "@/lib/queries";
+import { DetailSkeleton } from "@/components/shared/skeletons";
+import { ApiError } from "@/lib/api/errors";
+import { ALL_ROWS } from "@/lib/lists";
+import { contactActivitiesQuery, contactQuery } from "@/features/crm/contacts/queries";
+import { attachmentsQuery } from "@/features/crm/attachments/queries";
+import { taskListQuery } from "@/features/crm/tasks/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { ContactDetail } from "./contact-detail";
+import { ContactDetail } from "@/features/crm/contacts/components/contact-detail";
 
 export const metadata: Metadata = { title: "Contact" };
 
@@ -41,12 +39,12 @@ async function ContactContent({ params }: { params: Params }) {
   // waterfall.
   try {
     await Promise.all([
-      queryClient.fetchQuery(contactQuery(api, workspaceId, id)),
-      queryClient.prefetchQuery(contactActivitiesQuery(api, workspaceId, id)),
-      queryClient.prefetchQuery(attachmentsQuery(api, workspaceId, { contactId: id })),
-      queryClient.prefetchQuery(
-        taskListQuery(api, workspaceId, { contact_id: id, ...ALL_ROWS, tz: timeZone }),
-      ),
+      queryClient.query(contactQuery(api, workspaceId, id)),
+      queryClient.query(contactActivitiesQuery(api, workspaceId, id)).catch(noop),
+      queryClient.query(attachmentsQuery(api, workspaceId, { contactId: id })).catch(noop),
+      queryClient
+        .query(taskListQuery(api, workspaceId, { contact_id: id, ...ALL_ROWS, tz: timeZone }))
+        .catch(noop),
     ]);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 422)) notFound();

@@ -3,8 +3,8 @@ from contextlib import AsyncExitStack
 
 from taskiq import TaskiqEvents, TaskiqState
 
-from alloy_api import logs, telemetry
 from alloy_api.config import get_settings
+from alloy_api.core import logs, telemetry
 from alloy_api.jobs import create_broker, create_scheduler
 from alloy_api.jobs.deps import open_resources
 

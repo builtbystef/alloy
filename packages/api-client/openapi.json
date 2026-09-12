@@ -596,9 +596,9 @@
         "tags": [
           "workspaces"
         ],
-        "summary": "Create Workspace Route",
+        "summary": "Create Workspace",
         "description": "The caller becomes its owner.",
-        "operationId": "workspaces-create_workspace_route",
+        "operationId": "workspaces-create_workspace",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1223,7 +1223,7 @@
           "invites"
         ],
         "summary": "Read Invite",
-        "description": "No login needed: the page shows who invited you where before you sign up.",
+        "description": "No login needed: the page shows who invited you where before you sign up.\n404 for an unknown, revoked, or used token; 410 for an expired one.",
         "operationId": "invites-read_invite",
         "parameters": [
           {

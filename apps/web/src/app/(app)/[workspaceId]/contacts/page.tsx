@@ -1,21 +1,24 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import { FileUpIcon, PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { TableSkeleton } from "@/components/skeletons";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { TableSkeleton } from "@/components/shared/skeletons";
 import { Button } from "@/components/ui/button";
-import { contactListQuery, paged } from "@/lib/queries";
+import { contactListQuery } from "@/features/crm/contacts/queries";
+import { paged } from "@/lib/lists";
 import { getQueryClient } from "@/lib/query-client";
-import { parseContactSearch, toSearchString } from "@/lib/schemas";
+import { parseContactSearch } from "@/features/crm/contacts/schemas";
+import { toSearchString } from "@/lib/lists";
 import { workspacePaths } from "@/lib/routes";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { Can } from "@/lib/workspace";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { Can } from "@/features/workspaces/workspace-provider";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { ContactsTable } from "./contacts-table";
+import { ContactsTable } from "@/features/crm/contacts/components/contacts-table";
 
 export const metadata: Metadata = { title: "Contacts" };
 
@@ -86,7 +89,7 @@ async function ContactsContent({
   const filters = parseContactSearch(await searchParams);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(contactListQuery(api, workspaceId, paged(filters)));
+  await queryClient.query(contactListQuery(api, workspaceId, paged(filters))).catch(noop);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

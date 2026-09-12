@@ -1,0 +1,18 @@
+from pydantic import BaseModel, Field
+
+from alloy_api.crm.contacts.schemas import ContactRead
+from alloy_api.crm.dates import UTC_ZONE, TimeZoneField
+
+
+class DashboardOptions(BaseModel):
+    tz: TimeZoneField = UTC_ZONE
+    stale_days: int = Field(30, ge=1, description="Days without contact that count as stale.")
+    limit: int = Field(5, ge=1, le=50, description="Size of each contact list.")
+
+
+class Dashboard(BaseModel):
+    total_contacts: int
+    tasks_due_today: int
+    overdue_tasks: int
+    recently_contacted: list[ContactRead]
+    not_recently_contacted: list[ContactRead]

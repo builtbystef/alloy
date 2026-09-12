@@ -9,8 +9,10 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alloy_api.auth.models import User
-from alloy_api.crm.models import Activity, ActivityType, Company, Contact, Task
-from alloy_api.models import utcnow
+from alloy_api.crm.companies.models import Company
+from alloy_api.crm.contacts.models import Activity, ActivityType, Contact
+from alloy_api.crm.tasks.models import Task
+from alloy_api.db.base import utcnow
 from alloy_api.workspaces.models import Workspace, WorkspaceMember
 from alloy_api.workspaces.service import create_workspace
 

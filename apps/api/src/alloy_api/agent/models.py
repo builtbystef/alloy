@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from alloy_api.models import Base, Timestamps, UUIDPrimaryKey
+from alloy_api.db.base import Base, Timestamps, UUIDPrimaryKey
 
 if TYPE_CHECKING:
-    from alloy_api.crm.models import Attachment
+    from alloy_api.crm.attachments.models import Attachment
 
 
 class AgentConversation(UUIDPrimaryKey, Timestamps, Base):

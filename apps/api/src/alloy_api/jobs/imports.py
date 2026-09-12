@@ -3,10 +3,10 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import TaskiqDepends
 
-from alloy_api.crm.importing import run_import
+from alloy_api.crm.imports.loader import run_import
+from alloy_api.integrations.storage import ObjectStore
 from alloy_api.jobs.broker import broker
 from alloy_api.jobs.deps import get_object_store, get_session
-from alloy_api.storage import ObjectStore
 
 
 @broker.task(task_name="imports.run")

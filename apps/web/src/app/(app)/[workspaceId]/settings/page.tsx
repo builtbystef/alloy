@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { FormSkeleton } from "@/components/skeletons";
-import { requireWorkspace } from "@/lib/session";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { FormSkeleton } from "@/components/shared/skeletons";
+import { requireWorkspace } from "@/features/workspaces/server";
 
-import { DangerZone } from "./danger-zone";
-import { WorkspaceNameForm } from "./workspace-name-form";
+import { DangerZone } from "@/features/workspaces/components/danger-zone";
+import { WorkspaceNameForm } from "@/features/workspaces/components/workspace-name-form";
 
 export const metadata: Metadata = { title: "Workspace settings" };
 

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { getApiUrl } from "@/lib/api";
+import { getApiUrl } from "@/lib/api/server-client";
 import { clientAddress } from "@/lib/client-address";
 
 /**

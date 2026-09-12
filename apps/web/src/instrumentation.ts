@@ -1,4 +1,4 @@
-import { assertApiUrl } from "@/lib/api";
+import { assertApiUrl } from "@/lib/api/server-client";
 import { getClientIpHeader } from "@/lib/client-address";
 
 /**

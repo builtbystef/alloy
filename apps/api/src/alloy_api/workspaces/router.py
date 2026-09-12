@@ -1,20 +1,14 @@
-from typing import TYPE_CHECKING
+from datetime import timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, status
-from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
+from fastapi import APIRouter, Response, status
 
 from alloy_api.auth.deps import VerifiedUserDep
-from alloy_api.auth.models import User
-from alloy_api.auth.tokens import hash_token, new_token
 from alloy_api.config import SettingsDep
-from alloy_api.db import SessionDep
-from alloy_api.jobs.emails import send_email
-from alloy_api.models import utcnow
-from alloy_api.ratelimit import INVITE_SEND_PER_USER, LimiterDep
-from alloy_api.storage import ObjectStoreDep
-from alloy_api.storage.cleanup import delete_stored, storage_prefix
+from alloy_api.db.session import SessionDep
+from alloy_api.integrations.ratelimit import Limit, LimiterDep
+from alloy_api.integrations.storage import ObjectStoreDep
+from alloy_api.workspaces import service
 from alloy_api.workspaces.deps import (
     CanDeleteWorkspace,
     CanManageMembers,
@@ -22,14 +16,6 @@ from alloy_api.workspaces.deps import (
     CanReadMembers,
     CurrentMembership,
 )
-from alloy_api.workspaces.emails import invite_email
-from alloy_api.workspaces.models import (
-    Workspace,
-    WorkspaceInvite,
-    WorkspaceMember,
-    WorkspaceRole,
-)
-from alloy_api.workspaces.permissions import can_manage_role
 from alloy_api.workspaces.schemas import (
     InviteCreate,
     InviteRead,
@@ -39,101 +25,35 @@ from alloy_api.workspaces.schemas import (
     WorkspaceRead,
     WorkspaceUpdate,
 )
-from alloy_api.workspaces.service import (
-    create_workspace,
-    invite_read,
-    member_read,
-    membership_read,
-    workspace_read,
-)
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
-    from alloy_api.workspaces.deps import Membership
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 # Routes about one workspace. Split from `router` so their paths do not repeat the
 # parameter; `{workspace_id}` is consumed by the membership dependency.
 scoped = APIRouter(prefix="/{workspace_id}")
 
-WITH_USER = selectinload(WorkspaceMember.user)
-WITH_INVITER = selectinload(WorkspaceInvite.invited_by)
-
-
-def role_forbidden() -> HTTPException:
-    return HTTPException(status.HTTP_403_FORBIDDEN, "Your role cannot manage that role")
-
-
-async def lock_workspace(session: AsyncSession, workspace_id: UUID) -> None:
-    """Row-lock the workspace until the transaction ends. Every change that could
-    remove an owner takes it first, so two of them cannot both count the same
-    owners and both go through."""
-    await session.execute(
-        select(Workspace.id).where(Workspace.id == workspace_id).with_for_update()
-    )
-
-
-async def count_owners(session: AsyncSession, workspace_id: UUID) -> int:
-    """Owners not scheduled for deletion: the purge job will take that seat, so it
-    must not be the one keeping the workspace afloat."""
-    return (
-        await session.scalar(
-            select(func.count(WorkspaceMember.id))
-            .join(User, User.id == WorkspaceMember.user_id)
-            .where(WorkspaceMember.workspace_id == workspace_id)
-            .where(WorkspaceMember.role == WorkspaceRole.OWNER)
-            .where(User.deleted_at.is_(None))
-        )
-        or 0
-    )
-
-
-async def ensure_not_last_owner(session: AsyncSession, member: WorkspaceMember) -> None:
-    """Removing or demoting `member` must leave at least one owner."""
-    if member.role is not WorkspaceRole.OWNER:
-        return
-    await lock_workspace(session, member.workspace_id)
-    if await count_owners(session, member.workspace_id) <= 1:
-        raise HTTPException(status.HTTP_409_CONFLICT, "A workspace needs at least one owner")
-
-
-def pending_invites(workspace_id: UUID):  # noqa: ANN201 - a Select[tuple[WorkspaceInvite]]
-    return (
-        select(WorkspaceInvite)
-        .where(WorkspaceInvite.workspace_id == workspace_id)
-        .where(WorkspaceInvite.accepted_at.is_(None))
-        .where(WorkspaceInvite.revoked_at.is_(None))
-        .where(WorkspaceInvite.expires_at > utcnow())
-    )
+INVITE_SEND_PER_USER = Limit("invite-send:user", 20, timedelta(hours=1))
 
 
 @router.get("/")
 async def list_workspaces(session: SessionDep, user: VerifiedUserDep) -> list[WorkspaceRead]:
     """Every workspace the caller belongs to, oldest first."""
-    members = await session.scalars(
-        select(WorkspaceMember)
-        .join(WorkspaceMember.workspace)
-        .options(selectinload(WorkspaceMember.workspace))
-        .where(WorkspaceMember.user_id == user.id)
-        .order_by(Workspace.created_at, Workspace.id)
-    )
-    return [workspace_read(m.workspace, m.role) for m in members]
+    members = await session.scalars(service.workspaces_query(user))
+    return [service.workspace_read(m.workspace, m.role) for m in members]
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_workspace_route(
+async def create_workspace(
     body: WorkspaceCreate, session: SessionDep, user: VerifiedUserDep
 ) -> WorkspaceRead:
     """The caller becomes its owner."""
-    member = create_workspace(session, body.name, user)
+    member = service.create_workspace(session, body.name, user)
     await session.commit()
-    return workspace_read(member.workspace, member.role)
+    return service.workspace_read(member.workspace, member.role)
 
 
 @scoped.get("")
 async def read_workspace(membership: CurrentMembership) -> WorkspaceRead:
-    return membership_read(membership)
+    return service.membership_read(membership)
 
 
 @scoped.patch("")
@@ -142,7 +62,7 @@ async def update_workspace(
 ) -> WorkspaceRead:
     membership.workspace.name = body.name
     await session.commit()
-    return membership_read(membership)
+    return service.membership_read(membership)
 
 
 @scoped.delete("", status_code=status.HTTP_204_NO_CONTENT)
@@ -151,10 +71,7 @@ async def delete_workspace(
 ) -> Response:
     """Owners only. Members, invitations, every CRM record, and every stored file go
     with it."""
-    prefix = storage_prefix(membership.workspace.id)
-    await session.delete(membership.workspace)
-    await session.commit()
-    await delete_stored(store, prefixes=[prefix])
+    await service.delete_workspace(session, store, membership.workspace)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -162,36 +79,15 @@ async def delete_workspace(
 async def leave_workspace(membership: CurrentMembership, session: SessionDep) -> Response:
     """Give up the caller's seat. The last owner cannot leave; delete the workspace or
     make someone else an owner first."""
-    await ensure_not_last_owner(session, membership.member)
-    await session.delete(membership.member)
-    await session.commit()
+    await service.leave(session, membership)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-async def fetch_member(
-    session: AsyncSession, membership: Membership, member_id: UUID
-) -> WorkspaceMember:
-    member = await session.scalar(
-        select(WorkspaceMember)
-        .options(WITH_USER)
-        .where(WorkspaceMember.id == member_id)
-        .where(WorkspaceMember.workspace_id == membership.workspace.id)
-    )
-    if member is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
-    return member
 
 
 @scoped.get("/members")
 async def list_members(membership: CanReadMembers, session: SessionDep) -> list[MemberRead]:
     """Longest-standing first."""
-    members = await session.scalars(
-        select(WorkspaceMember)
-        .options(WITH_USER)
-        .where(WorkspaceMember.workspace_id == membership.workspace.id)
-        .order_by(WorkspaceMember.created_at, WorkspaceMember.id)
-    )
-    return [member_read(m) for m in members]
+    members = await session.scalars(service.members_query(membership))
+    return [service.member_read(m) for m in members]
 
 
 @scoped.patch("/members/{member_id}")
@@ -200,17 +96,9 @@ async def update_member(
 ) -> MemberRead:
     """Change a role. The caller must outrank both the current and the new role (owners
     outrank everyone), and the last owner cannot be demoted."""
-    member = await fetch_member(session, membership, member_id)
-    if not (
-        can_manage_role(membership.role, member.role)
-        and can_manage_role(membership.role, body.role)
-    ):
-        raise role_forbidden()
-    if body.role is not WorkspaceRole.OWNER:
-        await ensure_not_last_owner(session, member)
-    member.role = body.role
-    await session.commit()
-    return member_read(member)
+    member = await service.get_member(session, membership, member_id)
+    await service.change_role(session, membership, member, body.role)
+    return service.member_read(member)
 
 
 @scoped.delete("/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -218,26 +106,16 @@ async def remove_member(
     member_id: UUID, membership: CanManageMembers, session: SessionDep
 ) -> Response:
     """Remove someone else's seat; use `leave` for your own."""
-    member = await fetch_member(session, membership, member_id)
-    if member.id == membership.member.id:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Use leave to remove yourself")
-    if not can_manage_role(membership.role, member.role):
-        raise role_forbidden()
-    await ensure_not_last_owner(session, member)
-    await session.delete(member)
-    await session.commit()
+    member = await service.get_member(session, membership, member_id)
+    await service.remove_member(session, membership, member)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @scoped.get("/invites")
 async def list_invites(membership: CanManageMembers, session: SessionDep) -> list[InviteRead]:
     """Pending only: accepted, revoked, and expired invitations are not listed."""
-    invites = await session.scalars(
-        pending_invites(membership.workspace.id)
-        .options(WITH_INVITER)
-        .order_by(WorkspaceInvite.created_at, WorkspaceInvite.id)
-    )
-    return [invite_read(i) for i in invites]
+    invites = await session.scalars(service.invites_query(membership))
+    return [service.invite_read(i) for i in invites]
 
 
 @scoped.post("/invites", status_code=status.HTTP_201_CREATED)
@@ -250,59 +128,11 @@ async def create_invite(
 ) -> InviteRead:
     """Email a link that grants `role`. One pending invitation per address; 409 if the
     address is already a member or already invited."""
-    if not can_manage_role(membership.role, body.role):
-        raise role_forbidden()
     await limiter.hit(INVITE_SEND_PER_USER, str(membership.user.id))
-    email = body.email.lower()
-    workspace_id = membership.workspace.id
-
-    already_member = await session.scalar(
-        select(WorkspaceMember.id)
-        .join(WorkspaceMember.user)
-        .where(WorkspaceMember.workspace_id == workspace_id)
-        .where(WorkspaceMember.user.has(email=email))
+    invite = await service.create_invite(
+        session, settings, membership, body.email.lower(), body.role
     )
-    if already_member is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Already a member of this workspace")
-    already_invited = await session.scalar(
-        pending_invites(workspace_id).where(WorkspaceInvite.email == email)
-    )
-    if already_invited is not None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "An invitation for this email is already pending"
-        )
-
-    token = new_token()
-    now = utcnow()
-    invite = WorkspaceInvite(
-        workspace=membership.workspace,
-        email=email,
-        role=body.role,
-        token_hash=hash_token(token),
-        invited_by=membership.user,
-        created_at=now,
-        expires_at=now + settings.invite_ttl,
-    )
-    session.add(invite)
-    await session.commit()
-    await send_email.kiq(invite_email(invite, token, str(settings.frontend_url)))
-    return invite_read(invite)
-
-
-async def fetch_pending_invite(
-    session: AsyncSession, membership: Membership, invite_id: UUID
-) -> WorkspaceInvite:
-    """404 unless pending; 403 unless the caller's role may manage the invited one."""
-    invite = await session.scalar(
-        pending_invites(membership.workspace.id)
-        .options(WITH_INVITER)
-        .where(WorkspaceInvite.id == invite_id)
-    )
-    if invite is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
-    if not can_manage_role(membership.role, invite.role):
-        raise role_forbidden()
-    return invite
+    return service.invite_read(invite)
 
 
 @scoped.post("/invites/{invite_id}/resend")
@@ -315,14 +145,10 @@ async def resend_invite(
 ) -> InviteRead:
     """Email the invitation again with a fresh link; the previous one stops working
     and the expiry starts over. Counts against the same limit as sending one."""
-    invite = await fetch_pending_invite(session, membership, invite_id)
+    invite = await service.get_pending_invite(session, membership, invite_id)
     await limiter.hit(INVITE_SEND_PER_USER, str(membership.user.id))
-    token = new_token()
-    invite.token_hash = hash_token(token)
-    invite.expires_at = utcnow() + settings.invite_ttl
-    await session.commit()
-    await send_email.kiq(invite_email(invite, token, str(settings.frontend_url)))
-    return invite_read(invite)
+    await service.resend_invite(session, settings, invite)
+    return service.invite_read(invite)
 
 
 @scoped.delete("/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -330,9 +156,8 @@ async def revoke_invite(
     invite_id: UUID, membership: CanManageMembers, session: SessionDep
 ) -> Response:
     """The link stops working. Only pending invitations can be revoked."""
-    invite = await fetch_pending_invite(session, membership, invite_id)
-    invite.revoked_at = utcnow()
-    await session.commit()
+    invite = await service.get_pending_invite(session, membership, invite_id)
+    await service.revoke_invite(session, invite)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

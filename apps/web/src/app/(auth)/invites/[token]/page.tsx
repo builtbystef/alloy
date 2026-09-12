@@ -5,11 +5,11 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/lib/api";
-import { ApiError, tooManyAttempts } from "@/lib/api-error";
-import { getCurrentUser } from "@/lib/session";
+import { api } from "@/lib/api/server-client";
+import { ApiError, tooManyAttempts } from "@/lib/api/errors";
+import { getCurrentUser } from "@/lib/auth/session";
 
-import { AcceptInvite } from "./accept-invite";
+import { AcceptInvite } from "@/features/workspaces/components/accept-invite";
 
 export const metadata: Metadata = { title: "Invitation" };
 

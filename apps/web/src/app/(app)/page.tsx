@@ -3,12 +3,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { Logo } from "@/components/logo";
+import { Logo } from "@/components/shared/logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { listWorkspaces } from "@/lib/session";
-import { WORKSPACE_COOKIE } from "@/lib/workspace-shared";
+import { listWorkspaces } from "@/features/workspaces/server";
+import { WORKSPACE_COOKIE } from "@/features/workspaces/cookie";
 
-import { CreateWorkspaceForm } from "./workspace-form";
+import { CreateWorkspaceForm } from "@/features/workspaces/components/create-workspace-form";
 
 export const metadata: Metadata = { title: "Workspaces" };
 

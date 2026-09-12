@@ -1,18 +1,19 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { TableSkeleton } from "@/components/skeletons";
-import { importListQuery } from "@/lib/queries";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { TableSkeleton } from "@/components/shared/skeletons";
+import { importListQuery } from "@/features/crm/imports/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { parseImportSearch } from "@/lib/schemas";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { getTimeZone } from "@/lib/time-zone";
-import { Can } from "@/lib/workspace";
+import { parseImportSearch } from "@/features/crm/imports/schemas";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
+import { Can } from "@/features/workspaces/workspace-provider";
 
-import { ImportCard } from "./import-card";
-import { ImportsTable } from "./imports-table";
+import { ImportCard } from "@/features/crm/imports/components/import-card";
+import { ImportsTable } from "@/features/crm/imports/components/imports-table";
 
 export const metadata: Metadata = { title: "Imports" };
 
@@ -56,7 +57,7 @@ async function ImportsContent({
   const { kind } = parseImportSearch(await searchParams);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(importListQuery(api, workspaceId));
+  await queryClient.query(importListQuery(api, workspaceId)).catch(noop);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

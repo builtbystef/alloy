@@ -10,32 +10,25 @@ from sqlalchemy.orm import selectinload
 
 from alloy_api.agent.deps import AgentDeps, ApprovalPreviewEvent
 from alloy_api.agent.models import ChatUpload
-from alloy_api.crm import service
-from alloy_api.crm.companies import CompanyFilters, companies_query
-from alloy_api.crm.contacts import ContactFilters, contacts_query
-from alloy_api.crm.dates import DueFilter
-from alloy_api.crm.models import (
-    Activity,
-    ActivityType,
-    Attachment,
-    Company,
-    Contact,
-    ContactStatus,
-    RowSource,
-    Task,
-    TaskStatus,
-)
-from alloy_api.crm.schemas import (
+from alloy_api.crm.attachments import service as attachment_service
+from alloy_api.crm.attachments.models import Attachment
+from alloy_api.crm.companies import service as company_service
+from alloy_api.crm.companies.models import Company
+from alloy_api.crm.companies.schemas import CompanyCreate, CompanyFilters, CompanyUpdate
+from alloy_api.crm.contacts import service as contact_service
+from alloy_api.crm.contacts.models import Activity, ActivityType, Contact, ContactStatus
+from alloy_api.crm.contacts.schemas import (
     ActivityCreate,
-    CompanyCreate,
-    CompanyUpdate,
     ContactCreate,
+    ContactFilters,
     ContactUpdate,
-    TaskCreate,
-    TaskUpdate,
 )
-from alloy_api.crm.tasks import TaskFilters, tasks_query
-from alloy_api.models import utcnow
+from alloy_api.crm.dates import DueFilter
+from alloy_api.crm.models import RowSource
+from alloy_api.crm.tasks import service as task_service
+from alloy_api.crm.tasks.models import Task, TaskStatus
+from alloy_api.crm.tasks.schemas import TaskCreate, TaskFilters, TaskUpdate
+from alloy_api.db.base import utcnow
 from alloy_api.workspaces.models import WorkspaceMember
 from alloy_api.workspaces.permissions import Permission
 
@@ -588,7 +581,7 @@ async def search_contacts(  # noqa: PLR0913
         raise retry("page starts at 1.")
     deps = ctx.deps
     filters = ContactFilters(q=q, status=status, company_id=company_id)
-    query = contacts_query(deps.membership, filters)
+    query = contact_service.contacts_query(deps.membership, filters)
     if stale_days is not None:
         if stale_days < 1:
             raise retry("stale_days must be at least 1.")
@@ -684,7 +677,7 @@ async def create_contacts(ctx: RunContext[AgentDeps], items: list[ContactItem]) 
             continue
         body = ContactCreate(**item.model_dump(include=set(ContactCreate.model_fields)))
         body.company_id = company_id
-        contact = await service.create_contact(
+        contact = await contact_service.create_contact(
             deps.session, deps.membership, body, source=RowSource.AGENT
         )
         for upload in await _chat_uploads(deps, item.upload_ids):
@@ -717,7 +710,9 @@ async def update_contacts(
             ],
         )
     updated = [
-        await service.update_contact(deps.session, deps.membership, item.contact_id, item.changes)
+        await contact_service.update_contact(
+            deps.session, deps.membership, item.contact_id, item.changes
+        )
         for item in items
     ]
     await deps.session.commit()
@@ -741,7 +736,7 @@ async def delete_contacts(ctx: RunContext[AgentDeps], contact_ids: list[uuid.UUI
     )
     names = [c.name for c in contacts]
     for contact in contacts:
-        await service.delete_with_objects(deps.session, deps.store, contact)
+        await contact_service.delete_contact(deps.session, deps.store, contact)
     return Deleted(deleted=names)
 
 
@@ -762,7 +757,7 @@ async def search_companies(
     if page < 1:
         raise retry("page starts at 1.")
     deps = ctx.deps
-    query = companies_query(deps.membership, CompanyFilters(q=q))
+    query = company_service.companies_query(deps.membership, CompanyFilters(q=q))
     total = await _count(deps.session, query)
     limit, offset = _page_bounds(page)
     stats = (
@@ -836,7 +831,7 @@ async def create_companies(
     result = CompaniesCreated(created=[], attached=[])
     for item in items:
         body = CompanyCreate(**item.model_dump(include=set(CompanyCreate.model_fields)))
-        company = await service.create_company(
+        company = await company_service.create_company(
             deps.session, deps.membership, body, source=RowSource.AGENT
         )
         for upload in await _chat_uploads(deps, item.upload_ids):
@@ -867,7 +862,9 @@ async def update_companies(
             ],
         )
     updated = [
-        await service.update_company(deps.session, deps.membership, item.company_id, item.changes)
+        await company_service.update_company(
+            deps.session, deps.membership, item.company_id, item.changes
+        )
         for item in items
     ]
     await deps.session.commit()
@@ -895,7 +892,7 @@ async def delete_companies(ctx: RunContext[AgentDeps], company_ids: list[uuid.UU
     )
     names = [c.name for c in companies]
     for company in companies:
-        await service.delete_with_objects(deps.session, deps.store, company)
+        await company_service.delete_company(deps.session, deps.store, company)
     return Deleted(deleted=names)
 
 
@@ -954,7 +951,7 @@ async def log_activities(
             ],
         )
     logged = [
-        await service.create_activity(
+        await contact_service.create_activity(
             deps.session,
             deps.membership,
             item.contact_id,
@@ -996,7 +993,7 @@ async def list_tasks(  # noqa: PLR0913
     filters = TaskFilters(
         due=due, tz=deps.time_zone, status=status, contact_id=contact_id, company_id=company_id
     )
-    query = tasks_query(deps.membership, filters)
+    query = task_service.tasks_query(deps.membership, filters)
     total = await _count(deps.session, query)
     limit, offset = _page_bounds(page)
     items = [
@@ -1022,7 +1019,7 @@ async def create_tasks(ctx: RunContext[AgentDeps], items: list[TaskCreate]) -> l
             rows=[[item.title, item.due_at.isoformat() if item.due_at else ""] for item in items],
         )
     created = [
-        await service.create_task(deps.session, deps.membership, item, source=RowSource.AGENT)
+        await task_service.create_task(deps.session, deps.membership, item, source=RowSource.AGENT)
         for item in items
     ]
     await deps.session.commit()
@@ -1050,7 +1047,7 @@ async def update_tasks(ctx: RunContext[AgentDeps], items: list[TaskChange]) -> l
             ],
         )
     updated = [
-        await service.update_task(
+        await task_service.update_task(
             deps.session, deps.membership, item.task_id, item.changes, source=RowSource.AGENT
         )
         for item in items
@@ -1078,7 +1075,7 @@ async def delete_tasks(ctx: RunContext[AgentDeps], task_ids: list[uuid.UUID]) ->
     )
     titles = [t.title for t in tasks]
     for task in tasks:
-        await service.delete_task(deps.session, deps.membership, task.id)
+        await task_service.delete_task(deps.session, deps.membership, task.id)
     await deps.session.commit()
     return Deleted(deleted=titles)
 
@@ -1147,7 +1144,9 @@ async def delete_attachments(
     )
     names = [a.filename for a in attachments]
     for attachment in attachments:
-        await service.delete_attachment(deps.session, deps.store, deps.membership, attachment.id)
+        await attachment_service.delete_attachment(
+            deps.session, deps.store, deps.membership, attachment.id
+        )
     return Deleted(deleted=names)
 
 

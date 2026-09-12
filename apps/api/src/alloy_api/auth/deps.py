@@ -10,8 +10,8 @@ from sqlalchemy.orm import selectinload
 from alloy_api.auth.cookies import SESSION_COOKIE
 from alloy_api.auth.models import User, UserSession
 from alloy_api.auth.tokens import hash_token
-from alloy_api.db import SessionDep
-from alloy_api.models import utcnow
+from alloy_api.db.base import utcnow
+from alloy_api.db.session import SessionDep
 
 # auto_error=False: a missing cookie is a 401 like an invalid one, not a 403.
 session_cookie = APIKeyCookie(

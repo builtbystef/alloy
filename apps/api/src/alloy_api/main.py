@@ -1,3 +1,6 @@
+"""The application: settings, logging, the lifespan that opens the shared
+resources, the middleware, and the combined router from `api/router.py`."""
+
 import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -6,21 +9,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from taskiq import InMemoryBroker
 
-from alloy_api import logs, telemetry
-from alloy_api.agent.router import router as agent_router
-from alloy_api.auth.router import router as auth_router
+from alloy_api.api.router import router as api_router
 from alloy_api.config import SettingsDep, get_settings
-from alloy_api.crm.router import router as crm_router
-from alloy_api.db import DatabaseState, create_database_state
-from alloy_api.errors import BodySizeLimitMiddleware, RequestIdMiddleware
+from alloy_api.core import logs, telemetry
+from alloy_api.core.exceptions import AppError, handle_app_error
+from alloy_api.core.middleware import BodySizeLimitMiddleware, RequestIdMiddleware
+from alloy_api.db.session import DatabaseState, create_database_state
+from alloy_api.integrations.mail import Mailer, create_mailer
+from alloy_api.integrations.ratelimit import RateLimitStoreProtocol, create_rate_limit_store
+from alloy_api.integrations.storage import ObjectStore, create_object_store
 from alloy_api.jobs.broker import broker
 from alloy_api.jobs.deps import configure as configure_jobs
-from alloy_api.mail import Mailer, create_mailer
-from alloy_api.ratelimit import RateLimitStoreProtocol, create_rate_limit_store
-from alloy_api.routers import health
-from alloy_api.storage import ObjectStore, create_object_store
-from alloy_api.workspaces.invites import router as invites_router
-from alloy_api.workspaces.router import router as workspaces_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -100,12 +99,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(health.router)
-app.include_router(auth_router)
-app.include_router(workspaces_router)
-app.include_router(invites_router)
-app.include_router(crm_router)
-app.include_router(agent_router)
+app.add_exception_handler(AppError, handle_app_error)
+app.include_router(api_router)
 
 
 @app.get("/")

@@ -1,21 +1,24 @@
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import { FileUpIcon, PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
-import { TableSkeleton } from "@/components/skeletons";
+import { PageHeader } from "@/components/shared/layout/page-header";
+import { TableSkeleton } from "@/components/shared/skeletons";
 import { Button } from "@/components/ui/button";
-import { companyListQuery, paged } from "@/lib/queries";
+import { companyListQuery } from "@/features/crm/companies/queries";
+import { paged } from "@/lib/lists";
 import { getQueryClient } from "@/lib/query-client";
-import { parseCompanySearch, toSearchString } from "@/lib/schemas";
+import { parseCompanySearch } from "@/features/crm/companies/schemas";
+import { toSearchString } from "@/lib/lists";
 import { workspacePaths } from "@/lib/routes";
-import { getSessionApi, requireWorkspace } from "@/lib/session";
-import { Can } from "@/lib/workspace";
-import { getTimeZone } from "@/lib/time-zone";
+import { getSessionApi } from "@/lib/auth/session";
+import { requireWorkspace } from "@/features/workspaces/server";
+import { Can } from "@/features/workspaces/workspace-provider";
+import { getTimeZone } from "@/lib/time-zone/server";
 
-import { CompaniesTable } from "./companies-table";
+import { CompaniesTable } from "@/features/crm/companies/components/companies-table";
 
 export const metadata: Metadata = { title: "Companies" };
 
@@ -80,7 +83,7 @@ async function CompaniesContent({
   const filters = parseCompanySearch(await searchParams);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(companyListQuery(api, workspaceId, paged(filters)));
+  await queryClient.query(companyListQuery(api, workspaceId, paged(filters))).catch(noop);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

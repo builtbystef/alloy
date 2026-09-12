@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from alloy_api.models import Base, Timestamps, UUIDPrimaryKey, string_enum
+from alloy_api.db.base import Base, Timestamps, UUIDPrimaryKey, string_enum
 
 if TYPE_CHECKING:
-    # Imported lazily: alloy_api.models imports this module while auth.models loads.
+    # Imported lazily: alloy_api.db.base imports this module while auth.models loads.
     from alloy_api.auth.models import User
 
 

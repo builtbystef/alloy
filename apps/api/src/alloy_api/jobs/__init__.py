@@ -11,7 +11,7 @@ from taskiq import (
 from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend, RedisStreamBroker
 
-from alloy_api import telemetry
+from alloy_api.core import telemetry
 from alloy_api.jobs.context import RequestIdMiddleware
 
 if TYPE_CHECKING:

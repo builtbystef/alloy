@@ -11,12 +11,13 @@ from taskiq import TaskiqDepends
 from alloy_api.agent.models import ChatUpload
 from alloy_api.auth.models import User, UserSession
 from alloy_api.config import Settings
-from alloy_api.crm.models import Attachment, Import, ImportStatus
+from alloy_api.crm.attachments.models import Attachment
+from alloy_api.crm.imports.models import Import, ImportStatus
+from alloy_api.db.base import utcnow
+from alloy_api.integrations.storage import ObjectStore
+from alloy_api.integrations.storage.cleanup import delete_stored, storage_prefix
 from alloy_api.jobs.broker import broker
 from alloy_api.jobs.deps import get_object_store, get_session, get_settings
-from alloy_api.models import utcnow
-from alloy_api.storage import ObjectStore
-from alloy_api.storage.cleanup import delete_stored, storage_prefix
 from alloy_api.workspaces.models import Workspace, WorkspaceInvite, WorkspaceMember
 
 if TYPE_CHECKING:

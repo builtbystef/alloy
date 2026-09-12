@@ -11,8 +11,8 @@ from pydantic_evals import Dataset
 from pydantic_evals.evaluators import Evaluator, LLMJudge
 
 from alloy_api.agent.agent import build_model
-from alloy_api.db import create_database_state
-from alloy_api.storage.memory import MemoryObjectStore
+from alloy_api.db.session import create_database_state
+from alloy_api.integrations.storage.memory import MemoryObjectStore
 
 from .cases import cases
 from .db import migrate, use_eval_database
