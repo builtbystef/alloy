@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 90db91229258
+Revision ID: 84ad82ce2588
 Revises:
-Create Date: 2026-09-11 18:19:34.290292
+Create Date: 2026-09-12 01:02:36.167772
 """
 
 from typing import TYPE_CHECKING
@@ -13,7 +13,7 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = "90db91229258"
+revision: str = "84ad82ce2588"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -515,7 +515,7 @@ def upgrade() -> None:
             ["attachment_id"],
             ["attachments.id"],
             name=op.f("fk_chat_uploads_attachment_id_attachments"),
-            ondelete="SET NULL",
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["conversation_id"],

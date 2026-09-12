@@ -19,7 +19,7 @@ const matches = (paths: string[], pathname: string) =>
   paths.some((path) => pathname === path || pathname === `${path}/`);
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
   const isAuthPath = matches(AUTH_PATHS, pathname);
 
@@ -28,7 +28,9 @@ export function proxy(request: NextRequest) {
   }
   if (!hasSession && !isAuthPath) {
     const login = new URL("/login", request.url);
-    if (pathname !== "/") login.searchParams.set("next", pathname);
+    // The whole location, so a filtered list or an invite link survives the login.
+    const next = pathname + search;
+    if (next !== "/") login.searchParams.set("next", next);
     return NextResponse.redirect(login);
   }
   if (hasSession && isAuthPath) {

@@ -1,12 +1,13 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from alloy_api.crm.models import RowSource
 from alloy_api.crm.pagination import Page, SortOrder
-from alloy_api.crm.schemas import Industry, Name, Notes, ReadModel, UserRef, Website
+from alloy_api.crm.schemas import Industry, Name, Notes, NotNull, ReadModel, UserRef, Website
 
 
 class CompanyCreate(BaseModel):
@@ -17,7 +18,7 @@ class CompanyCreate(BaseModel):
 
 
 class CompanyUpdate(BaseModel):
-    name: Name | None = None
+    name: Annotated[Name | None, NotNull] = None
     website: Website | None = None
     industry: Industry | None = None
     notes: Notes | None = None

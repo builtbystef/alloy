@@ -45,8 +45,8 @@ class MemoryObjectStore:
     ) -> str:
         return (
             f"memory://{key}?put&content_type={content_type}&size={size}"
-            f"&expires={expires_in.seconds}"
+            f"&expires={int(expires_in.total_seconds())}"
         )
 
     async def download_url(self, key: str, filename: str, expires_in: timedelta) -> str:
-        return f"memory://{key}?get&filename={filename}&expires={expires_in.seconds}"
+        return f"memory://{key}?get&filename={filename}&expires={int(expires_in.total_seconds())}"

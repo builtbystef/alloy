@@ -22,8 +22,12 @@ DELETE_BATCH = 1000
 
 def content_disposition(filename: str) -> str:
     """`attachment` with the name in both the ASCII form (for old clients) and the
-    RFC 5987 UTF-8 form (which every browser prefers)."""
-    ascii_name = filename.encode("ascii", "replace").decode().replace('"', "'")
+    RFC 5987 UTF-8 form (which every browser prefers). The ASCII form is a
+    quoted-string, so quotes, backslashes, and control characters are replaced."""
+    ascii_name = "".join(
+        c if c.isprintable() and c != "\\" else "_"
+        for c in filename.encode("ascii", "replace").decode()
+    ).replace('"', "'")
     return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
 
 

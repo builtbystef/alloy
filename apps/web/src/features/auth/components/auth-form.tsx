@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { FieldGroup } from "@/components/ui/field";
 import { ApiError, errorMessage } from "@/lib/api/errors";
+import { safeNextPath } from "@/lib/routes";
 import { authFormSchema, type AuthFormInput } from "@/features/auth/schemas";
 
 /**
@@ -40,12 +41,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const next = searchParams.get("next");
   const search = next ? `?next=${encodeURIComponent(next)}` : "";
   const isInvite = next?.startsWith("/invites/") ?? false;
-  // Only a path on this site. "//evil.com" and "/\evil.com" are protocol-relative
-  // URLs to a browser, so a leading slash alone is not enough.
-  const destination =
-    next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")
-      ? (next as "/")
-      : "/";
+  const destination = safeNextPath(next) as "/";
 
   const mutation = useMutation({
     mutationFn: (credentials: Credentials) => (isSignup ? signup(credentials) : login(credentials)),

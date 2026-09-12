@@ -71,3 +71,28 @@ def test_validation(alice: Actor):
     assert alice.post("/companies/", json={"website": "x"}).status_code == 422
     assert alice.post("/companies/", json={**ACME, "notes": "x" * 10_001}).status_code == 422
     assert alice.get("/companies/not-a-uuid").status_code == 422
+
+
+def test_search_treats_like_wildcards_as_characters(alice: Actor):
+    for name in ["100% Natural", "snake_case", "Plain"]:
+        alice.post("/companies/", json={"name": name})
+
+    def names(q: str) -> list[str]:
+        return [c["name"] for c in alice.get("/companies/", params={"q": q}).json()["items"]]
+
+    assert names("%") == ["100% Natural"]
+    assert names("_") == ["snake_case"]
+    assert names("n_t") == []  # as a wildcard, "n_t" would match "Natural"
+
+
+def test_a_required_field_cannot_be_nulled(alice: Actor):
+    """A body may leave `name` out, but sending null would drop a NOT NULL column."""
+    company = alice.post("/companies/", json=ACME).json()
+    response = alice.patch(f"/companies/{company['id']}", json={"name": None})
+    assert response.status_code == 422
+    (error,) = response.json()["detail"]
+    assert error["loc"] == ["body", "name"]
+    assert "null" in error["msg"]
+    assert alice.get(f"/companies/{company['id']}").json()["name"] == "Acme"
+
+    assert alice.patch(f"/companies/{company['id']}", json={}).json() == company

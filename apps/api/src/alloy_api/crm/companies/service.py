@@ -30,11 +30,10 @@ def companies_query(membership: Membership, filters: CompanyFilters) -> Select[t
     """The workspace's companies, filtered and sorted. Shared with the assistant."""
     query = select(Company).where(Company.workspace_id == membership.workspace.id)
     if filters.q:
-        pattern = f"%{filters.q}%"
         query = query.where(
-            Company.name.ilike(pattern)
-            | Company.website.ilike(pattern)
-            | Company.industry.ilike(pattern)
+            Company.name.icontains(filters.q, autoescape=True)
+            | Company.website.icontains(filters.q, autoescape=True)
+            | Company.industry.icontains(filters.q, autoescape=True)
         )
     return sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Company.id)
 

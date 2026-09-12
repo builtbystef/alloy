@@ -123,9 +123,8 @@ def account_deletion_email(user: User, frontend_url: str, grace: timedelta) -> E
 
 
 def describe_duration(duration: timedelta) -> str:
-    seconds = int(duration.total_seconds())
-    for unit, size in (("day", 86400), ("hour", 3600), ("minute", 60)):
-        if seconds >= size and seconds % size == 0:
-            count = seconds // size
-            return f"{count} {unit}" if count == 1 else f"{count} {unit}s"
-    return f"{max(seconds, 1)} seconds"
+    seconds = max(int(duration.total_seconds()), 1)
+    units = (("day", 86400), ("hour", 3600), ("minute", 60), ("second", 1))
+    unit, size = next((u, s) for u, s in units if seconds % s == 0)
+    count = seconds // size
+    return f"{count} {unit}" if count == 1 else f"{count} {unit}s"

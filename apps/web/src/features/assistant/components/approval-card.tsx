@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 
 import type { ApprovalPreview, ChatToolPart } from "@/features/assistant/types";
-import { toolLabel } from "@/features/assistant/tools";
+import { approvalTitle } from "@/features/assistant/tools";
 
 /** How many rows of the preview are shown; the title says how many there are. */
 const MAX_ROWS = 25;
@@ -94,15 +94,11 @@ export function ApprovalCard({
 }
 
 function fallbackTitle(part: ChatToolPart): string {
-  const name = getToolName(part);
   const input = part.input;
   let count: number | null = null;
   if (input && typeof input === "object") {
     const list = Object.values(input as Record<string, unknown>).find(Array.isArray);
     if (list) count = list.length;
   }
-  const label = toolLabel(name)
-    .replace(/ing\b/, "e")
-    .replace(/^Deletee/, "Delete");
-  return count === null ? label : `${label} (${count} ${count === 1 ? "item" : "items"})`;
+  return approvalTitle(getToolName(part), count);
 }

@@ -661,16 +661,21 @@ async def create_contacts(ctx: RunContext[AgentDeps], items: list[ContactItem]) 
             rows=[[item.name, item.email or "", item.company_name or ""] for item in items],
         )
     result = ContactsCreated(created=[], skipped=[], attached=[])
+    # An email created earlier in this call is as much a duplicate as one in the table.
+    created_by_email: dict[str, ContactRow] = {}
     for item, company_id in zip(items, company_ids, strict=True):
-        existing = (
-            None if item.allow_duplicate_email else await _duplicate_by_email(deps, item.email)
-        )
+        email = item.email.lower() if item.email else None
+        existing: ContactRow | None = None
+        if email is not None and not item.allow_duplicate_email:
+            existing = created_by_email.get(email)
+            if existing is None and (row := await _duplicate_by_email(deps, email)) is not None:
+                existing = _contact_row(deps, row)
         if existing is not None:
             result.skipped.append(
                 Skipped(
                     name=item.name,
                     reason=f"A contact with the email {item.email} already exists.",
-                    existing=_contact_row(deps, existing),
+                    existing=existing,
                 )
             )
             continue
@@ -683,7 +688,10 @@ async def create_contacts(ctx: RunContext[AgentDeps], items: list[ContactItem]) 
             result.attached.append(_attachment_row(deps, _attach(deps, upload, contact)))
         await deps.session.flush()
         await deps.session.refresh(contact, ["company"])
-        result.created.append(_contact_row(deps, contact))
+        created = _contact_row(deps, contact)
+        result.created.append(created)
+        if email is not None:
+            created_by_email[email] = created
     await deps.session.commit()
     return result
 

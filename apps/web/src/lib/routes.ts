@@ -25,3 +25,15 @@ export function workspacePaths(workspaceId: string) {
 }
 
 export type WorkspacePaths = ReturnType<typeof workspacePaths>;
+
+/**
+ * A `?next=` value as a path on this site, or "/" when it is anything else.
+ * "//evil.com" and "/\evil.com" are protocol-relative URLs to a browser, so a
+ * leading slash alone is not enough.
+ */
+export function safeNextPath(next: string | null | undefined): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
+    return "/";
+  }
+  return next;
+}

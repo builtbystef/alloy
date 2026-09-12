@@ -191,3 +191,53 @@ def test_activities_go_with_their_contact(alice: Actor):
     alice.post(f"/contacts/{contact['id']}/activities", json={"type": "email"})
     assert alice.delete(f"/contacts/{contact['id']}").status_code == 204
     assert alice.get(f"/contacts/{contact['id']}/activities").status_code == 404
+
+
+def test_search_treats_like_wildcards_as_characters(alice: Actor):
+    alice.post("/contacts/", json={"name": "Percy", "job_title": "100% remote"})
+    alice.post("/contacts/", json={"name": "Underscore", "email": "first_last@example.com"})
+    alice.post("/contacts/", json={"name": "Plain"})
+
+    def names(q: str) -> list[str]:
+        return [c["name"] for c in alice.get("/contacts/", params={"q": q}).json()["items"]]
+
+    assert names("%") == ["Percy"]
+    assert names("_") == ["Underscore"]
+
+
+def test_required_fields_cannot_be_nulled(alice: Actor):
+    contact = alice.post("/contacts/", json=GRACE).json()
+    url = f"/contacts/{contact['id']}"
+    for field in ("name", "status"):
+        response = alice.patch(url, json={field: None})
+        assert response.status_code == 422, response.text
+        assert response.json()["detail"][0]["loc"] == ["body", field]
+    assert alice.get(url).json() == contact
+
+
+def test_datetimes_need_a_time_zone(alice: Actor):
+    naive = "2026-09-01T10:00:00"
+    response = alice.post("/contacts/", json={**GRACE, "last_contacted_at": naive})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "last_contacted_at"]
+
+    contact = alice.post("/contacts/", json=GRACE).json()
+    assert (
+        alice.patch(f"/contacts/{contact['id']}", json={"last_contacted_at": naive}).status_code
+        == 422
+    )
+    updated = alice.patch(
+        f"/contacts/{contact['id']}", json={"last_contacted_at": f"{naive}+02:00"}
+    )
+    assert updated.status_code == 200
+    assert datetime.fromisoformat(updated.json()["last_contacted_at"]) == datetime(
+        2026, 9, 1, 8, tzinfo=UTC
+    )
+
+
+def test_update_cannot_link_to_another_users_company(alice: Actor, bob: Actor):
+    theirs = bob.post("/companies/", json={"name": "Navy"}).json()
+    contact = alice.post("/contacts/", json=GRACE).json()
+    response = alice.patch(f"/contacts/{contact['id']}", json={"company_id": theirs["id"]})
+    assert response.status_code == 404
+    assert alice.get(f"/contacts/{contact['id']}").json()["company"] is None

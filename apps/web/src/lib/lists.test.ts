@@ -1,7 +1,17 @@
 import { z } from "zod";
 import { expect, test } from "vite-plus/test";
 
-import { listPage, listSearch, optionalParam, paged, parseSearch, toSearchString } from "./lists";
+import {
+  ALL_ROWS,
+  PICKER_ROWS,
+  listPage,
+  listSearch,
+  optionalParam,
+  paged,
+  parseSearch,
+  queryParams,
+  toSearchString,
+} from "./lists";
 
 const schema = z.object({
   q: optionalParam(z.string().min(1)),
@@ -39,4 +49,20 @@ test("a page number becomes the API's limit and offset", () => {
 test("a query string leaves out empty values", () => {
   expect(toSearchString({ q: "ada", status: undefined })).toBe("q=ada");
   expect(toSearchString({ q: "ada", page: 2, sort: undefined, order: "" })).toBe("q=ada&page=2");
+});
+
+test("query params drop undefined values but keep empty and false ones", () => {
+  expect(queryParams({ q: "ada", status: undefined, page: 0, done: false, empty: "" })).toEqual({
+    q: "ada",
+    page: 0,
+    done: false,
+    empty: "",
+  });
+  expect(queryParams({})).toEqual({});
+});
+
+test("page constants agree with the API's limits", () => {
+  expect(ALL_ROWS).toEqual({ limit: 500, offset: 0 });
+  expect(PICKER_ROWS.limit).toBeLessThanOrEqual(ALL_ROWS.limit);
+  expect(listPage(1).limit).toBeLessThanOrEqual(ALL_ROWS.limit);
 });

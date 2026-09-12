@@ -45,13 +45,12 @@ def contacts_query(membership: Membership, filters: ContactFilters) -> Select[tu
     if filters.q or filters.sort is ContactSort.COMPANY:
         query = query.outerjoin(Contact.company)
     if filters.q:
-        pattern = f"%{filters.q}%"
         query = query.where(
-            Contact.name.ilike(pattern)
-            | Contact.email.ilike(pattern)
-            | Contact.phone.ilike(pattern)
-            | Contact.job_title.ilike(pattern)
-            | Company.name.ilike(pattern)
+            Contact.name.icontains(filters.q, autoescape=True)
+            | Contact.email.icontains(filters.q, autoescape=True)
+            | Contact.phone.icontains(filters.q, autoescape=True)
+            | Contact.job_title.icontains(filters.q, autoescape=True)
+            | Company.name.icontains(filters.q, autoescape=True)
         )
     if filters.status is not None:
         query = query.where(Contact.status == filters.status)

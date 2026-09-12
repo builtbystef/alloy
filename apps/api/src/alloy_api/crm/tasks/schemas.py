@@ -1,21 +1,22 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 
 from alloy_api.crm.companies.schemas import CompanyRef
 from alloy_api.crm.contacts.schemas import ContactRef
 from alloy_api.crm.dates import UTC_ZONE, DueFilter, TimeZoneField
 from alloy_api.crm.models import RowSource
 from alloy_api.crm.pagination import Page, SortOrder
-from alloy_api.crm.schemas import Name, Notes, ReadModel, UserRef
+from alloy_api.crm.schemas import Name, Notes, NotNull, ReadModel, UserRef
 from alloy_api.crm.tasks.models import TaskStatus
 
 
 class TaskCreate(BaseModel):
     title: Name
-    due_at: datetime | None = None
+    due_at: AwareDatetime | None = None
     status: TaskStatus = TaskStatus.OPEN
     contact_id: UUID | None = None
     company_id: UUID | None = None
@@ -23,9 +24,9 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
-    title: Name | None = None
-    due_at: datetime | None = None
-    status: TaskStatus | None = None
+    title: Annotated[Name | None, NotNull] = None
+    due_at: AwareDatetime | None = None
+    status: Annotated[TaskStatus | None, NotNull] = None
     contact_id: UUID | None = None
     company_id: UUID | None = None
     notes: Notes | None = None

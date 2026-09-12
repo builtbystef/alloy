@@ -273,11 +273,12 @@ tasks, attachments, imports, and a dashboard. It can be deleted as a unit.
 Every row belongs to a workspace and a row from another workspace is a 404,
 in the path or in a body. Lists answer with `{items, total, limit, offset}`
 and take `sort` and `order`; `PATCH` bodies are partial, with `null`
-clearing a field. Logging a call, email, meeting, or follow-up sets the
-contact's `last_contacted_at`; completing a task logs a `task_completed`
-activity. "Today" for tasks and the dashboard follows the `tz` query
-parameter. Rows carry `created_by` and `source` (`agent`, `import`, or
-null).
+clearing an optional field (a required one, such as `name`, cannot be
+null). Datetimes must carry a time zone offset. Logging a call, email,
+meeting, or follow-up sets the contact's `last_contacted_at`; completing a
+task logs a `task_completed` activity. "Today" for tasks and the dashboard
+follows the `tz` query parameter. Rows carry `created_by` and `source`
+(`agent`, `import`, or null).
 
 ## packages/api-client
 

@@ -20,12 +20,6 @@ if TYPE_CHECKING:
 API_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_read_health_db(client: TestClient):
-    response = client.get("/health/db")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
-
-
 def test_health_db_without_override_uses_lifespan_engine():
     """The real `get_session`, not the test override."""
     with TestClient(app) as client:

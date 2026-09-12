@@ -31,6 +31,32 @@ export function toolLabel(name: string): string {
   return labels[name] ?? name.replaceAll("_", " ");
 }
 
+/** Worded like the API's own preview titles, for when a paused call has none. */
+const writes: Record<string, { verb: string; one: string; many: string }> = {
+  create_contacts: { verb: "Create", one: "contact", many: "contacts" },
+  update_contacts: { verb: "Update", one: "contact", many: "contacts" },
+  delete_contacts: { verb: "Delete", one: "contact", many: "contacts" },
+  create_companies: { verb: "Create", one: "company", many: "companies" },
+  update_companies: { verb: "Update", one: "company", many: "companies" },
+  delete_companies: { verb: "Delete", one: "company", many: "companies" },
+  log_activities: { verb: "Log", one: "activity", many: "activities" },
+  create_tasks: { verb: "Create", one: "task", many: "tasks" },
+  update_tasks: { verb: "Update", one: "task", many: "tasks" },
+  delete_tasks: { verb: "Delete", one: "task", many: "tasks" },
+  attach_files: { verb: "Attach", one: "file", many: "files" },
+  delete_attachments: { verb: "Delete", one: "attachment", many: "attachments" },
+};
+
+export function approvalTitle(name: string, count: number | null): string {
+  const write = writes[name];
+  if (!write) {
+    const label = toolLabel(name);
+    return count === null ? label : `${label} (${count} ${count === 1 ? "item" : "items"})`;
+  }
+  if (count === null) return `${write.verb} ${write.many}`;
+  return `${write.verb} ${count} ${count === 1 ? write.one : write.many}`;
+}
+
 /** Tools that change records; a finished one means the CRM queries are stale. */
 export function isWriteTool(name: string): boolean {
   return /^(create|update|delete|log|attach)_/.test(name);

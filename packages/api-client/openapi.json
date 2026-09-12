@@ -4053,6 +4053,7 @@
             "type": "string",
             "maxLength": 255,
             "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
             "title": "Filename"
           },
           "content_type": {
@@ -4249,6 +4250,7 @@
             "type": "string",
             "maxLength": 255,
             "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
             "title": "Filename"
           },
           "content_type": {
@@ -5154,6 +5156,7 @@
             "type": "string",
             "maxLength": 255,
             "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
             "title": "Filename"
           },
           "size": {

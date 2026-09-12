@@ -1,14 +1,15 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field
 
 from alloy_api.crm.companies.schemas import CompanyRef
 from alloy_api.crm.contacts.models import ActivityType, ContactStatus
 from alloy_api.crm.models import RowSource
 from alloy_api.crm.pagination import Page, SortOrder
-from alloy_api.crm.schemas import Name, Notes, Phone, ReadModel, Short, UserRef
+from alloy_api.crm.schemas import Name, Notes, NotNull, Phone, ReadModel, Short, UserRef
 
 
 class ContactCreate(BaseModel):
@@ -18,17 +19,17 @@ class ContactCreate(BaseModel):
     job_title: Short | None = None
     company_id: UUID | None = None
     status: ContactStatus = ContactStatus.LEAD
-    last_contacted_at: datetime | None = None
+    last_contacted_at: AwareDatetime | None = None
 
 
 class ContactUpdate(BaseModel):
-    name: Name | None = None
+    name: Annotated[Name | None, NotNull] = None
     email: EmailStr | None = None
     phone: Phone | None = None
     job_title: Short | None = None
     company_id: UUID | None = None
-    status: ContactStatus | None = None
-    last_contacted_at: datetime | None = None
+    status: Annotated[ContactStatus | None, NotNull] = None
+    last_contacted_at: AwareDatetime | None = None
 
 
 class ContactRef(ReadModel):

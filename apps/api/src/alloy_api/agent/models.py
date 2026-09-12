@@ -56,8 +56,9 @@ class ChatUpload(UUIDPrimaryKey, Base):
     presigned PUT, then `complete`), under `workspaces/{ws}/chat-uploads/{id}`.
 
     `attachment_id` is set once a tool turns it into an attachment on a contact or
-    company; the attachment points at the same object, so no bytes are copied. An
-    upload never attached is purged after `chat_upload_ttl`, row and object together.
+    company; the attachment points at the same object, so no bytes are copied, and
+    owns it from then on: deleting the attachment deletes this row. An upload never
+    attached is purged after `chat_upload_ttl`, row and object together.
     """
 
     __tablename__ = "chat_uploads"
@@ -75,7 +76,7 @@ class ChatUpload(UUIDPrimaryKey, Base):
     key: Mapped[str] = mapped_column(String(512), unique=True)
     uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     attachment_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("attachments.id", ondelete="SET NULL")
+        ForeignKey("attachments.id", ondelete="CASCADE")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

@@ -11,9 +11,11 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 
-def test_db_and_storage_answer(client: TestClient):
-    assert client.get("/health/db").json() == {"status": "ok"}
-    assert client.get("/health/storage").json() == {"status": "ok"}
+def test_liveness_db_and_storage_answer(client: TestClient):
+    for path in ("/health/", "/health/db", "/health/storage"):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert response.json() == {"status": "ok"}
 
 
 def test_redis_is_skipped_on_the_memory_broker(client: TestClient):

@@ -14,6 +14,7 @@ from alloy_api.crm.contacts.schemas import ContactCreate
 from alloy_api.crm.imports.models import Import, ImportKind, ImportStatus
 from alloy_api.crm.models import RowSource
 from alloy_api.db.base import utcnow
+from alloy_api.integrations.storage import ObjectNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -37,6 +38,7 @@ class ImportFileError(ValueError):
 
     NOT_UTF8 = "The file is not UTF-8 encoded"
     NO_NAME_COLUMN = "The header row has no 'name' column"
+    MISSING = "The uploaded file is no longer in storage; upload it again"
 
 
 @dataclass(slots=True)
@@ -190,7 +192,10 @@ async def run_import(session: AsyncSession, store: ObjectStore, import_id: UUID)
     await session.commit()
 
     try:
-        data = await store.get(record.key)
+        try:
+            data = await store.get(record.key)
+        except ObjectNotFoundError:
+            raise ImportFileError(ImportFileError.MISSING) from None
         if record.kind is ImportKind.CONTACTS:
             report = await import_contacts(
                 session, record.workspace_id, data, record.requested_by_user_id

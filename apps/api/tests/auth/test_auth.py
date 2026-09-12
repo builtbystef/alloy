@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from alloy_api.auth.cookies import SESSION_COOKIE
+from alloy_api.auth.emails import describe_duration
 from alloy_api.config import Settings
 
 if TYPE_CHECKING:
@@ -518,3 +519,32 @@ class TestAccountDeletion:
             "/auth/delete-account", json={"current_password": PASSWORD}, headers=carol.headers
         )
         assert response.status_code == 204, response.text
+
+
+class TestExpiredSession:
+    @pytest.fixture
+    def settings(self) -> Settings:
+        return Settings(app_name="Test API", session_ttl=timedelta(seconds=-1))
+
+    def test_an_expired_session_is_no_session(self, client: TestClient):
+        assert client.post("/auth/signup", json=CREDENTIALS).status_code == 201
+        assert client.get("/auth/me").status_code == 401
+        assert client.post("/auth/login", json=CREDENTIALS).status_code == 200
+        assert client.get("/auth/me").status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("duration", "text"),
+    [
+        (timedelta(days=30), "30 days"),
+        (timedelta(days=1), "1 day"),
+        (timedelta(hours=36), "36 hours"),
+        (timedelta(hours=1), "1 hour"),
+        (timedelta(minutes=90), "90 minutes"),
+        (timedelta(minutes=1), "1 minute"),
+        (timedelta(seconds=45), "45 seconds"),
+        (timedelta(seconds=0), "1 second"),
+    ],
+)
+def test_describe_duration_picks_the_largest_whole_unit(duration: timedelta, text: str):
+    assert describe_duration(duration) == text

@@ -143,3 +143,24 @@ def test_s3_is_the_default_provider():
     store = create_object_store(Settings(app_name="Test API"))
     assert isinstance(store, S3ObjectStore)
     assert store.bucket == "alloy"
+
+
+async def test_ping_answers_when_the_store_is_reachable(store: ObjectStore):
+    await store.ping()
+
+
+async def test_memory_urls_carry_the_expiry_in_whole_seconds():
+    store = MemoryObjectStore()
+    url = await store.upload_url("k", "text/plain", 5, timedelta(days=1, seconds=30))
+    assert "expires=86430" in url
+    url = await store.download_url("k", "a.txt", timedelta(hours=2))
+    assert "expires=7200" in url
+
+
+def test_content_disposition_never_breaks_the_header():
+    """A newline or quote in the ASCII form would end the header or the value."""
+    header = content_disposition('a\r\nSet-Cookie: x\\"b.pdf')
+    assert "\r" not in header
+    assert "\n" not in header
+    assert header.startswith("attachment; filename=\"a__Set-Cookie: x_'b.pdf\"; filename*=UTF-8''")
+    assert header.endswith("a%0D%0ASet-Cookie%3A%20x%5C%22b.pdf")

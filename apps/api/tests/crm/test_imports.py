@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from alloy_api.config import Settings
+from alloy_api.integrations.storage import ObjectNotFoundError
+from alloy_api.integrations.storage.memory import MemoryObjectStore
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from tests.conftest import Actor
-
-    from alloy_api.integrations.storage.memory import MemoryObjectStore
 
 
 @pytest.fixture
@@ -174,3 +174,39 @@ def test_imports_are_listed_newest_first_and_per_workspace(
         client.post(alice.ws(f"/imports/{first['id']}/start"), headers=bob.headers).status_code
         == 404
     )
+
+
+def test_row_errors_are_capped_but_all_rows_are_counted(
+    alice: Actor, object_store: MemoryObjectStore
+):
+    bad_rows = 120
+    text = "name,email\n" + ",x\n" * bad_rows
+    record = upload(alice, object_store, "contacts", text)
+    assert record["status"] == "done"
+    assert record["total_rows"] == bad_rows
+    assert record["failed_count"] == bad_rows
+    assert len(record["errors"]) == 100
+    assert record["errors"][-1]["row"] == 101
+    assert alice.get("/contacts/").json()["total"] == 0
+
+
+class VanishingStore(MemoryObjectStore):
+    """The file is there at `start` but gone when the job reads it, as after a
+    bucket lifecycle rule or a manual clean-up."""
+
+    async def get(self, key: str) -> bytes:
+        raise ObjectNotFoundError(key)
+
+
+class TestWhenTheFileHasVanished:
+    @pytest.fixture
+    def object_store(self) -> MemoryObjectStore:
+        return VanishingStore()
+
+    def test_the_import_fails_with_a_reason(self, alice: Actor, object_store: MemoryObjectStore):
+        started = start(alice, object_store, "contacts", b"name\nGrace\n")
+        record = alice.get(f"/imports/{started['id']}").json()
+        assert record["status"] == "failed"
+        assert record["error"] == "The uploaded file is no longer in storage; upload it again"
+        assert record["finished_at"] is not None
+        assert alice.get("/contacts/").json()["items"] == []

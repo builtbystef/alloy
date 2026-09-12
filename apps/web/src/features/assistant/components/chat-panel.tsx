@@ -48,6 +48,7 @@ import { useCan, useWorkspace } from "@/features/workspaces/workspace-provider";
 
 import type { ChatMessage } from "@/features/assistant/types";
 import { AssistantParts, UserAttachments } from "./message-parts";
+import { chatErrorMessage } from "@/features/assistant/errors";
 import { changedRecords } from "@/features/assistant/tools";
 import { useChatUploads } from "@/features/assistant/hooks/use-chat-uploads";
 
@@ -293,18 +294,4 @@ function Composer({
 
 function textOf(message: ChatMessage): string {
   return message.parts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n\n");
-}
-
-/** The API answers errors as `{"detail": ...}`; the transport hands the body over as the message. */
-export function chatErrorMessage(error: Error): string {
-  try {
-    const parsed: unknown = JSON.parse(error.message);
-    if (parsed && typeof parsed === "object" && "detail" in parsed) {
-      const detail = (parsed as { detail: unknown }).detail;
-      if (typeof detail === "string") return detail;
-    }
-  } catch {
-    // Not JSON.
-  }
-  return error.message || "Something went wrong.";
 }

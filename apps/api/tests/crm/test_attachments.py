@@ -247,3 +247,14 @@ def test_validation(alice: Actor, contact: dict):
     assert alice.post(path, json={**PDF, "content_type": "not a type"}).status_code == 422
     assert alice.post(path, json={**PDF, "size": 0}).status_code == 422
     assert alice.post(path, json={**PDF, "filename": "x" * 256}).status_code == 422
+
+
+def test_filenames_cannot_carry_control_characters(alice: Actor, contact: dict):
+    """The name ends up in a Content-Disposition header, where a newline would let
+    the uploader inject headers into every download."""
+    path = f"/contacts/{contact['id']}/attachments"
+    for filename in ["a\r\nb.pdf", "tab\there.pdf", "nul\x00.pdf"]:
+        response = alice.post(path, json={**PDF, "filename": filename})
+        assert response.status_code == 422, filename
+    assert alice.post(path, json={**PDF, "filename": "Årsrapport (final).pdf"}).status_code == 201
+    assert alice.get(path).json()["items"] == []  # pending, not completed

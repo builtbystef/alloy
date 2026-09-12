@@ -177,3 +177,65 @@ def test_users_only_see_their_own_tasks(alice: Actor, bob: Actor):
     assert bob.get(f"/tasks/{task['id']}").status_code == 404
     assert bob.patch(f"/tasks/{task['id']}", json={"title": "X"}).status_code == 404
     assert bob.delete(f"/tasks/{task['id']}").status_code == 404
+
+
+def test_due_at_needs_a_time_zone(alice: Actor):
+    naive = "2026-09-10T09:00:00"
+    response = alice.post("/tasks/", json={"title": "Call", "due_at": naive})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "due_at"]
+    task = alice.post("/tasks/", json={"title": "Call"}).json()
+    assert alice.patch(f"/tasks/{task['id']}", json={"due_at": naive}).status_code == 422
+    assert alice.get(f"/tasks/{task['id']}").json()["due_at"] is None
+
+
+def test_required_fields_cannot_be_nulled(alice: Actor):
+    task = alice.post("/tasks/", json={"title": "Call"}).json()
+    for field in ("title", "status"):
+        response = alice.patch(f"/tasks/{task['id']}", json={field: None})
+        assert response.status_code == 422, response.text
+        assert response.json()["detail"][0]["loc"] == ["body", field]
+    assert alice.get(f"/tasks/{task['id']}").json() == task
+
+
+def test_update_cannot_reference_another_users_rows(alice: Actor, bob: Actor):
+    theirs = bob.post("/contacts/", json={"name": "Grace"}).json()
+    their_company = bob.post("/companies/", json={"name": "Navy"}).json()
+    task = alice.post("/tasks/", json={"title": "Call"}).json()
+    url = f"/tasks/{task['id']}"
+    assert alice.patch(url, json={"contact_id": theirs["id"]}).status_code == 404
+    assert alice.patch(url, json={"company_id": their_company["id"]}).status_code == 404
+    assert alice.get(url).json() == task
+
+
+def test_filters_combine(alice: Actor):
+    now = datetime.now(UTC)
+    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    alice.post("/tasks/", json={"title": "Open late", "due_at": iso(now - timedelta(days=1))})
+    alice.post(
+        "/tasks/",
+        json={"title": "Done late", "due_at": iso(now - timedelta(days=1)), "status": "done"},
+    )
+    alice.post(
+        "/tasks/",
+        json={"title": "Hers", "due_at": iso(now - timedelta(days=1)), "contact_id": contact["id"]},
+    )
+
+    def titles(**params: str) -> list[str]:
+        return [t["title"] for t in alice.get("/tasks/", params=params).json()["items"]]
+
+    assert titles(due="overdue") == ["Open late", "Done late", "Hers"]
+    assert titles(due="overdue", status="open") == ["Open late", "Hers"]
+    assert titles(due="overdue", status="done") == ["Done late"]
+    assert titles(due="overdue", status="open", contact_id=contact["id"]) == ["Hers"]
+
+
+def test_reopening_a_task_and_completing_it_again_logs_it_again(alice: Actor):
+    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    task = alice.post("/tasks/", json={"title": "Call", "contact_id": contact["id"]}).json()
+    url = f"/tasks/{task['id']}"
+    alice.patch(url, json={"status": "done"})
+    assert alice.patch(url, json={"status": "open"}).json()["status"] == "open"
+    alice.patch(url, json={"status": "done"})
+    feed = alice.get(f"/contacts/{contact['id']}/activities").json()["items"]
+    assert [a["type"] for a in feed] == ["task_completed", "task_completed"]

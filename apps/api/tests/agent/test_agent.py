@@ -453,7 +453,7 @@ def test_viewers_are_offered_read_tools_only_and_cannot_write(
 def test_members_are_offered_every_tool(alice: Actor, script: Script):
     script.turns.append("Hi.")
     Chat(alice).send("hi")
-    assert len(script.seen_tools[0]) == 21
+    assert script.seen_tools[0] == sorted(tools.toolset.tools)
     assert set(tools.WRITE_TOOL_NAMES) < set(script.seen_tools[0])
 
 
@@ -867,3 +867,176 @@ def test_attachment_rows_from_chat_are_normal_attachments(
     # Deleting the attachment through the UI route works as for any attachment.
     assert alice.delete(f"/attachments/{attachment.id}").status_code == 204
     assert object_store.objects == {}
+
+
+# --- More tool behaviour through the chat -------------------------------------------
+
+
+def test_posting_to_another_users_conversation_is_a_404(alice: Actor, join: Join, script: Script):
+    carol = join(alice, "carol@example.com", "member")
+    chat = Chat(alice)
+    script.turns.append("Hi Carol.")
+    response = carol.post(
+        chat.path("/messages"), json={"id": chat.id, "messages": [user_message("hi")]}
+    )
+    assert response.status_code == 404
+    assert chat.detail()["messages"] == []
+    assert script.calls == 0
+
+
+def test_a_duplicate_email_within_one_batch_is_created_once(alice: Actor, script: Script):
+    items = [
+        {"name": "Jane Doe", "email": "jane@example.com"},
+        {"name": "J. Doe", "email": "JANE@example.com"},
+        {"name": "Ann"},
+        {"name": "Ann Again"},  # no email: nothing to collide on
+    ]
+    script.turns += [("create_contacts", {"items": items}), "Done."]
+    chat = Chat(alice)
+    chunks = chat.send("Add these")
+    resumed = chat.post([approval_response(chunks, approved=True)])
+    (output,) = of_type(resumed, "tool-output-available")
+    assert [c["name"] for c in output["output"]["created"]] == ["Jane Doe", "Ann", "Ann Again"]
+    (skipped,) = output["output"]["skipped"]
+    assert skipped["existing"]["id"] == output["output"]["created"][0]["id"]
+    assert alice.get("/contacts/").json()["total"] == 3
+
+
+def test_a_single_update_runs_at_once(alice: Actor, script: Script):
+    grace = alice.post(
+        "/contacts/", json={"name": "Grace", "phone": "+1 555 0100", "status": "lead"}
+    ).json()
+    script.turns += [
+        (
+            "update_contacts",
+            {
+                "items": [
+                    {"contact_id": grace["id"], "changes": {"status": "active", "phone": None}}
+                ]
+            },
+        ),
+        "Grace is now active.",
+    ]
+    chunks = Chat(alice).send("Mark Grace active and drop her phone")
+    assert of_type(chunks, "tool-approval-request") == []
+    (output,) = of_type(chunks, "tool-output-available")
+    (row,) = output["output"]
+    assert row["status"] == "active"
+    contact = alice.get(f"/contacts/{grace['id']}").json()
+    assert contact["status"] == "active"
+    assert contact["phone"] is None
+    assert contact["name"] == "Grace"
+
+
+def test_a_naive_datetime_from_the_model_is_sent_back_for_correction(alice: Actor, script: Script):
+    script.turns += [
+        ("create_tasks", {"items": [{"title": "Call", "due_at": "2026-09-10T09:00:00"}]}),
+        "Let me fix the date.",
+    ]
+    chunks = Chat(alice).send("Remind me to call on the 10th")
+    assert of_type(chunks, "tool-output-available") == []
+    assert alice.get("/tasks/").json()["total"] == 0
+    assert len(script.prompts) == 2
+    assert "due_at" in json.dumps(script.prompts[1][-1].parts, default=str)
+
+
+def test_completing_a_task_through_the_assistant_is_logged_as_the_agent(
+    alice: Actor, script: Script
+):
+    grace = alice.post("/contacts/", json={"name": "Grace"}).json()
+    task = alice.post("/tasks/", json={"title": "Send deck", "contact_id": grace["id"]}).json()
+    script.turns += [
+        ("update_tasks", {"items": [{"task_id": task["id"], "changes": {"status": "done"}}]}),
+        "Marked as done.",
+    ]
+    chunks = Chat(alice).send("The deck went out")
+    (output,) = of_type(chunks, "tool-output-available")
+    assert output["output"][0]["status"] == "done"
+    (activity,) = alice.get(f"/contacts/{grace['id']}/activities").json()["items"]
+    assert (activity["type"], activity["notes"], activity["source"]) == (
+        "task_completed",
+        "Send deck",
+        "agent",
+    )
+    assert activity["created_by"]["email"] == alice.email
+
+
+def test_a_large_approval_preview_is_truncated_but_counts_everything(alice: Actor, script: Script):
+    count = tools.PREVIEW_ROWS + 5
+    items = [{"name": f"Person {i:02d}"} for i in range(count)]
+    script.turns += [("create_contacts", {"items": items}), "Done."]
+    chat = Chat(alice)
+    chunks = chat.send("Add everyone")
+    (preview,) = of_type(chunks, "data-approval_preview")
+    assert preview["data"]["title"] == f"Create {count} contacts"
+    assert len(preview["data"]["rows"]) == tools.PREVIEW_ROWS
+    assert preview["data"]["total"] == count
+    resumed = chat.post([approval_response(chunks, approved=True)])
+    assert len(of_type(resumed, "tool-output-available")[0]["output"]["created"]) == count
+
+
+def test_attach_files_needs_exactly_one_parent(
+    alice: Actor, script: Script, object_store: MemoryObjectStore
+):
+    grace = alice.post("/contacts/", json={"name": "Grace"}).json()
+    acme = alice.post("/companies/", json={"name": "Acme"}).json()
+    chat = Chat(alice)
+    uploaded = chat_upload(chat, object_store, PDF, b"hello world")
+    script.turns += [
+        ("attach_files", {"items": [{"upload_id": uploaded["id"]}]}),
+        (
+            "attach_files",
+            {
+                "items": [
+                    {
+                        "upload_id": uploaded["id"],
+                        "contact_id": grace["id"],
+                        "company_id": acme["id"],
+                    }
+                ]
+            },
+        ),
+        "Which one?",
+    ]
+    chunks = chat.send("Attach this", upload_ids=[uploaded["id"]])
+    errors = of_type(chunks, "tool-output-error")
+    assert len(errors) == 2
+    assert all("exactly one" in e["errorText"] for e in errors)
+    assert alice.get(f"/contacts/{grace['id']}/attachments").json()["items"] == []
+    assert alice.get(f"/companies/{acme['id']}/attachments").json()["items"] == []
+    assert reply_text(chunks) == "Which one?"
+
+
+def test_a_deleted_attachment_cannot_be_attached_again_from_the_chat(
+    alice: Actor, db: Database, script: Script, object_store: MemoryObjectStore
+):
+    """Deleting the attachment removes the object; the chat upload that pointed at
+    it must not linger as a re-attachable file."""
+    acme = alice.post("/companies/", json={"name": "Acme"}).json()
+    chat = Chat(alice)
+    uploaded = chat_upload(chat, object_store, PDF, b"hello world")
+    target = {"upload_id": uploaded["id"], "company_id": acme["id"]}
+    script.turns += [("attach_files", {"items": [target]}), "Attached."]
+    chunks = chat.send("Attach this to Acme", upload_ids=[uploaded["id"]])
+    (attachment,) = of_type(chunks, "tool-output-available")[0]["output"]
+    assert alice.delete(f"/attachments/{attachment['id']}").status_code == 204
+    assert object_store.objects == {}
+
+    script.turns += [("attach_files", {"items": [target]}), "That file is gone."]
+    again = chat.send("Attach it again")
+    (error,) = of_type(again, "tool-output-error")
+    assert "No file with upload id" in error["errorText"]
+    assert alice.get(f"/companies/{acme['id']}/attachments").json()["items"] == []
+
+    async def upload_rows() -> int:
+        async with db.session() as session:
+            return len(list(await session.scalars(select(ChatUpload))))
+
+    assert db.run(upload_rows) == 0
+
+
+def test_an_empty_batch_is_refused(alice: Actor, script: Script):
+    script.turns += [("create_contacts", {"items": []}), "Nothing to add."]
+    chunks = Chat(alice).send("Add nobody")
+    (error,) = of_type(chunks, "tool-output-error")
+    assert "at least one" in error["errorText"]
