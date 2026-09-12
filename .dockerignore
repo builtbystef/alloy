@@ -1,4 +1,4 @@
-# Build context for apps/api/Dockerfile and apps/web/Dockerfile (both build
+# Build context for apps/server/Dockerfile and apps/web/Dockerfile (both build
 # from the repository root). Everything the images need is copied by name in
 # the Dockerfiles; this keeps installed dependencies, build output, secrets,
 # and Git history out of the context.
@@ -23,6 +23,6 @@ __pycache__
 .env
 .env.*
 # Not needed inside the images
-apps/api/tests
-apps/api/compose.yaml
+apps/server/tests
+apps/server/compose.yaml
 apps/*/Dockerfile

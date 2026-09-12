@@ -1,11 +1,11 @@
 name: Images
 
-# Builds the API and web images and pushes them to GitHub Container Registry
+# Builds the server and web images and pushes them to GitHub Container Registry
 # once CI has passed on main, so every image is a tested commit. Tags: `latest`
 # and `sha-<short sha>`. For hosts that pull images; hosts that build from the
 # repository (Railway, Render, Fly) use the Dockerfiles directly and ignore this.
 #
-# Images land at ghcr.io/<owner>/<repo>/api and .../web. A package is private
+# Images land at ghcr.io/<owner>/<repo>/server and .../web. A package is private
 # by default; make it public or give the server a token with `read:packages`
 # (see Deploying in the README).
 
@@ -32,8 +32,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: api
-            dockerfile: apps/api/Dockerfile
+          - name: server
+            dockerfile: apps/server/Dockerfile
           - name: web
             dockerfile: apps/web/Dockerfile
     steps:

@@ -2,7 +2,7 @@
   "name": "@alloy/api-client",
   "version": "0.0.0",
   "private": true,
-  "description": "Typed fetch client for apps/api, generated from its OpenAPI schema",
+  "description": "Typed fetch client for apps/server, generated from its OpenAPI schema",
   "license": "MIT",
   "files": [
     "dist"

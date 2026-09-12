@@ -18,7 +18,7 @@ exclude-newer = "4 days"
 # uv rejects a glob that matches a directory without a pyproject.toml, and the
 # TypeScript packages in apps/, packages/, and tools/ have none. List Python
 # projects explicitly instead.
-members = ["apps/api"]
+members = ["apps/server"]
 
 [tool.ruff]
 line-length = 100
@@ -54,7 +54,7 @@ extend-immutable-calls = ["taskiq.TaskiqDepends"]
 # SQLAlchemy and Pydantic read model annotations at import time, so quoted
 # forward references in their subclasses are needed (UP037).
 runtime-evaluated-base-classes = [
-  "alloy_api.db.base.Base",
+  "alloy_server.db.base.Base",
   "sqlalchemy.orm.DeclarativeBase",
   "pydantic.BaseModel",
 ]

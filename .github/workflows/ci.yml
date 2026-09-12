@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # Same database as apps/api/compose.yaml; the job runs on the runner.
+      # Same database as apps/server/compose.yaml; the job runs on the runner.
       ALLOY_DATABASE_URL: postgresql+psycopg://alloy:alloy@localhost:5432/alloy
     services:
       postgres:
@@ -33,7 +33,7 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
-      # Same Redis as apps/api/compose.yaml; the readiness check test pings it.
+      # Same Redis as apps/server/compose.yaml; the readiness check test pings it.
       redis:
         image: redis:8
         ports:
@@ -43,7 +43,7 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
-      # Same object storage as apps/api/compose.yaml; the storage contract
+      # Same object storage as apps/server/compose.yaml; the storage contract
       # tests run against it.
       storage:
         image: rustfs/rustfs:1.0.0-rc.5
@@ -98,7 +98,7 @@ jobs:
             vite-task-${{ runner.os }}-${{ runner.arch }}-
 
       - run: vp run check
-      # Committed OpenAPI schema and generated client types match apps/api.
+      # Committed OpenAPI schema and generated client types match apps/server.
       - run: vp run check:generated
       - run: vp run test
       - run: vp run -r build

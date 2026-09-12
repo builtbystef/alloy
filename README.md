@@ -17,7 +17,7 @@ checking, and tests:
 ## Requirements
 
 - Node ≥ 24 (`.node-version`), Python ≥ 3.14 (`.python-version`, uv downloads it), uv ≥ 0.12
-- Docker with Compose, for the local PostgreSQL, Redis, and RustFS that `apps/api` and its tests use
+- Docker with Compose, for the local PostgreSQL, Redis, and RustFS that `apps/server` and its tests use
 
 ## Commands
 
@@ -51,17 +51,17 @@ unless it needs something else. A Python project is scaffolded with
 under `[tool.uv.workspace] members` in the root `pyproject.toml`, which also
 holds the Ruff, ty, and pytest settings.
 
-## apps/api
+## apps/server
 
-A [FastAPI](https://fastapi.tiangolo.com) service, package `alloy_api`:
+The backend: a [FastAPI](https://fastapi.tiangolo.com) app, a Taskiq worker and scheduler, and the assistant agent. Package `alloy_server`:
 
 ```text
-apps/api/
+apps/server/
 ├── compose.yaml              # local PostgreSQL 18, Redis 8, RustFS (S3-compatible storage)
 ├── Dockerfile                # one image for the API, worker, and scheduler
 ├── alembic/                  # env.py reads the URL from Settings; versions/
 ├── .env.example              # every ALLOY_* setting, documented
-├── src/alloy_api/
+├── src/alloy_server/
 │   ├── main.py               # app, lifespan (engine, store, broker), middleware, the AppError handler
 │   ├── config.py             # Settings (pydantic-settings) + get_settings
 │   ├── api/router.py         # the HTTP composition root: includes every feature router
@@ -87,7 +87,7 @@ the same service functions the routes do.
 
 Settings come from `ALLOY_*` environment variables or a local `.env`; tests
 override `get_settings`. Operation IDs are `{tag}-{function}`, and
-`python -m alloy_api.openapi` prints the schema for `packages/api-client`.
+`python -m alloy_server.openapi` prints the schema for `packages/api-client`.
 The routes are documented at `/docs`; the sections below cover behaviour that
 is not obvious from them.
 
@@ -107,8 +107,8 @@ raise `AppError` subclasses (`NotFoundError`, `ConflictError`,
 SQLAlchemy 2 async over psycopg 3, migrations with Alembic:
 
 ```sh
-cd apps/api && uv run alembic revision --autogenerate -m "add widget"
-cd apps/api && uv run alembic downgrade -1
+cd apps/server && uv run alembic revision --autogenerate -m "add widget"
+cd apps/server && uv run alembic downgrade -1
 ```
 
 `ALLOY_DATABASE_URL` is the one place the connection is configured; Alembic
@@ -295,7 +295,7 @@ const { data, error } = await api.GET("/health/");
 ```
 
 ```sh
-vp run generate           # after changing a route or model in apps/api
+vp run generate           # after changing a route or model in apps/server
 vp run check:generated    # fails if the committed files are stale; CI runs this
 ```
 
@@ -340,18 +340,18 @@ covers it. Tests run under Vitest with the `@/` alias from
 The template does not pick a host. It ships an image per app, one command
 per process, settings from environment variables, and a migration step.
 
-| Process     | Image      | Command                                                  | Port | Instances |
-| ----------- | ---------- | -------------------------------------------------------- | ---- | --------- |
-| `api`       | `apps/api` | `fastapi run --port 8000 --proxy-headers` (default)      | 8000 | any       |
-| `worker`    | `apps/api` | `taskiq worker alloy_api.jobs.broker:broker --workers 2` | none | any       |
-| `scheduler` | `apps/api` | `taskiq scheduler alloy_api.jobs.broker:scheduler`       | none | exactly 1 |
-| `web`       | `apps/web` | `node apps/web/server.js` (default)                      | 3000 | any       |
+| Process     | Image         | Command                                                     | Port | Instances |
+| ----------- | ------------- | ----------------------------------------------------------- | ---- | --------- |
+| `api`       | `apps/server` | `fastapi run --port 8000 --proxy-headers` (default)         | 8000 | any       |
+| `worker`    | `apps/server` | `taskiq worker alloy_server.jobs.broker:broker --workers 2` | none | any       |
+| `scheduler` | `apps/server` | `taskiq scheduler alloy_server.jobs.broker:scheduler`       | none | exactly 1 |
+| `web`       | `apps/web`    | `node apps/web/server.js` (default)                         | 3000 | any       |
 
 Plus managed PostgreSQL, Redis, and an S3-compatible bucket the browser can
 reach. Only `web` needs a public address; it forwards `/api/*` to the API
 over the private network. Give `api` a health check on `/health/`
 (`/health/{db,redis,storage}` for readiness). Run `alembic upgrade head`
-from `/app/apps/api` before new code starts (a pre-deploy command, release
+from `/app/apps/server` before new code starts (a pre-deploy command, release
 command, or init container); migrations are written to be safe to apply
 before the old code stops.
 
@@ -363,7 +363,7 @@ API's rate limits count against it. Unset, every request counts against
 safe while only `web` can reach it.
 
 Every process reads the same `ALLOY_*` variables, documented in
-`apps/api/.env.example`; `web` reads `API_URL` and `CLIENT_IP_HEADER`. The
+`apps/server/.env.example`; `web` reads `API_URL` and `CLIENT_IP_HEADER`. The
 ones that change per environment:
 
 ```sh
@@ -379,7 +379,7 @@ API_URL=http://api.internal:8000                 # web only
 CLIENT_IP_HEADER=x-forwarded-for                 # web only
 ```
 
-`.github/workflows/images.yml` builds `ghcr.io/<owner>/<repo>/{api,web}`
+`.github/workflows/images.yml` builds `ghcr.io/<owner>/<repo>/{server,web}`
 after CI passes on `main`, tagged `latest` and `sha-<short sha>`, for hosts
 that pull from a registry. On Railway, four services from one repository
 with the Dockerfile paths and commands above, `alembic upgrade head` as the

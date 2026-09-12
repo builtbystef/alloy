@@ -9,7 +9,7 @@ exclude-newer-span = "P4D"
 [manifest]
 members = [
     "alloy",
-    "alloy-api",
+    "alloy-server",
 ]
 
 [[package]]
@@ -154,9 +154,9 @@ dev = [
 ]
 
 [[package]]
-name = "alloy-api"
+name = "alloy-server"
 version = "0.0.0"
-source = { editable = "apps/api" }
+source = { editable = "apps/server" }
 dependencies = [
     { name = "aiobotocore" },
     { name = "alembic" },

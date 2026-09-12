@@ -1,0 +1,309 @@
+"""Tests use a real PostgreSQL database, `alloy_test`, created on first use. Each
+test runs in one transaction that is rolled back at the end, DDL included.
+
+Jobs run inline on the in-memory broker, inside the test transaction and with
+the same doubles the handlers get, so a queued email is in `outbox` by the time
+the handler responds.
+"""
+
+import os
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import pytest
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
+
+# Before `alloy_server` is imported: the broker is chosen when its module loads, and
+# `main` reads `Settings` at import too.
+os.environ["ALLOY_JOBS_BROKER"] = "memory"
+os.environ["ALLOY_RATE_LIMIT_STORE"] = "memory"
+from alloy_server.config import Settings, get_settings
+
+TEST_DATABASE = "alloy_test"
+# The configured server (environment or `.env`), with the database swapped for the
+# test one. Every `Settings(...)` a test builds picks this up from the environment.
+_configured_url = make_url(str(Settings().database_url))
+os.environ["ALLOY_DATABASE_URL"] = _configured_url.set(database=TEST_DATABASE).render_as_string(
+    hide_password=False
+)
+get_settings.cache_clear()
+
+from fastapi.testclient import TestClient  # noqa: E402
+from taskiq import InMemoryBroker  # noqa: E402
+
+from alloy_server.auth.cookies import SESSION_COOKIE  # noqa: E402
+from alloy_server.db.base import Base  # noqa: E402
+from alloy_server.db.session import get_session  # noqa: E402
+from alloy_server.integrations.mail import Email  # noqa: E402
+from alloy_server.integrations.ratelimit import (  # noqa: E402
+    Limiter,
+    MemoryRateLimitStore,
+    get_limiter,
+)
+from alloy_server.integrations.storage import get_object_store  # noqa: E402
+from alloy_server.integrations.storage.memory import MemoryObjectStore  # noqa: E402
+from alloy_server.jobs.broker import broker  # noqa: E402
+from alloy_server.jobs.deps import configure as configure_jobs  # noqa: E402
+from alloy_server.main import app  # noqa: E402
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
+
+    from anyio.from_thread import BlockingPortal
+
+
+@pytest.fixture(scope="session", autouse=True)
+def test_database() -> None:
+    """Create `alloy_test` on the configured server if it is not there yet.
+
+    Connects to the configured (development) database to do it: CREATE DATABASE
+    cannot run inside a transaction, hence autocommit.
+    """
+    engine = create_engine(_configured_url, isolation_level="AUTOCOMMIT", poolclass=NullPool)
+    try:
+        with engine.connect() as connection:
+            exists = connection.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": TEST_DATABASE}
+            ).scalar()
+            if not exists:
+                connection.execute(text(f'CREATE DATABASE "{TEST_DATABASE}"'))
+    except OperationalError as exc:
+        pytest.fail(f"PostgreSQL is not reachable at {engine.url}. Run `vp run db:up`. ({exc})")
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def settings() -> Settings:
+    # No OpenAI key, whatever a local `.env` says: tests never call the model.
+    return Settings(app_name="Test API", openai_api_key=None)
+
+
+@pytest.fixture
+def engine(settings: Settings) -> AsyncEngine:
+    # NullPool: nothing pooled across event loops.
+    return create_async_engine(str(settings.database_url), poolclass=NullPool)
+
+
+class Outbox(list[Email]):
+    async def send(self, email: Email) -> None:
+        self.append(email)
+
+
+@pytest.fixture
+def outbox() -> Outbox:
+    return Outbox()
+
+
+@pytest.fixture
+def object_store() -> MemoryObjectStore:
+    return MemoryObjectStore()
+
+
+@pytest.fixture
+def rate_limits() -> MemoryRateLimitStore:
+    """Per test: every request has the same client address, so shared counters
+    would leak attempts between tests."""
+    return MemoryRateLimitStore()
+
+
+@pytest.fixture
+def app_client(
+    settings: Settings,
+    outbox: Outbox,
+    object_store: MemoryObjectStore,
+    rate_limits: MemoryRateLimitStore,
+) -> Iterator[TestClient]:
+    """Settings, object store, and rate limit counters overridden, real database
+    wiring. The jobs get the same settings and store, plus `outbox` as their
+    mailer, and run inline."""
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_object_store] = lambda: object_store
+    app.dependency_overrides[get_limiter] = lambda: Limiter(rate_limits)
+    assert isinstance(broker, InMemoryBroker)
+    broker.await_inplace = True
+    # https: the session cookie is `Secure`, and httpx's jar only sends it over https.
+    with TestClient(app, base_url="https://testserver") as client:
+        configure_jobs(
+            broker.state,
+            settings=settings,
+            session_factory=broker.state.session_factory,
+            mailer=outbox,
+            object_store=object_store,
+        )
+        yield client
+    app.dependency_overrides.clear()
+
+
+@dataclass
+class Database:
+    """The test transaction. It lives on the app's event loop, so use `run` to reach it."""
+
+    portal: BlockingPortal
+    connection: AsyncConnection
+
+    def run[T](self, func: Callable[..., Awaitable[T]], *args: object) -> T:
+        return self.portal.call(func, *args)
+
+    def session(self) -> AsyncSession:
+        # commit() releases a savepoint; the fixture rolls back the outer transaction.
+        return AsyncSession(
+            bind=self.connection, join_transaction_mode="create_savepoint", expire_on_commit=False
+        )
+
+    async def get_session(self) -> AsyncIterator[AsyncSession]:
+        """Drop-in for `alloy_server.db.get_session`."""
+        async with self.session() as session:
+            yield session
+
+
+async def _begin(engine: AsyncEngine) -> AsyncConnection:
+    try:
+        connection = await engine.connect()
+    except OperationalError as exc:
+        pytest.fail(f"PostgreSQL is not reachable at {engine.url}. Run `vp run db:up`. ({exc})")
+    await connection.begin()
+    await connection.run_sync(Base.metadata.create_all)
+    return connection
+
+
+async def _end(connection: AsyncConnection, engine: AsyncEngine) -> None:
+    await connection.rollback()
+    await connection.close()
+    await engine.dispose()
+
+
+@pytest.fixture
+def db(app_client: TestClient, engine: AsyncEngine) -> Iterator[Database]:
+    """The app's sessions join this transaction."""
+    assert app_client.portal is not None
+    connection = app_client.portal.call(_begin, engine)
+    database = Database(app_client.portal, connection)
+    app.dependency_overrides[get_session] = database.get_session
+    broker.state.session_factory = database.session
+    try:
+        yield database
+    finally:
+        database.run(_end, connection, engine)
+
+
+@pytest.fixture
+def client(app_client: TestClient, db: Database) -> TestClient:  # noqa: ARG001
+    """`app_client` with the `db` transaction."""
+    return app_client
+
+
+PASSWORD = "correct horse battery"  # noqa: S105 - a fixture, not a secret
+
+
+def verification_token(outbox: Outbox) -> str:
+    return outbox[-1].text.split("/verify-email?token=")[1].split()[0]
+
+
+def signup(client: TestClient, outbox: Outbox, email: str) -> dict[str, str]:
+    """Create a user, verify their email, and return a `Cookie` header for them.
+
+    Explicit headers, not the client's cookie jar, so two users can share one client.
+    The verification email is taken out of `outbox`, so tests see only their own mail.
+    """
+    response = client.post("/auth/signup", json={"email": email, "password": PASSWORD})
+    assert response.status_code == 201, response.text
+    token = response.cookies[SESSION_COOKIE]
+    client.cookies.clear()
+    headers = {"Cookie": f"{SESSION_COOKIE}={token}"}
+    if not outbox or outbox[-1].subject != "Verify your email":
+        # An invitee gets no link at signup; ask for one, as the page would.
+        assert client.post("/auth/resend-verification", headers=headers).status_code == 204
+    assert outbox[-1].to == email.lower()
+    verified = client.post("/auth/verify-email", json={"token": verification_token(outbox)})
+    assert verified.status_code == 200, verified.text
+    outbox.pop()
+    return headers
+
+
+@dataclass
+class Actor:
+    """A logged-in user acting inside one workspace.
+
+    `get`/`post`/... take a path relative to the workspace (`/contacts/`), send the
+    user's cookie, and return the response. `ws()` builds the absolute path.
+    """
+
+    client: TestClient
+    email: str
+    headers: dict[str, str]
+    workspace: str
+
+    def ws(self, path: str = "") -> str:
+        return f"/workspaces/{self.workspace}{path}"
+
+    def get(
+        self,
+        path: str,
+        *,
+        params: Mapping[str, str | int] | None = None,
+        follow_redirects: bool = True,
+    ):
+        return self.client.get(
+            self.ws(path), params=params, headers=self.headers, follow_redirects=follow_redirects
+        )
+
+    def post(self, path: str, *, json: object = None):
+        return self.client.post(self.ws(path), json=json, headers=self.headers)
+
+    def patch(self, path: str, *, json: object = None):
+        return self.client.patch(self.ws(path), json=json, headers=self.headers)
+
+    def delete(self, path: str):
+        return self.client.delete(self.ws(path), headers=self.headers)
+
+
+def actor(client: TestClient, outbox: Outbox, email: str) -> Actor:
+    """Sign up and act in the workspace signup created."""
+    headers = signup(client, outbox, email)
+    workspaces = client.get("/workspaces/", headers=headers).json()
+    assert len(workspaces) == 1
+    return Actor(client, email, headers, workspaces[0]["id"])
+
+
+@pytest.fixture
+def new_login(client: TestClient, outbox: Outbox) -> Callable[[str], dict[str, str]]:
+    """`signup` as a fixture, for tests that need a third user."""
+    return lambda email: signup(client, outbox, email)
+
+
+@pytest.fixture
+def new_actor(client: TestClient, outbox: Outbox) -> Callable[[str], Actor]:
+    """`actor` as a fixture, for tests that need a third user."""
+    return lambda email: actor(client, outbox, email)
+
+
+@pytest.fixture
+def join(client: TestClient, outbox: Outbox) -> Callable[[Actor, str, str], Actor]:
+    """Sign `email` up and seat them in `host`'s workspace with `role`, via an invitation."""
+
+    def join(host: Actor, email: str, role: str) -> Actor:
+        guest = actor(client, outbox, email)
+        invite = host.post("/invites", json={"email": email, "role": role})
+        assert invite.status_code == 201, invite.text
+        token = outbox[-1].text.split("/invites/")[1].split()[0]
+        accepted = client.post(f"/invites/{token}/accept", headers=guest.headers)
+        assert accepted.status_code == 200, accepted.text
+        return Actor(client, email, guest.headers, host.workspace)
+
+    return join
+
+
+@pytest.fixture
+def alice(client: TestClient, outbox: Outbox) -> Actor:
+    return actor(client, outbox, "alice@example.com")
+
+
+@pytest.fixture
+def bob(client: TestClient, outbox: Outbox) -> Actor:
+    """A second user with a workspace of their own, for data isolation tests."""
+    return actor(client, outbox, "bob@example.com")

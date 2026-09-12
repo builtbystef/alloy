@@ -23,7 +23,7 @@ export function assertApiUrl(): void {
 }
 
 /**
- * The typed client for apps/api, for use in Server Components, Route
+ * The typed client for apps/server, for use in Server Components, Route
  * Handlers, and Server Actions. Requests are memoized per render by Next.js's
  * `fetch`, so calling this in several components costs one request.
  *

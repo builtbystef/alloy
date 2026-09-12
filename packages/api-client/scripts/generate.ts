@@ -1,4 +1,4 @@
-// Exports the OpenAPI schema from apps/api and generates TypeScript types
+// Exports the OpenAPI schema from apps/server and generates TypeScript types
 // from it. Run from the package root: `vp run generate` (or `--check` to
 // verify the committed files are current, as CI does).
 //
@@ -21,7 +21,7 @@ const check = process.argv.includes("--check");
 // inside the repository.
 const schema = execFileSync(
   "uv",
-  ["run", "--package", "alloy-api", "python", "-m", "alloy_api.openapi"],
+  ["run", "--package", "alloy-server", "python", "-m", "alloy_server.openapi"],
   { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
 );
 

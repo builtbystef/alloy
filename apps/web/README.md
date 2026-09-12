@@ -1,6 +1,6 @@
 # @alloy/web
 
-The Next.js front end for `apps/api`.
+The Next.js front end for `apps/server`.
 
 ```sh
 vp run dev:web      # from the repo root, http://localhost:3000
