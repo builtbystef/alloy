@@ -8,7 +8,6 @@ from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 from alloy_server.db.base import UUIDPrimaryKey, string_enum
 
 if TYPE_CHECKING:
-    # Imported lazily: alloy_server.db.base imports this module while auth.models loads.
     from alloy_server.auth.models import User
 
 

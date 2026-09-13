@@ -36,7 +36,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from taskiq import InMemoryBroker  # noqa: E402
 
 from alloy_server.auth.cookies import SESSION_COOKIE  # noqa: E402
-from alloy_server.db.base import Base  # noqa: E402
+from alloy_server.db.models import Base  # noqa: E402
 from alloy_server.db.session import get_session  # noqa: E402
 from alloy_server.integrations.mail import Email  # noqa: E402
 from alloy_server.integrations.ratelimit import (  # noqa: E402

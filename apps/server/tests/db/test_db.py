@@ -9,7 +9,7 @@ from alembic.runtime.migration import MigrationContext
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from alloy_server.db.base import Base
+from alloy_server.db.models import Base
 from alloy_server.main import app
 
 if TYPE_CHECKING:

@@ -55,14 +55,3 @@ def string_enum[E: StrEnum](enum_type: type[E]) -> Enum:
         length=32,
         values_callable=lambda members: [member.value for member in members],
     )
-
-
-# Autogenerate only sees models on `Base.metadata`. Imported last: they import `Base`.
-from alloy_server.agent import models as _agent_models  # noqa: E402, F401
-from alloy_server.auth import models as _auth_models  # noqa: E402, F401
-from alloy_server.crm.attachments import models as _attachment_models  # noqa: E402, F401
-from alloy_server.crm.companies import models as _company_models  # noqa: E402, F401
-from alloy_server.crm.contacts import models as _contact_models  # noqa: E402, F401
-from alloy_server.crm.imports import models as _import_models  # noqa: E402, F401
-from alloy_server.crm.tasks import models as _task_models  # noqa: E402, F401
-from alloy_server.workspaces import models as _workspace_models  # noqa: E402, F401
