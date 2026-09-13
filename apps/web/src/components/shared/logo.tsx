@@ -1,4 +1,6 @@
-import type { SVGProps } from "react";
+import type { HTMLAttributes, SVGProps } from "react";
+
+import { cn } from "@/lib/utils";
 
 /** The Alloy mark, inline so it needs no request and scales with `className`. */
 export function Logo(props: SVGProps<SVGSVGElement>) {
@@ -17,5 +19,17 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
         fill="#96887F"
       />
     </svg>
+  );
+}
+
+/** The "ALLOY" wordmark in the logo face (Barlow Condensed, set in app/layout.tsx). */
+export function Wordmark({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span
+      className={cn("font-logo leading-none font-semibold tracking-[0.18em] uppercase", className)}
+      {...props}
+    >
+      Alloy
+    </span>
   );
 }

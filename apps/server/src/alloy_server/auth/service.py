@@ -188,7 +188,9 @@ async def send_verification(session: AsyncSession, settings: Settings, user: Use
     user.verification_token_hash = hash_token(token)
     user.verification_sent_at = utcnow()
     await session.commit()
-    await send_email.kiq(verification_email(user, token, str(settings.frontend_url)))
+    await send_email.kiq(
+        verification_email(user, token, str(settings.frontend_url), settings.verification_ttl)
+    )
 
 
 def mark_verified(user: User) -> None:

@@ -9,7 +9,6 @@ import { changeMemberRole, removeMember } from "@/features/workspaces/mutations"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   Table,
@@ -65,89 +64,83 @@ export function MembersTable({
   const owners = members.filter((m) => m.role === "owner").length;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Members</CardTitle>
-        <CardDescription>
-          {members.length} {members.length === 1 ? "person" : "people"}. Owners can do everything;
-          admins manage members and settings; members edit records; viewers only read.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
-                {canManage && <TableHead className="w-24" />}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((member) => {
-                const isSelf = member.email === currentEmail;
-                const editable =
-                  canManage &&
-                  !isSelf &&
-                  canManageRole(workspace.role, member.role) &&
-                  !(member.role === "owner" && owners <= 1);
-                return (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">
-                      {member.email}
-                      {isSelf && (
-                        <Badge variant="outline" className="ml-2">
-                          You
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editable ? (
-                        <NativeSelect
-                          value={member.role}
-                          disabled={changeRole.isPending}
-                          onChange={(event) =>
-                            changeRole.mutate({
-                              member,
-                              role: event.target.value as WorkspaceRole,
-                            })
-                          }
-                          aria-label={`Role of ${member.email}`}
-                        >
-                          {workspaceRoles.map((role) => (
-                            <NativeSelectOption
-                              key={role}
-                              value={role}
-                              disabled={!assignableRoles(workspace.role).includes(role)}
-                            >
-                              {roleLabels[role]}
-                            </NativeSelectOption>
-                          ))}
-                        </NativeSelect>
-                      ) : (
-                        roleLabels[member.role]
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(member.created_at, timeZone)}
-                    </TableCell>
-                    {canManage && (
-                      <TableCell className="text-right">
-                        {editable && (
-                          <Button variant="ghost" size="sm" onClick={() => setRemoving(member)}>
-                            Remove
-                          </Button>
-                        )}
-                      </TableCell>
+    <>
+      <div className="overflow-x-auto rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Joined</TableHead>
+              {canManage && <TableHead className="w-24" />}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.map((member) => {
+              const isSelf = member.email === currentEmail;
+              const editable =
+                canManage &&
+                !isSelf &&
+                canManageRole(workspace.role, member.role) &&
+                !(member.role === "owner" && owners <= 1);
+              return (
+                <TableRow key={member.id}>
+                  <TableCell className="font-medium">
+                    {member.email}
+                    {isSelf && (
+                      <Badge variant="outline" className="ml-2">
+                        You
+                      </Badge>
                     )}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
+                  </TableCell>
+                  <TableCell>
+                    {editable ? (
+                      <NativeSelect
+                        value={member.role}
+                        disabled={changeRole.isPending}
+                        onChange={(event) =>
+                          changeRole.mutate({
+                            member,
+                            role: event.target.value as WorkspaceRole,
+                          })
+                        }
+                        aria-label={`Role of ${member.email}`}
+                      >
+                        {workspaceRoles.map((role) => (
+                          <NativeSelectOption
+                            key={role}
+                            value={role}
+                            disabled={!assignableRoles(workspace.role).includes(role)}
+                          >
+                            {roleLabels[role]}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    ) : (
+                      roleLabels[member.role]
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(member.created_at, timeZone)}
+                  </TableCell>
+                  {canManage && (
+                    <TableCell className="text-right">
+                      {editable && (
+                        <Button variant="ghost" size="sm" onClick={() => setRemoving(member)}>
+                          Remove
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {members.length} {members.length === 1 ? "person" : "people"}
+      </p>
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => {
@@ -159,6 +152,6 @@ export function MembersTable({
         pending={remove.isPending}
         onConfirm={() => removing && remove.mutate(removing)}
       />
-    </Card>
+    </>
   );
 }

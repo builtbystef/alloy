@@ -54,7 +54,7 @@ export function UserMenu({ email }: { email: string }) {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href={paths.account} />}>
-          <SettingsIcon /> Account
+          <SettingsIcon /> Settings
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => logout.mutate()} disabled={logout.isPending}>
           <LogOutIcon /> Log out

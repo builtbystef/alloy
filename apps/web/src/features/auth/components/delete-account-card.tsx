@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { deleteAccount } from "@/features/auth/mutations";
 import { FormError, useAppForm } from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionRow } from "@/components/shared/layout/settings-section";
 import {
   Dialog,
   DialogClose,
@@ -69,22 +69,16 @@ export function DeleteAccountCard() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Delete account</CardTitle>
-        <CardDescription>
-          Logs you out everywhere and removes the account after 7 days, along with every workspace
-          you are the only member of. Logging in before then cancels it.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col items-start gap-2">
+    <>
+      <ActionRow
+        destructive
+        title="Delete this account"
+        description="Workspaces you share must have another owner first."
+      >
         <Button variant="destructive" onClick={() => onOpenChange(true)}>
           Delete account
         </Button>
-        <p className="text-sm text-muted-foreground">
-          Workspaces you share must have another owner first.
-        </p>
-      </CardContent>
+      </ActionRow>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent showCloseButton={false}>
           <form
@@ -128,6 +122,6 @@ export function DeleteAccountCard() {
           </form>
         </DialogContent>
       </Dialog>
-    </Card>
+    </>
   );
 }

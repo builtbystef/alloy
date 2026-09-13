@@ -64,7 +64,6 @@ export function ConfirmEmail({
             <CheckCircle2Icon className="size-5 text-primary" /> Email verified
           </CardTitle>
           <CardDescription>
-            {verify.data.email} is confirmed.{" "}
             {sameAccount ? "Taking you to your workspace." : "Log in to get started."}
           </CardDescription>
         </CardHeader>
@@ -86,7 +85,7 @@ export function ConfirmEmail({
       <CardHeader>
         <CardTitle>Verify your email</CardTitle>
         <CardDescription>
-          Confirm that this address is yours to finish setting up your account.
+          One click confirms this address is yours and finishes setting up your account.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -115,9 +114,7 @@ export function AlreadyVerified() {
         <CardTitle className="flex items-center gap-2">
           <CheckCircle2Icon className="size-5 text-primary" /> Already verified
         </CardTitle>
-        <CardDescription>
-          Your email is confirmed. There is nothing left to do here.
-        </CardDescription>
+        <CardDescription>Your email is already confirmed.</CardDescription>
       </CardHeader>
       <CardFooter>
         <Button nativeButton={false} render={<Link href="/" />}>
@@ -155,13 +152,13 @@ export function CheckInbox({ email }: { email: string }) {
           <MailIcon className="size-5" /> Check your inbox
         </CardTitle>
         <CardDescription>
-          We sent a verification link to <strong>{email}</strong>. Follow it to start using Alloy.
-          The link works for one day.
+          We sent a verification link to <strong>{email}</strong>. Open it to confirm the address
+          and get into Alloy.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground">
-          Nothing there? Check your spam folder, or ask for another email.
+          Nothing there? Check your spam folder, or resend the email.
         </p>
       </CardContent>
       <CardFooter className="flex-col items-stretch gap-3">

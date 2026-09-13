@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { logoutAll } from "@/features/auth/mutations";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionRow } from "@/components/shared/layout/settings-section";
 import { errorMessage } from "@/lib/api/errors";
 
 export function SessionsCard() {
@@ -25,23 +25,11 @@ export function SessionsCard() {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sessions</CardTitle>
-        <CardDescription>
-          Sessions last 30 days. If a device is lost, log out everywhere; this one included.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button
-          variant="destructive"
-          onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
-        >
-          {mutation.isPending && <Loader2Icon className="animate-spin" />}
-          Log out everywhere
-        </Button>
-      </CardContent>
-    </Card>
+    <ActionRow title="Log out everywhere" description="This device included.">
+      <Button variant="outline" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+        {mutation.isPending && <Loader2Icon className="animate-spin" />}
+        Log out everywhere
+      </Button>
+    </ActionRow>
   );
 }

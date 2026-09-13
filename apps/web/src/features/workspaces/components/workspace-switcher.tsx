@@ -1,7 +1,7 @@
 "use client";
 
 import type { WorkspaceRead } from "@alloy/api-client";
-import { CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -73,6 +73,9 @@ export function WorkspaceSwitcher({ workspaces }: { workspaces: WorkspaceRead[] 
             ))}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
+          <DropdownMenuItem render={<Link href={current.paths.settings} />}>
+            <SettingsIcon /> Workspace settings
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setCreating(true)}>
             <PlusIcon /> New workspace
           </DropdownMenuItem>

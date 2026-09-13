@@ -18,8 +18,8 @@ export function workspacePaths(workspaceId: string) {
     assistant: `${base}/assistant` as const,
     assistantChat: (id: string) => `${base}/assistant/${id}` as const,
     imports: `${base}/imports` as const,
-    members: `${base}/members` as const,
     settings: `${base}/settings` as const,
+    members: `${base}/settings/members` as const,
     account: `${base}/account` as const,
   };
 }

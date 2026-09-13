@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/shared/layout/page-header";
+import { SettingsSection, SettingsSections } from "@/components/shared/layout/settings-section";
 import { FormSkeleton } from "@/components/shared/skeletons";
+import { roleLabels } from "@/features/workspaces/roles";
 import { requireWorkspace } from "@/features/workspaces/server";
 
 import { DangerZone } from "@/features/workspaces/components/danger-zone";
@@ -14,22 +15,32 @@ type Params = Promise<{ workspaceId: string }>;
 
 export default function SettingsPage({ params }: { params: Params }) {
   return (
-    <>
-      <PageHeader title="Workspace settings" />
-      <Suspense fallback={<FormSkeleton />}>
-        <SettingsContent params={params} />
-      </Suspense>
-    </>
+    <Suspense fallback={<FormSkeleton />}>
+      <SettingsContent params={params} />
+    </Suspense>
   );
 }
 
 async function SettingsContent({ params }: { params: Params }) {
   const { workspaceId } = await params;
   const workspace = await requireWorkspace(workspaceId);
+  const canManage = workspace.permissions.includes("workspace:manage");
   return (
-    <div className="grid max-w-3xl gap-6 md:grid-cols-2">
-      <WorkspaceNameForm workspace={workspace} />
-      <DangerZone workspace={workspace} />
-    </div>
+    <SettingsSections>
+      <SettingsSection
+        title="General"
+        description={
+          <>
+            You are {roleLabels[workspace.role].toLowerCase()} of this workspace.
+            {!canManage && " Only admins and owners can rename it."}
+          </>
+        }
+      >
+        <WorkspaceNameForm workspace={workspace} />
+      </SettingsSection>
+      <SettingsSection title="Danger zone" description="Neither of these can be undone.">
+        <DangerZone workspace={workspace} />
+      </SettingsSection>
+    </SettingsSections>
   );
 }

@@ -11,13 +11,12 @@ import { cancelEmailChange, requestEmailChange } from "@/features/auth/mutations
 import { FormError, useAppForm } from "@/components/shared/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldGroup } from "@/components/ui/field";
 import { ApiError, errorMessage } from "@/lib/api/errors";
 import { emailChangeSchema, type EmailChangeInput } from "@/features/auth/schemas";
 
 /** `pendingEmail` comes from the server render, so `router.refresh()` updates it. */
-export function EmailForm({ email, pendingEmail }: { email: string; pendingEmail: string | null }) {
+export function EmailForm({ pendingEmail }: { pendingEmail: string | null }) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -61,63 +60,54 @@ export function EmailForm({ email, pendingEmail }: { email: string; pendingEmail
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Email</CardTitle>
-        <CardDescription>
-          Your login is <strong>{email}</strong>. A new address takes effect once you follow the
-          link we send to it.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-6">
-        {pendingEmail !== null && (
-          <Alert>
-            <AlertTitle>Waiting for confirmation</AlertTitle>
-            <AlertDescription className="gap-3">
-              <p>
-                We sent a link to <strong>{pendingEmail}</strong>. Follow it within a day to move
-                your account there. Submitting a new address sends a new link.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="self-start"
-                onClick={() => cancel.mutate()}
-                disabled={cancel.isPending}
-              >
-                Cancel change
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        <form
-          className="flex flex-col gap-6"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void form.handleSubmit();
-          }}
-        >
-          <FieldGroup>
-            <FormError message={serverError} />
-            <form.AppField name="new_email">
-              {(field) => <field.TextField label="New email" type="email" autoComplete="email" />}
-            </form.AppField>
-            <form.AppField name="current_password">
-              {(field) => (
-                <field.TextField
-                  label="Current password"
-                  type="password"
-                  autoComplete="current-password"
-                  description="To confirm it is you."
-                />
-              )}
-            </form.AppField>
-          </FieldGroup>
-          <form.AppForm>
-            <form.SubmitButton className="self-start">Send confirmation link</form.SubmitButton>
-          </form.AppForm>
-        </form>
-      </CardContent>
-    </Card>
+    <>
+      {pendingEmail !== null && (
+        <Alert>
+          <AlertTitle>Waiting for confirmation</AlertTitle>
+          <AlertDescription className="gap-3">
+            <p>
+              We sent a link to <strong>{pendingEmail}</strong>. Follow it within a day to move your
+              account there. Submitting a new address sends a new link.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => cancel.mutate()}
+              disabled={cancel.isPending}
+            >
+              Cancel change
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      <form
+        className="flex flex-col gap-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void form.handleSubmit();
+        }}
+      >
+        <FieldGroup>
+          <FormError message={serverError} />
+          <form.AppField name="new_email">
+            {(field) => <field.TextField label="New email" type="email" autoComplete="email" />}
+          </form.AppField>
+          <form.AppField name="current_password">
+            {(field) => (
+              <field.TextField
+                label="Current password"
+                type="password"
+                autoComplete="current-password"
+                description="To confirm it is you."
+              />
+            )}
+          </form.AppField>
+        </FieldGroup>
+        <form.AppForm>
+          <form.SubmitButton className="self-start">Send confirmation link</form.SubmitButton>
+        </form.AppForm>
+      </form>
+    </>
   );
 }

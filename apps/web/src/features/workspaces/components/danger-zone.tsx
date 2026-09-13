@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { deleteWorkspace, leaveWorkspace } from "@/features/workspaces/mutations";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionRow } from "@/components/shared/layout/settings-section";
 import { ApiError, errorMessage } from "@/lib/api/errors";
 import { WORKSPACE_COOKIE } from "@/features/workspaces/cookie";
 
@@ -51,31 +51,26 @@ export function DangerZone({ workspace }: { workspace: WorkspaceRead }) {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Danger zone</CardTitle>
-        <CardDescription>Neither of these can be undone.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col items-start gap-4">
-        <div className="flex flex-col gap-2">
-          <Button variant="outline" onClick={() => setConfirming("leave")}>
-            Leave workspace
+    <>
+      <ActionRow
+        title="Leave workspace"
+        description="You lose access; everything else stays. The last owner cannot leave."
+      >
+        <Button variant="outline" onClick={() => setConfirming("leave")}>
+          Leave
+        </Button>
+      </ActionRow>
+      {canDelete && (
+        <ActionRow
+          destructive
+          title="Delete workspace"
+          description="Removes every contact, company, task, member, and invitation in it."
+        >
+          <Button variant="destructive" onClick={() => setConfirming("delete")}>
+            Delete
           </Button>
-          <p className="text-sm text-muted-foreground">
-            You lose access; everything else stays. The last owner cannot leave.
-          </p>
-        </div>
-        {canDelete && (
-          <div className="flex flex-col gap-2">
-            <Button variant="destructive" onClick={() => setConfirming("delete")}>
-              Delete workspace
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Removes every contact, company, task, member, and invitation in it.
-            </p>
-          </div>
-        )}
-      </CardContent>
+        </ActionRow>
+      )}
       <ConfirmDialog
         open={confirming === "leave"}
         onOpenChange={(open) => {
@@ -97,6 +92,6 @@ export function DangerZone({ workspace }: { workspace: WorkspaceRead }) {
         pending={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
-    </Card>
+    </>
   );
 }

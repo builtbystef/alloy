@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/shared/layout/page-header";
+import { SettingsSection, SettingsSections } from "@/components/shared/layout/settings-section";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { requireUser } from "@/lib/auth/session";
 import { requireWorkspace } from "@/features/workspaces/server";
@@ -11,14 +12,14 @@ import { EmailForm } from "@/features/auth/components/email-form";
 import { PasswordForm } from "@/features/auth/components/password-form";
 import { SessionsCard } from "@/features/auth/components/sessions-card";
 
-export const metadata: Metadata = { title: "Account" };
+export const metadata: Metadata = { title: "Settings" };
 
 type Params = Promise<{ workspaceId: string }>;
 
 export default function AccountPage({ params }: { params: Params }) {
   return (
     <>
-      <PageHeader title="Account" description="Your login, across every workspace." />
+      <PageHeader title="Settings" description="Your account, across every workspace." />
       <Suspense fallback={<FormSkeleton />}>
         <AccountContent params={params} />
       </Suspense>
@@ -30,11 +31,33 @@ async function AccountContent({ params }: { params: Params }) {
   const { workspaceId } = await params;
   const [user] = await Promise.all([requireUser(), requireWorkspace(workspaceId)]);
   return (
-    <div className="grid max-w-3xl gap-6 md:grid-cols-2">
-      <EmailForm email={user.email} pendingEmail={user.pending_email} />
-      <PasswordForm email={user.email} />
-      <SessionsCard />
-      <DeleteAccountCard />
-    </div>
+    <SettingsSections>
+      <SettingsSection
+        title="Email"
+        description={
+          <>
+            You log in as <strong className="font-medium text-foreground">{user.email}</strong>. A
+            new address takes effect once you follow the link we send to it.
+          </>
+        }
+      >
+        <EmailForm pendingEmail={user.pending_email} />
+      </SettingsSection>
+      <SettingsSection title="Password" description="Changing it logs out every other device.">
+        <PasswordForm email={user.email} />
+      </SettingsSection>
+      <SettingsSection
+        title="Sessions"
+        description="Sessions last 30 days. If a device is lost, log out everywhere."
+      >
+        <SessionsCard />
+      </SettingsSection>
+      <SettingsSection
+        title="Delete account"
+        description="Logs you out everywhere and removes the account after 7 days, along with every workspace you are the only member of. Logging in before then cancels it."
+      >
+        <DeleteAccountCard />
+      </SettingsSection>
+    </SettingsSections>
   );
 }

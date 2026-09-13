@@ -23,7 +23,9 @@ import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-sw
 /**
  * The sidebar is a Server Component: the workspace switcher, the nav
  * highlight, and the user menu are dynamic, and each streams in behind its
- * own <Suspense> so the rest of the shell is prerendered.
+ * own <Suspense> so the rest of the shell is prerendered. Workspace settings
+ * hang off the switcher and the account off the user menu, so the nav itself
+ * is only the CRM.
  */
 export function AppSidebar() {
   return (
@@ -41,16 +43,8 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>CRM</SidebarGroupLabel>
           <SidebarGroupContent>
-            <Suspense fallback={<NavMenuFallback section="crm" />}>
-              <NavMenu section="crm" />
-            </Suspense>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <Suspense fallback={<NavMenuFallback section="workspace" />}>
-              <NavMenu section="workspace" />
+            <Suspense fallback={<NavMenuFallback />}>
+              <NavMenu />
             </Suspense>
           </SidebarGroupContent>
         </SidebarGroup>
