@@ -1,14 +1,24 @@
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 
 Password = Field(min_length=8, max_length=128)
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 
 
 class Credentials(BaseModel):
     email: EmailStr
     password: str = Password
+
+
+class Signup(Credentials):
+    name: Name
+
+
+class ProfileUpdate(BaseModel):
+    name: Name
 
 
 class PasswordChange(BaseModel):
@@ -54,6 +64,7 @@ class UserRead(BaseModel):
 
     id: UUID
     email: str
+    name: str
     email_verified_at: datetime | None
     pending_email: str | None
     created_at: datetime

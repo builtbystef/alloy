@@ -109,7 +109,8 @@ def test_purge_removes_only_what_has_been_dead_long_enough(  # noqa: PLR0913, PL
     join(alice, "grace@example.com", "member")
     # An account that never followed its verification link.
     signup = client.post(
-        "/auth/signup", json={"email": "dan@example.com", "password": "correct horse battery"}
+        "/auth/signup",
+        json={"email": "dan@example.com", "password": "correct horse battery", "name": "Dan"},
     )
     assert signup.status_code == 201
     client.cookies.clear()
@@ -276,7 +277,8 @@ def test_purge_removes_deleted_accounts_and_the_workspaces_they_were_alone_in(  
     )
     assert login.status_code == 401
     signup = client.post(
-        "/auth/signup", json={"email": "carol@example.com", "password": "correct horse battery"}
+        "/auth/signup",
+        json={"email": "carol@example.com", "password": "correct horse battery", "name": "Carol"},
     )
     assert signup.status_code == 201
     report = db.run(run, later)

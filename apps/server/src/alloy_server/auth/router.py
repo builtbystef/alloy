@@ -16,6 +16,8 @@ from alloy_server.auth.schemas import (
     PasswordChange,
     PasswordReset,
     PasswordResetRequest,
+    ProfileUpdate,
+    Signup,
     UserRead,
 )
 from alloy_server.config import SettingsDep
@@ -55,7 +57,7 @@ async def log_in(
     dependencies=[Depends(per_ip(SIGNUP_PER_IP))],
 )
 async def signup(
-    credentials: Credentials,
+    body: Signup,
     session: SessionDep,
     settings: SettingsDep,
     response: Response,
@@ -65,7 +67,7 @@ async def signup(
 
     An invitee gets no link: accepting the invitation verifies the address instead.
     """
-    user = await service.create_account(session, credentials.email.lower(), credentials.password)
+    user = await service.create_account(session, body.email.lower(), body.password, body.name)
     read = await log_in(session, settings, user, response)
     if not await service.has_pending_invite(session, user.email):
         await service.send_verification(session, settings, user)
@@ -251,4 +253,12 @@ async def delete_account(
 
 @router.get("/me")
 async def read_me(user: CurrentUserDep) -> UserRead:
+    return UserRead.model_validate(user)
+
+
+@router.patch("/me")
+async def update_me(body: ProfileUpdate, user: CurrentUserDep, session: SessionDep) -> UserRead:
+    """Change what the user is called. The email has its own flow: `/change-email`."""
+    user.name = body.name
+    await session.commit()
     return UserRead.model_validate(user)

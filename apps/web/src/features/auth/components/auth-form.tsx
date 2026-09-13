@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import type { Credentials } from "@alloy/api-client";
+import type { Signup } from "@alloy/api-client";
 import { login, signup } from "@/features/auth/mutations";
 import { FormError, useAppForm } from "@/components/shared/form";
 import {
@@ -44,7 +44,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const destination = safeNextPath(next) as "/";
 
   const mutation = useMutation({
-    mutationFn: (credentials: Credentials) => (isSignup ? signup(credentials) : login(credentials)),
+    mutationFn: (body: Signup) => (isSignup ? signup(body) : login(body)),
     onSuccess: () => {
       queryClient.clear();
       if (isSignup && !isInvite) {
@@ -66,13 +66,15 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   });
 
   const form = useAppForm({
-    defaultValues: { email: "", password: "", confirm: "" } as AuthFormInput,
+    defaultValues: { name: "", email: "", password: "", confirm: "" } as AuthFormInput,
     validationLogic: revalidateLogic(),
     validators: { onDynamic: authFormSchema(mode) },
     onSubmit: async ({ value }) => {
       setServerError(null);
       // Failures are shown through onError.
-      await mutation.mutateAsync({ email: value.email, password: value.password }).catch(() => {});
+      await mutation
+        .mutateAsync({ name: value.name.trim(), email: value.email, password: value.password })
+        .catch(() => {});
     },
   });
 
@@ -97,9 +99,19 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <CardContent>
           <FieldGroup>
             <FormError message={serverError} />
+            {isSignup && (
+              <form.AppField name="name">
+                {(field) => <field.TextField label="Name" autoComplete="name" autoFocus />}
+              </form.AppField>
+            )}
             <form.AppField name="email">
               {(field) => (
-                <field.TextField label="Email" type="email" autoComplete="email" autoFocus />
+                <field.TextField
+                  label="Email"
+                  type="email"
+                  autoComplete="email"
+                  autoFocus={!isSignup}
+                />
               )}
             </form.AppField>
             <form.AppField name="password">

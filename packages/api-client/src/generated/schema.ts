@@ -365,7 +365,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Me
+         * @description Change what the user is called. The email has its own flow: `/change-email`.
+         */
+        patch: operations["auth-update_me"];
         trace?: never;
     };
     "/workspaces/": {
@@ -1846,6 +1850,11 @@ export interface components {
          * @enum {string}
          */
         Permission: "crm:read" | "crm:write" | "members:read" | "members:manage" | "workspace:manage" | "workspace:delete";
+        /** ProfileUpdate */
+        ProfileUpdate: {
+            /** Name */
+            name: string;
+        };
         /** RowError */
         RowError: {
             /**
@@ -1863,6 +1872,18 @@ export interface components {
          * @enum {string}
          */
         RowSource: "agent" | "import";
+        /** Signup */
+        Signup: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Password */
+            password: string;
+            /** Name */
+            name: string;
+        };
         /**
          * SortOrder
          * @enum {string}
@@ -1946,6 +1967,8 @@ export interface components {
             id: string;
             /** Email */
             email: string;
+            /** Name */
+            name: string;
             /** Email Verified At */
             email_verified_at: string | null;
             /** Pending Email */
@@ -2080,8 +2103,10 @@ export type PasswordChange = components['schemas']['PasswordChange'];
 export type PasswordReset = components['schemas']['PasswordReset'];
 export type PasswordResetRequest = components['schemas']['PasswordResetRequest'];
 export type Permission = components['schemas']['Permission'];
+export type ProfileUpdate = components['schemas']['ProfileUpdate'];
 export type RowError = components['schemas']['RowError'];
 export type RowSource = components['schemas']['RowSource'];
+export type Signup = components['schemas']['Signup'];
 export type SortOrder = components['schemas']['SortOrder'];
 export type TaskCreate = components['schemas']['TaskCreate'];
 export type TaskRead = components['schemas']['TaskRead'];
@@ -2186,7 +2211,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Credentials"];
+                "application/json": components["schemas"]["Signup"];
             };
         };
         responses: {
@@ -2554,6 +2579,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserRead"];
+                };
+            };
+        };
+    };
+    "auth-update_me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

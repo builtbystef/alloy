@@ -106,10 +106,10 @@ async def workspaces_needing_an_owner(session: AsyncSession, user: User) -> list
 # --- Accounts and sessions ---------------------------------------------------------
 
 
-async def create_account(session: AsyncSession, email: str, password: str) -> User:
+async def create_account(session: AsyncSession, email: str, password: str, name: str) -> User:
     """A user with a first workspace they own. Flushed, not committed.
     `ConflictError` when the address is registered."""
-    user = User(email=email, password_hash=await hash_password(password))
+    user = User(email=email, name=name, password_hash=await hash_password(password))
     session.add(user)
     try:
         await session.flush()

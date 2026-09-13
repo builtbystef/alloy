@@ -69,5 +69,5 @@ async function CurrentWorkspaceSwitcher() {
 
 async function CurrentUserMenu() {
   const user = await requireUser();
-  return <UserMenu email={user.email} />;
+  return <UserMenu name={user.name} email={user.email} />;
 }

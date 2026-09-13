@@ -148,7 +148,8 @@ def test_accepting_an_invitation_verifies_the_email(
     alice.post("/invites", json={"email": "grace@example.com"})
     token = token_from(outbox)
     signup = client.post(
-        "/auth/signup", json={"email": "Grace@example.com", "password": "correct horse battery"}
+        "/auth/signup",
+        json={"email": "Grace@example.com", "password": "correct horse battery", "name": "Grace"},
     )
     assert signup.status_code == 201
     assert signup.json()["email_verified_at"] is None

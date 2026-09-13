@@ -210,7 +210,10 @@ def signup(client: TestClient, outbox: Outbox, email: str) -> dict[str, str]:
     Explicit headers, not the client's cookie jar, so two users can share one client.
     The verification email is taken out of `outbox`, so tests see only their own mail.
     """
-    response = client.post("/auth/signup", json={"email": email, "password": PASSWORD})
+    name = email.split("@", maxsplit=1)[0].capitalize()
+    response = client.post(
+        "/auth/signup", json={"email": email, "password": PASSWORD, "name": name}
+    )
     assert response.status_code == 201, response.text
     token = response.cookies[SESSION_COOKIE]
     client.cookies.clear()

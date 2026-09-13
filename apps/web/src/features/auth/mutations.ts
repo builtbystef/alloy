@@ -3,6 +3,8 @@ import type {
   Credentials,
   EmailChangeRequest,
   PasswordChange,
+  ProfileUpdate,
+  Signup,
   UserRead,
 } from "@alloy/api-client";
 
@@ -14,8 +16,12 @@ export async function login(credentials: Credentials): Promise<UserRead> {
 }
 
 /** Also creates the account's first workspace. */
-export async function signup(credentials: Credentials): Promise<UserRead> {
-  return unwrap(await browserApi.POST("/auth/signup", { body: credentials }));
+export async function signup(body: Signup): Promise<UserRead> {
+  return unwrap(await browserApi.POST("/auth/signup", { body }));
+}
+
+export async function updateProfile(body: ProfileUpdate): Promise<UserRead> {
+  return unwrap(await browserApi.PATCH("/auth/me", { body }));
 }
 
 export async function logout(): Promise<void> {

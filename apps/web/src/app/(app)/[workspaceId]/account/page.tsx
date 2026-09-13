@@ -9,6 +9,7 @@ import { requireWorkspace } from "@/features/workspaces/server";
 
 import { DeleteAccountCard } from "@/features/auth/components/delete-account-card";
 import { EmailForm } from "@/features/auth/components/email-form";
+import { NameForm } from "@/features/auth/components/name-form";
 import { PasswordForm } from "@/features/auth/components/password-form";
 import { SessionsCard } from "@/features/auth/components/sessions-card";
 
@@ -32,6 +33,9 @@ async function AccountContent({ params }: { params: Params }) {
   const [user] = await Promise.all([requireUser(), requireWorkspace(workspaceId)]);
   return (
     <SettingsSections>
+      <SettingsSection title="Profile" description="How you appear across your workspaces.">
+        <NameForm name={user.name} />
+      </SettingsSection>
       <SettingsSection
         title="Email"
         description={

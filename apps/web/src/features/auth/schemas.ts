@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { requiredText } from "@/lib/validation";
+
 const password = z
   .string()
   .min(8, "Password must be at least 8 characters")
@@ -12,6 +14,7 @@ export const loginSchema = z.object({
 
 export const signupSchema = z
   .object({
+    name: requiredText("Name", 100),
     email: z.email("Enter a valid email address"),
     password,
     confirm: z.string(),
@@ -21,9 +24,9 @@ export const signupSchema = z
     path: ["confirm"],
   });
 
-/** One input shape for the shared auth form; only sign-up checks `confirm`. */
+/** One input shape for the shared auth form; only sign-up checks `name` and `confirm`. */
 export const authFormSchema = (mode: "login" | "signup") =>
-  mode === "signup" ? signupSchema : loginSchema.extend({ confirm: z.string() });
+  mode === "signup" ? signupSchema : loginSchema.extend({ name: z.string(), confirm: z.string() });
 
 export const forgotPasswordSchema = z.object({
   email: z.email("Enter a valid email address"),
@@ -50,6 +53,10 @@ export const passwordChangeSchema = z
     path: ["confirm"],
   });
 
+export const profileSchema = z.object({
+  name: requiredText("Name", 100),
+});
+
 export const emailChangeSchema = z.object({
   new_email: z.email("Enter a valid email address"),
   current_password: z.string().min(1, "Your password is required"),
@@ -65,5 +72,6 @@ export type AuthFormInput = z.input<ReturnType<typeof authFormSchema>>;
 export type ForgotPasswordInput = z.input<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.input<typeof resetPasswordSchema>;
 export type PasswordChangeInput = z.input<typeof passwordChangeSchema>;
+export type ProfileInput = z.input<typeof profileSchema>;
 export type EmailChangeInput = z.input<typeof emailChangeSchema>;
 export type AccountDeletionInput = z.input<typeof accountDeletionSchema>;

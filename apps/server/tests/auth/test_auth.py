@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 PASSWORD = "correct horse battery"  # noqa: S105 - the one conftest's users use too
 CREDENTIALS = {"email": "ada@example.com", "password": PASSWORD}
+SIGNUP = {**CREDENTIALS, "name": "Ada Lovelace"}
 
 
 def verification_token(outbox: Outbox) -> str:
@@ -24,10 +25,11 @@ def verification_token(outbox: Outbox) -> str:
 
 
 def test_signup_sets_a_session_cookie_and_returns_the_user(client: TestClient):
-    response = client.post("/auth/signup", json=CREDENTIALS)
+    response = client.post("/auth/signup", json=SIGNUP)
     assert response.status_code == 201
     body = response.json()
     assert body["email"] == "ada@example.com"
+    assert body["name"] == "Ada Lovelace"
     assert body["email_verified_at"] is None
     assert "password" not in body
     assert "password_hash" not in body
@@ -39,18 +41,26 @@ def test_signup_sets_a_session_cookie_and_returns_the_user(client: TestClient):
 
 
 def test_signup_rejects_a_taken_email(client: TestClient):
-    client.post("/auth/signup", json=CREDENTIALS)
-    response = client.post("/auth/signup", json={**CREDENTIALS, "email": "ADA@example.com"})
+    client.post("/auth/signup", json=SIGNUP)
+    response = client.post("/auth/signup", json={**SIGNUP, "email": "ADA@example.com"})
     assert response.status_code == 409
 
 
+def test_signup_requires_a_name(client: TestClient):
+    assert client.post("/auth/signup", json=CREDENTIALS).status_code == 422
+    assert client.post("/auth/signup", json={**SIGNUP, "name": "   "}).status_code == 422
+    padded = client.post("/auth/signup", json={**SIGNUP, "name": "  Ada  "})
+    assert padded.status_code == 201
+    assert padded.json()["name"] == "Ada"
+
+
 def test_signup_rejects_a_short_password(client: TestClient):
-    response = client.post("/auth/signup", json={**CREDENTIALS, "password": "short"})
+    response = client.post("/auth/signup", json={**SIGNUP, "password": "short"})
     assert response.status_code == 422
 
 
 def test_login_with_the_right_password(client: TestClient):
-    client.post("/auth/signup", json=CREDENTIALS)
+    client.post("/auth/signup", json=SIGNUP)
     client.cookies.clear()
     response = client.post("/auth/login", json=CREDENTIALS)
     assert response.status_code == 200
@@ -59,7 +69,7 @@ def test_login_with_the_right_password(client: TestClient):
 
 
 def test_login_with_the_wrong_password_or_unknown_email(client: TestClient):
-    client.post("/auth/signup", json=CREDENTIALS)
+    client.post("/auth/signup", json=SIGNUP)
     wrong = client.post("/auth/login", json={**CREDENTIALS, "password": "wrong password"})
     unknown = client.post("/auth/login", json={**CREDENTIALS, "email": "nobody@example.com"})
     assert wrong.status_code == 401
@@ -71,21 +81,33 @@ def test_me_requires_a_valid_session_cookie(client: TestClient):
     assert client.get("/auth/me").status_code == 401
     assert client.get("/auth/me", headers={"Cookie": f"{SESSION_COOKIE}=nope"}).status_code == 401
     # The token is never accepted as a bearer token.
-    token = client.post("/auth/signup", json=CREDENTIALS).cookies[SESSION_COOKIE]
+    token = client.post("/auth/signup", json=SIGNUP).cookies[SESSION_COOKIE]
     client.cookies.clear()
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
 
 def test_me_returns_the_logged_in_user(client: TestClient):
     """The browser flow: the cookie jar carries the session."""
-    client.post("/auth/signup", json=CREDENTIALS)
+    client.post("/auth/signup", json=SIGNUP)
     response = client.get("/auth/me")
     assert response.status_code == 200
     assert response.json()["email"] == "ada@example.com"
+    assert response.json()["name"] == "Ada Lovelace"
+
+
+def test_me_updates_the_name(client: TestClient):
+    assert client.patch("/auth/me", json={"name": "Countess"}).status_code == 401
+    client.post("/auth/signup", json=SIGNUP)
+    response = client.patch("/auth/me", json={"name": "  Countess  "})
+    assert response.status_code == 200
+    assert response.json()["name"] == "Countess"
+    assert client.get("/auth/me").json()["name"] == "Countess"
+    assert client.patch("/auth/me", json={"name": ""}).status_code == 422
+    assert client.patch("/auth/me", json={"name": "x" * 101}).status_code == 422
 
 
 def test_logout_revokes_the_session_and_clears_the_cookie(client: TestClient):
-    client.post("/auth/signup", json=CREDENTIALS)
+    client.post("/auth/signup", json=SIGNUP)
     token = client.cookies[SESSION_COOKIE]
     response = client.post("/auth/logout")
     assert response.status_code == 204
@@ -97,7 +119,7 @@ def test_logout_revokes_the_session_and_clears_the_cookie(client: TestClient):
 
 
 def test_logout_all_revokes_every_session(client: TestClient):
-    client.post("/auth/signup", json=CREDENTIALS)
+    client.post("/auth/signup", json=SIGNUP)
     laptop = {"Cookie": f"{SESSION_COOKIE}={client.cookies[SESSION_COOKIE]}"}
     client.cookies.clear()
     client.post("/auth/login", json=CREDENTIALS)
@@ -110,7 +132,7 @@ def test_logout_all_revokes_every_session(client: TestClient):
 
 
 def test_password_change_keeps_this_session_and_revokes_the_others(client: TestClient):
-    client.post("/auth/signup", json=CREDENTIALS)
+    client.post("/auth/signup", json=SIGNUP)
     other = {"Cookie": f"{SESSION_COOKIE}={client.cookies[SESSION_COOKIE]}"}
     client.cookies.clear()
     client.post("/auth/login", json=CREDENTIALS)
@@ -139,7 +161,7 @@ def test_password_change_keeps_this_session_and_revokes_the_others(client: TestC
 
 
 def test_signup_emails_a_verification_link_that_unlocks_the_app(client: TestClient, outbox: Outbox):
-    client.post("/auth/signup", json=CREDENTIALS)
+    client.post("/auth/signup", json=SIGNUP)
     assert len(outbox) == 1
     email = outbox[0]
     assert email.to == "ada@example.com"
@@ -170,7 +192,7 @@ def test_signup_emails_a_verification_link_that_unlocks_the_app(client: TestClie
 
 
 def test_resend_replaces_the_pending_link(client: TestClient, outbox: Outbox):
-    client.post("/auth/signup", json=CREDENTIALS)
+    client.post("/auth/signup", json=SIGNUP)
     first = verification_token(outbox)
     client.cookies.clear()
     assert client.post("/auth/resend-verification").status_code == 401
@@ -195,7 +217,7 @@ class TestExpired:
         return Settings(app_name="Test API", verification_ttl=timedelta(seconds=-1))
 
     def test_expired_verification_link(self, client: TestClient, outbox: Outbox):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         token = verification_token(outbox)
         assert client.post("/auth/verify-email", json={"token": token}).status_code == 410
         assert client.get("/workspaces/").status_code == 403
@@ -210,7 +232,7 @@ def reset_token(outbox: Outbox) -> str:
 
 class TestPasswordReset:
     def test_the_link_sets_a_new_password_and_logs_in(self, client: TestClient, outbox: Outbox):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         # A second login elsewhere, to be revoked by the reset.
         other = client.post("/auth/login", json=CREDENTIALS).cookies[SESSION_COOKIE]
         client.cookies.clear()
@@ -257,7 +279,7 @@ class TestPasswordReset:
         assert outbox == []
 
     def test_a_new_request_replaces_the_previous_link(self, client: TestClient, outbox: Outbox):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         client.cookies.clear()
         client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
         first = reset_token(outbox)
@@ -272,7 +294,7 @@ class TestPasswordReset:
     def test_changing_the_password_while_logged_in_voids_the_link(
         self, client: TestClient, outbox: Outbox
     ):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
         token = reset_token(outbox)
         change = {"current_password": CREDENTIALS["password"], "new_password": "new horse battery"}
@@ -283,7 +305,7 @@ class TestPasswordReset:
     def test_the_link_rejects_a_short_password_without_spending_the_token(
         self, client: TestClient, outbox: Outbox
     ):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
         token = reset_token(outbox)
         body = {"token": token, "new_password": "short"}
@@ -294,7 +316,7 @@ class TestPasswordReset:
     def test_a_reset_needs_no_login_and_ignores_a_stale_cookie(
         self, client: TestClient, outbox: Outbox
     ):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
         token = reset_token(outbox)
         client.post("/auth/logout-all")  # the cookie in the jar is now dead
@@ -308,7 +330,7 @@ class TestExpiredReset:
         return Settings(app_name="Test API", password_reset_ttl=timedelta(seconds=-1))
 
     def test_expired_reset_link(self, client: TestClient, outbox: Outbox):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         client.post("/auth/forgot-password", json={"email": CREDENTIALS["email"]})
         token = reset_token(outbox)
         body = {"token": token, "new_password": "new horse battery"}
@@ -325,7 +347,7 @@ class TestEmailChange:
     def test_the_link_moves_the_account_to_the_new_address(
         self, client: TestClient, outbox: Outbox
     ):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         client.post("/auth/verify-email", json={"token": verification_token(outbox)})
 
         wrong = client.post(
@@ -362,7 +384,7 @@ class TestEmailChange:
 
     def test_confirming_verifies_an_unverified_account(self, client: TestClient, outbox: Outbox):
         """A typo at signup: the fix is a new address, which the link proves."""
-        client.post("/auth/signup", json={**CREDENTIALS, "email": "ada@exmaple.com"})
+        client.post("/auth/signup", json={**SIGNUP, "email": "ada@exmaple.com"})
         assert client.get("/workspaces/").status_code == 403
         body = {"new_email": "ada@example.com", "current_password": CREDENTIALS["password"]}
         assert client.post("/auth/change-email", json=body).status_code == 204
@@ -374,9 +396,9 @@ class TestEmailChange:
         assert client.post("/auth/verify-email", json={"token": old_link}).status_code == 404
 
     def test_a_taken_or_unchanged_address_is_refused(self, client: TestClient, outbox: Outbox):
-        client.post("/auth/signup", json={**CREDENTIALS, "email": "grace@example.com"})
+        client.post("/auth/signup", json={**SIGNUP, "email": "grace@example.com"})
         client.cookies.clear()
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         password = CREDENTIALS["password"]
         same = client.post(
             "/auth/change-email",
@@ -393,12 +415,12 @@ class TestEmailChange:
     def test_an_address_registered_meanwhile_blocks_the_link(
         self, client: TestClient, outbox: Outbox
     ):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         body = {"new_email": "grace@example.com", "current_password": CREDENTIALS["password"]}
         assert client.post("/auth/change-email", json=body).status_code == 204
         token = change_token(outbox)
         client.cookies.clear()
-        client.post("/auth/signup", json={**CREDENTIALS, "email": "grace@example.com"})
+        client.post("/auth/signup", json={**SIGNUP, "email": "grace@example.com"})
         assert client.post("/auth/confirm-email", json={"token": token}).status_code == 409
 
     def test_an_address_registered_during_the_request_is_a_409_not_a_500(
@@ -406,12 +428,12 @@ class TestEmailChange:
     ):
         """The unique constraint is the last line: `email_taken` is made to miss, as
         it would if the other signup committed between the check and the write."""
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         body = {"new_email": "grace@example.com", "current_password": CREDENTIALS["password"]}
         assert client.post("/auth/change-email", json=body).status_code == 204
         token = change_token(outbox)
         client.cookies.clear()
-        client.post("/auth/signup", json={**CREDENTIALS, "email": "grace@example.com"})
+        client.post("/auth/signup", json={**SIGNUP, "email": "grace@example.com"})
 
         async def missed(session, email) -> bool:  # noqa: ARG001
             return False
@@ -422,7 +444,7 @@ class TestEmailChange:
     def test_a_new_request_replaces_the_pending_one_and_cancel_drops_it(
         self, client: TestClient, outbox: Outbox
     ):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         password = CREDENTIALS["password"]
         client.post(
             "/auth/change-email",
@@ -450,7 +472,7 @@ class TestExpiredEmailChange:
         return Settings(app_name="Test API", email_change_ttl=timedelta(seconds=-1))
 
     def test_expired_link(self, client: TestClient, outbox: Outbox):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         body = {"new_email": "grace@example.com", "current_password": CREDENTIALS["password"]}
         assert client.post("/auth/change-email", json=body).status_code == 204
         token = change_token(outbox)
@@ -462,7 +484,7 @@ class TestAccountDeletion:
     def test_deleting_logs_out_everywhere_and_login_brings_it_back(
         self, client: TestClient, outbox: Outbox
     ):
-        client.post("/auth/signup", json=CREDENTIALS)
+        client.post("/auth/signup", json=SIGNUP)
         other = {"Cookie": f"{SESSION_COOKIE}={client.cookies[SESSION_COOKIE]}"}
         client.cookies.clear()
         client.post("/auth/login", json=CREDENTIALS)
@@ -486,7 +508,7 @@ class TestAccountDeletion:
         assert email.to == "ada@example.com"
         assert email.subject == "Your account will be deleted"
         assert "7 days" in email.text
-        assert client.post("/auth/signup", json=CREDENTIALS).status_code == 409
+        assert client.post("/auth/signup", json=SIGNUP).status_code == 409
 
         login = client.post("/auth/login", json=CREDENTIALS)
         assert login.status_code == 200
@@ -527,7 +549,7 @@ class TestExpiredSession:
         return Settings(app_name="Test API", session_ttl=timedelta(seconds=-1))
 
     def test_an_expired_session_is_no_session(self, client: TestClient):
-        assert client.post("/auth/signup", json=CREDENTIALS).status_code == 201
+        assert client.post("/auth/signup", json=SIGNUP).status_code == 201
         assert client.get("/auth/me").status_code == 401
         assert client.post("/auth/login", json=CREDENTIALS).status_code == 200
         assert client.get("/auth/me").status_code == 401

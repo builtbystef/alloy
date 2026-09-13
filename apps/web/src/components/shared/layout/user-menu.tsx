@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDownIcon, LogOutIcon, SettingsIcon, UserIcon } from "lucide-react";
+import { ChevronsUpDownIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -16,7 +16,7 @@ import { useLogout } from "@/features/auth/hooks/use-logout";
 import { SidebarMenuButton, useSidebar } from "@/components/ui/sidebar";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 
-export function UserMenu({ email }: { email: string }) {
+export function UserMenu({ name, email }: { name: string; email: string }) {
   const { isMobile } = useSidebar();
   const { paths } = useWorkspace();
 
@@ -32,12 +32,15 @@ export function UserMenu({ email }: { email: string }) {
           />
         }
       >
-        <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted">
-          <UserIcon className="size-4" />
+        <div
+          aria-hidden
+          className="flex aspect-square size-8 items-center justify-center rounded-lg bg-logo text-sm font-semibold text-logo-foreground uppercase"
+        >
+          {name.trim().charAt(0)}
         </div>
         <div className="grid flex-1 text-left text-sm leading-tight">
-          <span className="truncate font-medium">{email}</span>
-          <span className="truncate text-xs text-muted-foreground">Signed in</span>
+          <span className="truncate font-medium">{name}</span>
+          <span className="truncate text-xs text-muted-foreground">{email}</span>
         </div>
         <ChevronsUpDownIcon className="ml-auto size-4" />
       </DropdownMenuTrigger>
@@ -48,8 +51,9 @@ export function UserMenu({ email }: { email: string }) {
         className="w-(--anchor-width) min-w-56"
       >
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
-            {email}
+          <DropdownMenuLabel className="grid font-normal">
+            <span className="truncate font-medium text-foreground">{name}</span>
+            <span className="truncate text-xs text-muted-foreground">{email}</span>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

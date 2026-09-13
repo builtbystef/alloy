@@ -12,6 +12,8 @@ class User(UUIDPrimaryKey, Timestamps, Base):
 
     # Stored lower-cased; the API normalizes on signup and login.
     email: Mapped[str] = mapped_column(String(320), unique=True)
+    # How the user is shown to others and to themselves; chosen at signup.
+    name: Mapped[str] = mapped_column(String(100))
     password_hash: Mapped[str] = mapped_column(String(255))
 
     # Null until the user follows the link emailed at signup (or accepts an

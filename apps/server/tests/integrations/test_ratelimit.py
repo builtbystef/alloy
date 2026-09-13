@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from tests.conftest import Actor, Outbox
 
 TWO_PER_MINUTE = Limit("test", 2, timedelta(minutes=1))
-CREDENTIALS = {"email": "ada@example.com", "password": "correct horse battery"}
+CREDENTIALS = {"email": "ada@example.com", "password": "correct horse battery", "name": "Ada"}
 
 
 # --- Stores -------------------------------------------------------------------
@@ -246,7 +246,9 @@ def test_invitations_sent_by_one_user_are_limited(alice: Actor, outbox: Outbox):
 def test_change_email_counts_a_taken_address(client: TestClient, outbox: Outbox):
     """The 409 for a registered address must cost an attempt, or the endpoint would
     test addresses without limit."""
-    client.post("/auth/signup", json={"email": "taken@example.com", "password": "long enough"})
+    client.post(
+        "/auth/signup", json={"email": "taken@example.com", "password": "long enough", "name": "T"}
+    )
     client.post("/auth/logout")
     client.post("/auth/signup", json=CREDENTIALS)
     outbox.clear()
