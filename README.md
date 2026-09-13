@@ -29,6 +29,7 @@ vp run ci            # everything CI runs
 vp run db:up         # PostgreSQL, Redis, and RustFS in Docker; waits until ready
 vp run db:migrate    # alembic upgrade head
 vp run db:down       # stop (data is kept; add --volumes to wipe it)
+vp run dev           # API, worker, scheduler, and web together, one colour-coded console
 vp run dev:api       # FastAPI with reload, http://127.0.0.1:8000/docs
 vp run dev:worker    # Taskiq worker: the background jobs
 vp run dev:scheduler # Taskiq scheduler: the hourly purge (run exactly one)
