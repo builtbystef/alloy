@@ -3,6 +3,7 @@
 import type { CompanyRef, ContactRef } from "@alloy/api-client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import Link from "next/link";
 
 import { TruncatedNote } from "@/components/shared/truncated-note";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { browserApi } from "@/lib/api/client";
 import { formatRelativeDays, isBeforeToday } from "@/lib/formatting/dates";
-import { ALL_ROWS } from "@/lib/lists";
+import { ALL_ROWS, toSearchString } from "@/lib/lists";
 import { taskListQuery } from "@/features/crm/tasks/queries";
 import { cn } from "@/lib/utils";
 import { useCan, useWorkspace } from "@/features/workspaces/workspace-provider";
 
 import { useTaskMutations } from "@/features/crm/tasks/hooks/use-task-mutations";
 
+/** The tasks card on a contact or company page. */
 export function TaskList({
   timeZone,
   contact,
@@ -38,12 +40,12 @@ export function TaskList({
     : company
       ? { company_id: company.id }
       : {};
-  const { id: workspaceId } = useWorkspace();
+  const { id: workspaceId, paths } = useWorkspace();
   const canWrite = useCan("crm:write");
   const { data: tasks } = useSuspenseQuery(
     taskListQuery(browserApi, workspaceId, { ...filters, ...ALL_ROWS, tz: timeZone }),
   );
-  const actions = useTaskMutations({ timeZone, defaults: filters });
+  const actions = useTaskMutations();
   const open = tasks.items.filter((task) => task.status === "open");
   const done = tasks.items.filter((task) => task.status === "done");
 
@@ -53,7 +55,12 @@ export function TaskList({
         <CardTitle>Tasks</CardTitle>
         {canWrite && (
           <CardAction>
-            <Button variant="outline" size="sm" onClick={actions.openCreate}>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`${paths.taskNew}?${toSearchString(filters)}`} />}
+            >
               <PlusIcon /> Add
             </Button>
           </CardAction>
@@ -78,14 +85,15 @@ export function TaskList({
                     aria-label={`Mark "${task.title}" ${task.status === "done" ? "open" : "done"}`}
                   />
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <span
+                    <Link
+                      href={paths.task(task.id)}
                       className={cn(
-                        "text-sm",
+                        "text-sm hover:underline",
                         task.status === "done" && "text-muted-foreground line-through",
                       )}
                     >
                       {task.title}
-                    </span>
+                    </Link>
                     {(task.due_at || task.created_by) && (
                       <span className="text-xs text-muted-foreground">
                         {task.due_at && (
@@ -113,7 +121,7 @@ export function TaskList({
                         <MoreHorizontalIcon />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => actions.openEdit(task)}>
+                        <DropdownMenuItem render={<Link href={paths.taskEdit(task.id)} />}>
                           <PencilIcon /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -132,7 +140,7 @@ export function TaskList({
         )}
         <TruncatedNote shown={tasks.items.length} total={tasks.total} noun="tasks" />
       </CardContent>
-      {actions.dialogs}
+      {actions.dialog}
     </Card>
   );
 }

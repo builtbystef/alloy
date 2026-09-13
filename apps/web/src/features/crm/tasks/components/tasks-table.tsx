@@ -2,11 +2,9 @@
 
 import type { DueFilter, TaskRead, TaskStatus } from "@alloy/api-client";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 
 import { DataTable } from "@/components/shared/data-table";
-import { Button } from "@/components/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { browserApi } from "@/lib/api/client";
 import { dueFilterLabels, taskStatusLabels } from "@/features/crm/tasks/labels";
@@ -50,7 +48,7 @@ export function TasksTable({
   const { data: tasks } = useSuspenseQuery(
     taskListQuery(browserApi, workspaceId, { ...paged(deferred), tz: timeZone }),
   );
-  const actions = useTaskMutations({ timeZone });
+  const actions = useTaskMutations();
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,17 +77,12 @@ export function TasksTable({
             </NativeSelectOption>
           ))}
         </NativeSelect>
-        <span className="text-sm text-muted-foreground">
+        <span className="ml-auto text-sm text-muted-foreground">
           {tasks.total} {tasks.total === 1 ? "task" : "tasks"}
         </span>
-        {canWrite && (
-          <Button className="ml-auto" onClick={actions.openCreate}>
-            <PlusIcon /> New task
-          </Button>
-        )}
       </div>
       <DataTable<TaskRead>
-        columns={taskColumns({ timeZone, paths, actions: canWrite ? actions : null })}
+        columns={taskColumns({ paths, actions: canWrite ? actions : null })}
         data={tasks.items}
         total={tasks.total}
         page={list.page}
@@ -103,7 +96,7 @@ export function TasksTable({
         }
         className={cn(isStale && "opacity-60 transition-opacity")}
       />
-      {actions.dialogs}
+      {actions.dialog}
     </div>
   );
 }

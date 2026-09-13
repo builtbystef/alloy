@@ -21,6 +21,7 @@ export interface TaskListFilters extends ListPage {
 export const taskKeys = {
   all: ["tasks"] as const,
   list: (ws: string, filters: TaskListFilters) => [...taskKeys.all, ws, "list", filters] as const,
+  detail: (ws: string, id: string) => [...taskKeys.all, ws, "detail", id] as const,
 };
 
 export function taskListQuery(api: ApiClient, ws: string, filters: TaskListFilters) {
@@ -30,6 +31,18 @@ export function taskListQuery(api: ApiClient, ws: string, filters: TaskListFilte
       unwrap(
         await api.GET("/workspaces/{workspace_id}/tasks/", {
           params: { path: { workspace_id: ws }, query: queryParams(filters) },
+        }),
+      ),
+  });
+}
+
+export function taskQuery(api: ApiClient, ws: string, id: string) {
+  return queryOptions({
+    queryKey: taskKeys.detail(ws, id),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/workspaces/{workspace_id}/tasks/{task_id}", {
+          params: { path: { workspace_id: ws, task_id: id } },
         }),
       ),
   });

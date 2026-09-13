@@ -9,32 +9,21 @@ import { deleteTask, updateTask } from "@/features/crm/tasks/mutations";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { errorMessage } from "@/lib/api/errors";
 import { invalidateCrm } from "@/features/crm/queries";
-import type { TaskLink } from "@/features/crm/tasks/links";
+import { taskKeys } from "@/features/crm/tasks/queries";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 
-import { TaskDialog } from "@/features/crm/tasks/components/task-dialog";
-
 /**
- * Everything a task row can do: toggle done, edit in a dialog, delete after
- * confirming. Render `dialogs` once near the list.
+ * What a task row or page can do in place: toggle done, and delete after
+ * confirming. Creating and editing are pages. Render `dialog` once near the list.
  */
-export function useTaskMutations({
-  timeZone,
-  defaults,
-}: {
-  timeZone: string;
-  defaults?: TaskLink;
-}): {
+export function useTaskMutations({ onDeleted }: { onDeleted?: () => void } = {}): {
   setStatus: (task: TaskRead, status: TaskStatus) => void;
   pendingStatusId: string | null;
-  openCreate: () => void;
-  openEdit: (task: TaskRead) => void;
   confirmDelete: (task: TaskRead) => void;
-  dialogs: ReactNode;
+  dialog: ReactNode;
 } {
   const queryClient = useQueryClient();
   const { id: workspaceId } = useWorkspace();
-  const [editing, setEditing] = useState<TaskRead | "new" | null>(null);
   const [deleting, setDeleting] = useState<TaskRead | null>(null);
 
   const status = useMutation({
@@ -49,44 +38,33 @@ export function useTaskMutations({
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteTask(workspaceId, id),
-    onSuccess: async () => {
+    onSuccess: async (_, id) => {
       toast.success("Task deleted");
       setDeleting(null);
+      queryClient.removeQueries({ queryKey: taskKeys.detail(workspaceId, id) });
       await invalidateCrm(queryClient);
+      onDeleted?.();
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
 
-  const dialogs = (
-    <>
-      <TaskDialog
-        open={editing !== null}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null);
-        }}
-        timeZone={timeZone}
-        {...(editing !== null && editing !== "new" ? { task: editing } : {})}
-        {...(defaults ? { defaults } : {})}
-      />
-      <ConfirmDialog
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleting(null);
-        }}
-        title={`Delete "${deleting?.title ?? "task"}"?`}
-        description="This cannot be undone."
-        pending={remove.isPending}
-        onConfirm={() => deleting && remove.mutate(deleting.id)}
-      />
-    </>
+  const dialog = (
+    <ConfirmDialog
+      open={deleting !== null}
+      onOpenChange={(open) => {
+        if (!open) setDeleting(null);
+      }}
+      title={`Delete "${deleting?.title ?? "task"}"?`}
+      description="This cannot be undone."
+      pending={remove.isPending}
+      onConfirm={() => deleting && remove.mutate(deleting.id)}
+    />
   );
 
   return {
     setStatus: (task, next) => status.mutate({ task, status: next }),
     pendingStatusId: status.isPending ? status.variables.task.id : null,
-    openCreate: () => setEditing("new"),
-    openEdit: setEditing,
     confirmDelete: setDeleting,
-    dialogs,
+    dialog,
   };
 }

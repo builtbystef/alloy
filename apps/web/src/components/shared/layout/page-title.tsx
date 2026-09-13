@@ -31,7 +31,9 @@ export function titleFor(pathname: string, workspaceId: string | undefined): str
       if (id === "new") return "New company";
       return action === "edit" ? "Edit company" : "Company";
     case "tasks":
-      return "Tasks";
+      if (!id) return "Tasks";
+      if (id === "new") return "New task";
+      return action === "edit" ? "Edit task" : "Task";
     case "assistant":
       return "Assistant";
     case "imports":

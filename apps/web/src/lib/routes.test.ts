@@ -7,6 +7,8 @@ test("workspace paths all live under the workspace id", () => {
   expect(paths.home).toBe("/ws1");
   expect(paths.contact("c1")).toBe("/ws1/contacts/c1");
   expect(paths.contactEdit("c1")).toBe("/ws1/contacts/c1/edit");
+  expect(paths.task("t1")).toBe("/ws1/tasks/t1");
+  expect(paths.taskEdit("t1")).toBe("/ws1/tasks/t1/edit");
   expect(paths.assistantChat("chat")).toBe("/ws1/assistant/chat");
   for (const value of Object.values(paths)) {
     const href = typeof value === "function" ? value("x") : value;
