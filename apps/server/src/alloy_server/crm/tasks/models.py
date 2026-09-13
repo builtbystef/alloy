@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from alloy_server.crm.companies.models import Company
@@ -18,6 +18,7 @@ class TaskStatus(StrEnum):
 
 class Task(OwnedByWorkspace, CreatedBy, Timestamps, Base):
     __tablename__ = "tasks"
+    __table_args__ = (CheckConstraint("contact_id IS NULL OR company_id IS NULL", name="one_link"),)
 
     contact_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("contacts.id", ondelete="SET NULL"), index=True
@@ -32,3 +33,11 @@ class Task(OwnedByWorkspace, CreatedBy, Timestamps, Base):
 
     contact: Mapped[Contact | None] = relationship()
     company: Mapped[Company | None] = relationship()
+
+    @property
+    def linked_company(self) -> Company | None:
+        """The company the task is about: its own, or its contact's. Needs
+        `contact.company` loaded (`WITH_RELATIONS` in the service)."""
+        if self.contact is not None:
+            return self.contact.company
+        return self.company

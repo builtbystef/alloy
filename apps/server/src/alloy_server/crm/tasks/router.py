@@ -25,7 +25,7 @@ async def list_tasks(
 async def create_task(body: TaskCreate, session: SessionDep, membership: CanWriteCrm) -> TaskRead:
     task = await service.create_task(session, membership, body)
     await session.commit()
-    await session.refresh(task, ["contact", "company"])
+    await service.load_relations(session, task)
     return TaskRead.model_validate(task)
 
 
@@ -41,7 +41,7 @@ async def update_task(
     """Marking a task done logs a `task_completed` activity on its contact."""
     task = await service.update_task(session, membership, task_id, body)
     await session.commit()
-    await session.refresh(task, ["contact", "company"])
+    await service.load_relations(session, task)
     return TaskRead.model_validate(task)
 
 

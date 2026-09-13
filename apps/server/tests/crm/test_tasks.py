@@ -18,14 +18,13 @@ def test_tasks_require_login(client: TestClient, alice: Actor):
 
 def test_create_and_read_a_task(alice: Actor):
     company = alice.post("/companies/", json={"name": "Navy"}).json()
-    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    contact = alice.post("/contacts/", json={"name": "Grace", "company_id": company["id"]}).json()
     created = alice.post(
         "/tasks/",
         json={
             "title": "Send proposal",
             "due_at": "2026-09-10T09:00:00Z",
             "contact_id": contact["id"],
-            "company_id": company["id"],
             "notes": "Include the discount",
         },
     )
@@ -34,6 +33,7 @@ def test_create_and_read_a_task(alice: Actor):
     assert task["title"] == "Send proposal"
     assert task["status"] == "open"
     assert task["contact"] == {"id": contact["id"], "name": "Grace"}
+    # A contact task's company is the contact's.
     assert task["company"] == {"id": company["id"], "name": "Navy"}
     assert task["created_by"]["email"] == alice.email
     assert datetime.fromisoformat(task["due_at"]) == datetime(2026, 9, 10, 9, tzinfo=UTC)
@@ -46,6 +46,32 @@ def test_task_without_relations_or_due_date(alice: Actor):
     assert task["contact"] is None
     assert task["company"] is None
     assert task["due_at"] is None
+
+
+def test_task_links_to_a_contact_or_a_company_not_both(alice: Actor):
+    company = alice.post("/companies/", json={"name": "Navy"}).json()
+    other = alice.post("/companies/", json={"name": "Army"}).json()
+    contact = alice.post("/contacts/", json={"name": "Grace", "company_id": company["id"]}).json()
+    both = {"title": "Call", "contact_id": contact["id"], "company_id": other["id"]}
+    response = alice.post("/tasks/", json=both)
+    assert response.status_code == 409, response.text
+    assert response.json()["detail"] == "A task is linked to a contact or a company, not both"
+
+    task = alice.post("/tasks/", json={"title": "Call", "company_id": other["id"]}).json()
+    url = f"/tasks/{task['id']}"
+    assert alice.patch(url, json=both).status_code == 409
+    # Linking a contact moves the link off the company, and the other way round.
+    moved = alice.patch(url, json={"contact_id": contact["id"]}).json()
+    assert moved["contact"]["id"] == contact["id"]
+    assert moved["company"] == {"id": company["id"], "name": "Navy"}
+    moved = alice.patch(url, json={"company_id": other["id"]}).json()
+    assert moved["contact"] is None
+    assert moved["company"] == {"id": other["id"], "name": "Army"}
+    # A contact with no company gives a task with no company.
+    loner = alice.post("/contacts/", json={"name": "Ada"}).json()
+    moved = alice.patch(url, json={"contact_id": loner["id"]}).json()
+    assert moved["contact"]["id"] == loner["id"]
+    assert moved["company"] is None
 
 
 def test_task_cannot_reference_another_users_rows(alice: Actor, bob: Actor):
@@ -99,23 +125,28 @@ def test_today_depends_on_the_timezone(alice: Actor, monkeypatch: pytest.MonkeyP
 
 def test_filter_by_status_contact_and_company(alice: Actor):
     company = alice.post("/companies/", json={"name": "Navy"}).json()
-    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    other = alice.post("/companies/", json={"name": "Army"}).json()
+    contact = alice.post("/contacts/", json={"name": "Grace", "company_id": company["id"]}).json()
     alice.post("/tasks/", json={"title": "A", "contact_id": contact["id"]})
     alice.post("/tasks/", json={"title": "B", "company_id": company["id"]})
     alice.post("/tasks/", json={"title": "C", "status": "done"})
+    alice.post("/tasks/", json={"title": "D", "company_id": other["id"]})
 
     def titles(**params: str) -> list[str]:
         return [t["title"] for t in alice.get("/tasks/", params=params).json()["items"]]
 
-    assert titles(status="open") == ["A", "B"]
+    assert titles(status="open") == ["A", "B", "D"]
     assert titles(status="done") == ["C"]
     assert titles(contact_id=contact["id"]) == ["A"]
-    assert titles(company_id=company["id"]) == ["B"]
+    # A company's tasks include its contacts' tasks.
+    assert titles(company_id=company["id"]) == ["A", "B"]
+    assert titles(company_id=other["id"]) == ["D"]
 
 
 def test_sort_tasks(alice: Actor):
     company = alice.post("/companies/", json={"name": "Navy"}).json()
-    contact = alice.post("/contacts/", json={"name": "Grace"}).json()
+    army = alice.post("/companies/", json={"name": "Army"}).json()
+    contact = alice.post("/contacts/", json={"name": "Grace", "company_id": army["id"]}).json()
     alice.post("/tasks/", json={"title": "B", "due_at": "2026-09-10T09:00:00Z"})
     alice.post("/tasks/", json={"title": "C", "contact_id": contact["id"]})
     alice.post(
@@ -133,7 +164,9 @@ def test_sort_tasks(alice: Actor):
     assert titles(sort="title") == ["A", "B", "C"]
     assert titles(sort="title", order="desc") == ["C", "B", "A"]
     assert titles(sort="contact") == ["C", "B", "A"]
-    assert titles(sort="company", order="desc") == ["A", "B", "C"]
+    # By company name, a contact task under its contact's company: Army, Navy, none.
+    assert titles(sort="company") == ["C", "A", "B"]
+    assert titles(sort="company", order="desc") == ["A", "C", "B"]
     assert alice.get("/tasks/", params={"sort": "notes"}).status_code == 422
 
 

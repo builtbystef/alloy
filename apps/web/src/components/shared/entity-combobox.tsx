@@ -22,6 +22,8 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 export interface EntityOption {
   id: string;
   name: string;
+  /** Shown after the name in the list, muted: the kind of thing it is, say. */
+  detail?: string;
 }
 
 interface EntityPage {
@@ -126,7 +128,12 @@ export function EntityCombobox<
         <ComboboxList>
           {(item: EntityOption) => (
             <ComboboxItem key={item.id} value={item}>
-              {item.name}
+              <span className="truncate">{item.name}</span>
+              {item.detail && (
+                <span className="ml-auto truncate text-xs text-muted-foreground">
+                  {item.detail}
+                </span>
+              )}
             </ComboboxItem>
           )}
         </ComboboxList>

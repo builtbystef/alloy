@@ -343,6 +343,7 @@ def _activity_row(activity: Activity) -> ActivityRow:
 
 
 def _task_row(deps: AgentDeps, task: Task) -> TaskRow:
+    company = task.linked_company
     base = str(deps.settings.frontend_url).rstrip("/")
     return TaskRow(
         id=task.id,
@@ -351,8 +352,8 @@ def _task_row(deps: AgentDeps, task: Task) -> TaskRow:
         due_at=task.due_at,
         contact=task.contact.name if task.contact else None,
         contact_id=task.contact_id,
-        company=task.company.name if task.company else None,
-        company_id=task.company_id,
+        company=company.name if company else None,
+        company_id=company.id if company else None,
         notes=task.notes,
         url=f"{base}/{deps.workspace_id}/tasks",
     )
@@ -627,7 +628,7 @@ async def get_contact(ctx: RunContext[AgentDeps], contact_id: uuid.UUID) -> Cont
     )
     tasks = await deps.session.scalars(
         select(Task)
-        .options(selectinload(Task.contact), selectinload(Task.company))
+        .options(*task_service.WITH_RELATIONS)
         .where(Task.contact_id == contact.id, Task.status == TaskStatus.OPEN)
         .order_by(Task.due_at.asc().nulls_last(), Task.id)
     )
@@ -991,7 +992,7 @@ async def list_tasks(  # noqa: PLR0913
             tasks match none of these.
         status: `open` (the default) or `done`; null for both.
         contact_id: Only tasks linked to this contact.
-        company_id: Only tasks linked to this company.
+        company_id: Only tasks linked to this company, or to one of its contacts.
         page: 1-based page of 20.
     """
     if page < 1:
@@ -1013,8 +1014,9 @@ async def list_tasks(  # noqa: PLR0913
 async def create_tasks(ctx: RunContext[AgentDeps], items: list[TaskCreate]) -> list[TaskRow]:
     """Create tasks. `due_at` is an ISO 8601 datetime with a time zone offset: work out
     "next Tuesday" or "in two weeks" from today's date and the user's time zone, using
-    09:00 when no time is given. One item runs at once; more than one pauses for
-    approval."""
+    09:00 when no time is given. A task links to a contact or a company, not both: a
+    task about a person at a company links to the person. One item runs at once; more
+    than one pauses for approval."""
     _write_allowed(ctx)
     _check_bulk(items)
     deps = ctx.deps
@@ -1031,7 +1033,7 @@ async def create_tasks(ctx: RunContext[AgentDeps], items: list[TaskCreate]) -> l
     ]
     await deps.session.commit()
     for task in created:
-        await deps.session.refresh(task, ["contact", "company"])
+        await task_service.load_relations(deps.session, task)
     return [_task_row(deps, t) for t in created]
 
 
@@ -1061,7 +1063,7 @@ async def update_tasks(ctx: RunContext[AgentDeps], items: list[TaskChange]) -> l
     ]
     await deps.session.commit()
     for task in updated:
-        await deps.session.refresh(task, ["contact", "company"])
+        await task_service.load_relations(deps.session, task)
     return [_task_row(deps, t) for t in updated]
 
 

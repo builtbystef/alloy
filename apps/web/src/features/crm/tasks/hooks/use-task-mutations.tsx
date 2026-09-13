@@ -9,6 +9,7 @@ import { deleteTask, updateTask } from "@/features/crm/tasks/mutations";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { errorMessage } from "@/lib/api/errors";
 import { invalidateCrm } from "@/features/crm/queries";
+import type { TaskLink } from "@/features/crm/tasks/links";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 
 import { TaskDialog } from "@/features/crm/tasks/components/task-dialog";
@@ -22,7 +23,7 @@ export function useTaskMutations({
   defaults,
 }: {
   timeZone: string;
-  defaults?: { contact_id?: string; company_id?: string };
+  defaults?: TaskLink;
 }): {
   setStatus: (task: TaskRead, status: TaskStatus) => void;
   pendingStatusId: string | null;

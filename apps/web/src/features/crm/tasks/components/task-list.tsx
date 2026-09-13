@@ -32,6 +32,7 @@ export function TaskList({
   contact?: ContactRef;
   company?: CompanyRef;
 }) {
+  // A company's list includes its contacts' tasks; adding one there links the company.
   const filters: { contact_id?: string; company_id?: string } = contact
     ? { contact_id: contact.id }
     : company

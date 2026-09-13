@@ -14,9 +14,9 @@ import { browserApi } from "@/lib/api/client";
 import { errorMessage } from "@/lib/api/errors";
 import { isoToWallClock } from "@/lib/formatting/dates";
 import { taskStatusLabels } from "@/features/crm/tasks/labels";
-import { companyPickerQuery, companyQuery } from "@/features/crm/companies/queries";
-import { contactPickerQuery, contactQuery } from "@/features/crm/contacts/queries";
 import { invalidateCrm } from "@/features/crm/queries";
+import { linkKey, taskLinkOption, type TaskLink } from "@/features/crm/tasks/links";
+import { taskLinkPickerQuery, taskLinkQuery } from "@/features/crm/tasks/queries";
 import { taskSchema, taskStatuses, type TaskInput } from "@/features/crm/tasks/schemas";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 
@@ -25,8 +25,8 @@ const statusOptions = taskStatuses.map((value) => ({ value, label: taskStatusLab
 export interface TaskFormProps {
   /** Editing this task; omit to create. */
   task?: TaskRead;
-  /** Pre-selected links when creating from a contact or company page. */
-  defaults?: { contact_id?: string; company_id?: string };
+  /** The pre-selected link when creating from a contact or company page. */
+  defaults?: TaskLink;
   timeZone: string;
   onSaved: () => void;
   onCancel: () => void;
@@ -54,8 +54,7 @@ export function TaskForm({ task, defaults, timeZone, onSaved, onCancel }: TaskFo
       title: task?.title ?? "",
       due_at: isoToWallClock(task?.due_at, timeZone),
       status: task?.status ?? "open",
-      contact_id: task?.contact?.id ?? defaults?.contact_id ?? "",
-      company_id: task?.company?.id ?? defaults?.company_id ?? "",
+      related: task ? (taskLinkOption(task)?.id ?? "") : linkKey(defaults),
       notes: task?.notes ?? "",
     } satisfies TaskInput,
     validationLogic: revalidateLogic(),
@@ -87,30 +86,17 @@ export function TaskForm({ task, defaults, timeZone, onSaved, onCancel }: TaskFo
             {(field) => <field.SelectField label="Status" options={statusOptions} />}
           </form.AppField>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <form.AppField name="contact_id">
-            {(field) => (
-              <field.ComboboxField
-                label="Contact"
-                placeholder="No contact"
-                selected={task?.contact}
-                search={(q) => contactPickerQuery(browserApi, workspaceId, q)}
-                resolve={(id) => contactQuery(browserApi, workspaceId, id)}
-              />
-            )}
-          </form.AppField>
-          <form.AppField name="company_id">
-            {(field) => (
-              <field.ComboboxField
-                label="Company"
-                placeholder="No company"
-                selected={task?.company}
-                search={(q) => companyPickerQuery(browserApi, workspaceId, q)}
-                resolve={(id) => companyQuery(browserApi, workspaceId, id)}
-              />
-            )}
-          </form.AppField>
-        </div>
+        <form.AppField name="related">
+          {(field) => (
+            <field.ComboboxField
+              label="Related to"
+              placeholder="No contact or company"
+              selected={task ? taskLinkOption(task) : undefined}
+              search={(q) => taskLinkPickerQuery(browserApi, workspaceId, q)}
+              resolve={(key) => taskLinkQuery(browserApi, workspaceId, key)}
+            />
+          )}
+        </form.AppField>
         <form.AppField name="notes">
           {(field) => <field.TextareaField label="Notes" rows={3} />}
         </form.AppField>

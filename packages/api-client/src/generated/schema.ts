@@ -1897,9 +1897,15 @@ export interface components {
             due_at?: string | null;
             /** @default open */
             status: components["schemas"]["TaskStatus"];
-            /** Contact Id */
+            /**
+             * Contact Id
+             * @description Links the task to a person.
+             */
             contact_id?: string | null;
-            /** Company Id */
+            /**
+             * Company Id
+             * @description Links the task to a company with no particular person.
+             */
             company_id?: string | null;
             /** Notes */
             notes?: string | null;
@@ -1919,6 +1925,7 @@ export interface components {
             /** Notes */
             notes: string | null;
             contact: components["schemas"]["ContactRef"] | null;
+            /** @description The company the task is about: its own, or its contact's. */
             company: components["schemas"]["CompanyRef"] | null;
             created_by: components["schemas"]["UserRef"] | null;
             /** @description Set when the assistant or an import made the row. */
@@ -1944,16 +1951,25 @@ export interface components {
          * @enum {string}
          */
         TaskStatus: "open" | "done";
-        /** TaskUpdate */
+        /**
+         * TaskUpdate
+         * @description Setting `contact_id` unlinks the company and vice versa: the link moves.
+         */
         TaskUpdate: {
             /** Title */
             title?: string | null;
             /** Due At */
             due_at?: string | null;
             status?: components["schemas"]["TaskStatus"] | null;
-            /** Contact Id */
+            /**
+             * Contact Id
+             * @description Links the task to a person.
+             */
             contact_id?: string | null;
-            /** Company Id */
+            /**
+             * Company Id
+             * @description Links the task to a company with no particular person.
+             */
             company_id?: string | null;
             /** Notes */
             notes?: string | null;
@@ -3540,6 +3556,7 @@ export interface operations {
                 tz?: string;
                 status?: components["schemas"]["TaskStatus"] | null;
                 contact_id?: string | null;
+                /** @description Tasks linked to the company, or to one of its contacts. */
                 company_id?: string | null;
                 sort?: components["schemas"]["TaskSort"];
                 order?: components["schemas"]["SortOrder"];

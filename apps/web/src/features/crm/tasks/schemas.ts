@@ -2,7 +2,9 @@ import type { DueFilter, TaskSort, TaskStatus } from "@alloy/api-client";
 import { z } from "zod";
 
 import { listSearch, optionalParam, parseSearch, type SearchParams } from "@/lib/lists";
-import { optionalDateTime, optionalId, optionalNotes, requiredText } from "@/lib/validation";
+import { emptyToNull, optionalDateTime, optionalNotes, requiredText, text } from "@/lib/validation";
+
+import { linkKinds, parseLinkKey } from "./links";
 
 export const taskStatuses = ["open", "done"] as const satisfies readonly TaskStatus[];
 export const dueFilters = ["overdue", "today", "upcoming"] as const satisfies readonly DueFilter[];
@@ -13,15 +15,23 @@ export const taskSorts = [
   "company",
 ] as const satisfies readonly TaskSort[];
 
+/** The "related to" picker's value; see links.ts. */
+const optionalLink = text
+  .transform(emptyToNull)
+  .pipe(
+    z.templateLiteral([z.enum(linkKinds), ":", z.uuid()], { error: "Choose an option" }).nullable(),
+  );
+
 export const taskSchema = (timeZone: string) =>
-  z.object({
-    title: requiredText("Title", 200),
-    due_at: optionalDateTime(timeZone),
-    status: z.enum(taskStatuses),
-    contact_id: optionalId,
-    company_id: optionalId,
-    notes: optionalNotes,
-  });
+  z
+    .object({
+      title: requiredText("Title", 200),
+      due_at: optionalDateTime(timeZone),
+      status: z.enum(taskStatuses),
+      related: optionalLink,
+      notes: optionalNotes,
+    })
+    .transform(({ related, ...task }) => ({ ...task, ...parseLinkKey(related) }));
 
 export type TaskInput = z.input<ReturnType<typeof taskSchema>>;
 
