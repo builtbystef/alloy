@@ -2,7 +2,6 @@
 
 import {
   Building2Icon,
-  FileUpIcon,
   LayoutDashboardIcon,
   ListTodoIcon,
   SparklesIcon,
@@ -15,7 +14,7 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui
 import type { WorkspacePaths } from "@/lib/routes";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 
-type NavKey = "home" | "contacts" | "companies" | "tasks" | "assistant" | "imports";
+type NavKey = "home" | "contacts" | "companies" | "tasks" | "assistant";
 
 /** Workspace settings and the account live in the switcher and user menus, not here. */
 const items: readonly { key: NavKey; label: string; icon: typeof UsersIcon }[] = [
@@ -24,7 +23,6 @@ const items: readonly { key: NavKey; label: string; icon: typeof UsersIcon }[] =
   { key: "companies", label: "Companies", icon: Building2Icon },
   { key: "tasks", label: "Tasks", icon: ListTodoIcon },
   { key: "assistant", label: "Assistant", icon: SparklesIcon },
-  { key: "imports", label: "Imports", icon: FileUpIcon },
 ];
 
 /** The nav with the current section highlighted; needs the URL and the workspace, so it streams. */

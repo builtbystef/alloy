@@ -37,8 +37,8 @@ export function WorkspaceSwitcher({ workspaces }: { workspaces: WorkspaceRead[] 
             />
           }
         >
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary/10">
-            <Logo className="size-5" />
+          <div className="flex aspect-square size-8 items-center justify-center">
+            <Logo className="size-7!" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">{current.name}</span>
