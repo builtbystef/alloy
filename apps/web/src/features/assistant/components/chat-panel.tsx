@@ -37,27 +37,20 @@ import {
   type PromptInputMessage,
 } from "@/components/shared/chat/prompt-input";
 import { Shimmer } from "@/components/shared/chat/shimmer";
-import { Suggestion, Suggestions } from "@/components/shared/chat/suggestion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ATTACHMENT_MAX_BYTES } from "@/features/crm/attachments/limits";
 import { formatBytes } from "@/lib/formatting/bytes";
 import { conversationKeys } from "@/features/assistant/queries";
 import { invalidateCrm } from "@/features/crm/queries";
+import { cn } from "@/lib/utils";
 import { useCan, useWorkspace } from "@/features/workspaces/workspace-provider";
 
 import type { ChatMessage } from "@/features/assistant/types";
 import { AssistantParts, UserAttachments } from "./message-parts";
 import { chatErrorMessage } from "@/features/assistant/errors";
-import { changedRecords } from "@/features/assistant/tools";
+import { changedRecords, toolParts } from "@/features/assistant/tools";
 import { useChatUploads } from "@/features/assistant/hooks/use-chat-uploads";
-
-const SUGGESTIONS = [
-  "Who have we not contacted recently?",
-  "What is due today?",
-  "Which companies have we not talked to this month?",
-  "Add a contact",
-];
 
 /**
  * One conversation with the assistant. The browser sends only its newest
@@ -100,10 +93,8 @@ export function ChatPanel({
   const { messages, status, error } = chat;
   const busy = status === "submitted" || status === "streaming";
   const last = messages.at(-1);
-
-  const send = (text: string) => {
-    void chat.sendMessage({ text });
-  };
+  const awaitingApproval =
+    last?.role === "assistant" && toolParts(last).some((p) => p.state === "approval-requested");
 
   const respond = (approvalId: string, approved: boolean) => {
     void chat.addToolApprovalResponse({ id: approvalId, approved });
@@ -122,60 +113,60 @@ export function ChatPanel({
     >
       <div className="flex h-full min-h-0 flex-col">
         <Conversation className="min-h-0">
-          <ConversationContent className="mx-auto w-full max-w-3xl">
-            {messages.length === 0 && (
-              <ConversationEmptyState
-                icon={<SparklesIcon className="size-8" />}
-                title="Ask about your workspace"
-                description={
-                  canWrite
-                    ? "Search contacts and companies, log activities, create tasks, or attach files. Deletes and bulk changes wait for your approval."
-                    : "Search contacts, companies, tasks, and activities. Your role is read-only, so the assistant will not change records."
-                }
-              />
-            )}
-            {messages.map((message, index) => (
-              <Message key={message.id} from={message.role}>
-                {message.role === "user" ? (
-                  <>
-                    <UserAttachments uploads={message.metadata?.uploads ?? []} />
-                    <MessageContent>
-                      {message.parts.map((part, partIndex) =>
-                        part.type === "text" ? (
-                          <p key={partIndex} className="whitespace-pre-wrap">
-                            {part.text}
-                          </p>
-                        ) : null,
-                      )}
-                    </MessageContent>
-                  </>
-                ) : (
-                  <>
-                    <AssistantParts
-                      message={message}
-                      streaming={busy && index === messages.length - 1}
-                      onRespond={respond}
-                    />
-                    {!busy && index === messages.length - 1 && (
-                      <MessageActions>
-                        <MessageAction
-                          tooltip="Copy"
-                          onClick={() => {
-                            void navigator.clipboard.writeText(textOf(message));
-                            toast.success("Copied");
-                          }}
+          <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-4 py-6 md:px-6">
+            {messages.length === 0 && <EmptyState canWrite={canWrite} />}
+            {messages.map((message, index) => {
+              const isLast = index === messages.length - 1;
+              return (
+                <Message key={message.id} from={message.role}>
+                  {message.role === "user" ? (
+                    <>
+                      <UserAttachments uploads={message.metadata?.uploads ?? []} />
+                      <MessageContent className="rounded-2xl rounded-br-md">
+                        {message.parts.map((part, partIndex) =>
+                          part.type === "text" ? (
+                            <p key={partIndex} className="whitespace-pre-wrap">
+                              {part.text}
+                            </p>
+                          ) : null,
+                        )}
+                      </MessageContent>
+                    </>
+                  ) : (
+                    <>
+                      <AssistantParts
+                        message={message}
+                        streaming={busy && isLast}
+                        onRespond={respond}
+                      />
+                      {!(isLast && (busy || awaitingApproval)) && (
+                        <MessageActions
+                          className={cn(
+                            "-ml-1.5 transition-opacity",
+                            !isLast && "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+                          )}
                         >
-                          <CopyIcon />
-                        </MessageAction>
-                        <MessageAction tooltip="Retry" onClick={() => void chat.regenerate()}>
-                          <RefreshCwIcon />
-                        </MessageAction>
-                      </MessageActions>
-                    )}
-                  </>
-                )}
-              </Message>
-            ))}
+                          <MessageAction
+                            tooltip="Copy"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(textOf(message));
+                              toast.success("Copied");
+                            }}
+                          >
+                            <CopyIcon />
+                          </MessageAction>
+                          {isLast && (
+                            <MessageAction tooltip="Retry" onClick={() => void chat.regenerate()}>
+                              <RefreshCwIcon />
+                            </MessageAction>
+                          )}
+                        </MessageActions>
+                      )}
+                    </>
+                  )}
+                </Message>
+              );
+            })}
             {status === "submitted" && (
               <Message from="assistant">
                 <MessageContent className="flex-row items-center gap-2 text-muted-foreground">
@@ -204,23 +195,39 @@ export function ChatPanel({
           <ConversationScrollButton />
         </Conversation>
 
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 p-4 pt-2">
-          {messages.length === 0 && (
-            <Suggestions>
-              {SUGGESTIONS.map((suggestion) => (
-                <Suggestion key={suggestion} suggestion={suggestion} onClick={send} />
-              ))}
-            </Suggestions>
-          )}
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 pb-3 md:px-6">
           <Composer
             busy={busy}
             status={status}
             onStop={() => void chat.stop()}
             onSend={chat.sendMessage}
           />
+          <p className="text-center text-xs text-muted-foreground">
+            {canWrite
+              ? "The assistant can make mistakes. Deletes and bulk changes wait for your approval."
+              : "The assistant can make mistakes. Your role is read-only, so it will not change records."}
+          </p>
         </div>
       </div>
     </PromptInputProvider>
+  );
+}
+
+function EmptyState({ canWrite }: { canWrite: boolean }) {
+  return (
+    <ConversationEmptyState className="min-h-[50vh]">
+      <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-foreground">
+        <SparklesIcon className="size-6" />
+      </div>
+      <div className="max-w-md space-y-1.5">
+        <h2 className="text-lg font-semibold tracking-tight">What can I help with?</h2>
+        <p className="text-sm text-balance text-muted-foreground">
+          {canWrite
+            ? "Ask about your contacts, companies, and tasks, log activities, or attach files. Anything that changes records is shown to you before it happens."
+            : "Ask about your contacts, companies, tasks, and activities. Your role is read-only, so nothing here changes records."}
+        </p>
+      </div>
+    </ConversationEmptyState>
   );
 }
 
@@ -258,7 +265,12 @@ function Composer({
   };
 
   return (
-    <PromptInput onSubmit={submit} multiple globalDrop>
+    <PromptInput
+      onSubmit={submit}
+      multiple
+      globalDrop
+      className="[&>div]:rounded-2xl [&>div]:shadow-sm"
+    >
       <PromptInputAttachments>
         {(attachment) => <PromptInputAttachment data={attachment} />}
       </PromptInputAttachments>
@@ -277,6 +289,7 @@ function Composer({
         </PromptInputTools>
         <PromptInputSubmit
           status={status}
+          className="rounded-full"
           disabled={!busy && (empty || uploading || failed)}
           onClick={
             busy

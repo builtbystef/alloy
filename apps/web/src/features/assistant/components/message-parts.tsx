@@ -1,17 +1,21 @@
 "use client";
 
-import { getToolName } from "ai";
-import { FileIcon, FileTextIcon, ImageIcon } from "lucide-react";
+import { getToolName, isToolUIPart } from "ai";
+import {
+  BanIcon,
+  CheckIcon,
+  CircleAlertIcon,
+  ClockIcon,
+  FileIcon,
+  FileTextIcon,
+  ImageIcon,
+  Loader2Icon,
+} from "lucide-react";
+import type { ReactNode } from "react";
 
 import { MessageContent, MessageResponse } from "@/components/shared/chat/message";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@/components/shared/chat/tool";
 import { formatBytes } from "@/lib/formatting/bytes";
+import { cn } from "@/lib/utils";
 
 import { ApprovalCard } from "./approval-card";
 import type {
@@ -30,7 +34,7 @@ export function UserAttachments({ uploads }: { uploads: ChatUploadMeta[] }) {
       {uploads.map((upload) => (
         <li
           key={upload.id}
-          className="flex h-8 items-center gap-1.5 rounded-md border border-border px-2 text-sm"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2 text-sm"
         >
           <span className="text-muted-foreground [&_svg]:size-3.5">
             {fileIcon(upload.content_type)}
@@ -62,42 +66,103 @@ export function previewFor(message: ChatMessage, toolCallId: string): ApprovalPr
 
 const approvalStates = new Set(["approval-requested", "approval-responded", "output-denied"]);
 
+type StepStatus = "running" | "waiting" | "done" | "error" | "denied";
+
+function stepStatus(state: ChatToolPart["state"]): StepStatus {
+  switch (state) {
+    case "output-available":
+      return "done";
+    case "output-error":
+      return "error";
+    case "output-denied":
+      return "denied";
+    case "approval-requested":
+      return "waiting";
+    default:
+      return "running";
+  }
+}
+
+const stepIcons: Record<StepStatus, ReactNode> = {
+  running: <Loader2Icon className="animate-spin" />,
+  waiting: <ClockIcon />,
+  done: <CheckIcon />,
+  error: <CircleAlertIcon className="text-destructive" />,
+  denied: <BanIcon />,
+};
+
+interface Step {
+  key: string;
+  label: string;
+  status: StepStatus;
+  count: number;
+}
+
+/** One row per call; a run of identical calls (same tool, same status) collapses into one. */
+function toSteps(parts: ChatToolPart[]): Step[] {
+  const steps: Step[] = [];
+  for (const part of parts) {
+    const status = stepStatus(part.state);
+    const label = toolLabel(getToolName(part), { done: status === "done" });
+    const last = steps.at(-1);
+    if (last && last.label === label && last.status === status) last.count += 1;
+    else steps.push({ key: part.toolCallId, label, status, count: 1 });
+  }
+  return steps;
+}
+
 /**
- * One tool call: a collapsed card with its name, status, input, and output, and
- * the approval card on top when the call is waiting for, or got, a decision.
+ * A run of tool calls, shown as a quiet list of what the assistant did, with
+ * the approve / deny card above it for any call waiting on a decision.
  */
-export function ToolCard({
-  part,
+export function ToolSteps({
+  parts,
   message,
   onRespond,
 }: {
-  part: ChatToolPart;
+  parts: ChatToolPart[];
   message: ChatMessage;
   onRespond: (approvalId: string, approved: boolean) => void;
 }) {
-  const name = getToolName(part);
-  const approval = "approval" in part ? part.approval : undefined;
+  const steps = toSteps(parts);
   return (
-    <div className="flex w-full flex-col gap-2">
-      {approvalStates.has(part.state) && approval && (
-        <ApprovalCard
-          part={part}
-          preview={previewFor(message, part.toolCallId)}
-          onRespond={(approved) => onRespond(approval.id, approved)}
-        />
-      )}
-      <Tool>
-        <ToolHeader type={part.type} state={part.state} title={toolLabel(name)} />
-        <ToolContent>
-          <ToolInput input={part.input} />
-          <ToolOutput output={part.output} errorText={part.errorText} />
-        </ToolContent>
-      </Tool>
+    <div className="my-1 flex w-full flex-col gap-3">
+      {parts.map((part) => {
+        const approval = "approval" in part ? part.approval : undefined;
+        if (!approvalStates.has(part.state) || !approval) return null;
+        return (
+          <ApprovalCard
+            key={part.toolCallId}
+            part={part}
+            preview={previewFor(message, part.toolCallId)}
+            onRespond={(approved) => onRespond(approval.id, approved)}
+          />
+        );
+      })}
+      <ul className="flex flex-col gap-1.5" aria-label="Steps">
+        {steps.map((step) => (
+          <li
+            key={step.key}
+            data-status={step.status}
+            className={cn(
+              "flex items-center gap-2 text-sm text-muted-foreground [&_svg]:size-3.5 [&_svg]:shrink-0",
+              step.status === "error" && "text-destructive",
+            )}
+          >
+            {stepIcons[step.status]}
+            <span>{step.label}</span>
+            {step.count > 1 && <span className="text-xs tabular-nums">×{step.count}</span>}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-/** Every part of an assistant message, in order. */
+/**
+ * Every part of an assistant message, in order. Consecutive tool calls are
+ * grouped into one list so a reply reads as prose with a few quiet steps.
+ */
 export function AssistantParts({
   message,
   streaming,
@@ -107,26 +172,36 @@ export function AssistantParts({
   streaming: boolean;
   onRespond: (approvalId: string, approved: boolean) => void;
 }) {
-  return message.parts.map((part, index) => {
-    switch (part.type) {
-      case "text":
-        return (
-          <MessageContent key={index}>
-            <MessageResponse mode={streaming ? "streaming" : "static"}>{part.text}</MessageResponse>
-          </MessageContent>
-        );
-      case "dynamic-tool":
-        return (
-          <ToolCard key={part.toolCallId} part={part} message={message} onRespond={onRespond} />
-        );
-      default:
-        if (part.type.startsWith("tool-")) {
-          const tool = part as ChatToolPart;
-          return (
-            <ToolCard key={tool.toolCallId} part={tool} message={message} onRespond={onRespond} />
-          );
-        }
-        return null;
+  const nodes: ReactNode[] = [];
+  let run: ChatToolPart[] = [];
+  const flush = () => {
+    if (run.length === 0) return;
+    const parts = run;
+    run = [];
+    nodes.push(
+      <ToolSteps
+        key={parts[0]?.toolCallId}
+        parts={parts}
+        message={message}
+        onRespond={onRespond}
+      />,
+    );
+  };
+
+  message.parts.forEach((part, index) => {
+    if (isToolUIPart(part)) {
+      run.push(part);
+      return;
+    }
+    flush();
+    if (part.type === "text" && part.text.trim() !== "") {
+      nodes.push(
+        <MessageContent key={index}>
+          <MessageResponse mode={streaming ? "streaming" : "static"}>{part.text}</MessageResponse>
+        </MessageContent>,
+      );
     }
   });
+  flush();
+  return nodes;
 }

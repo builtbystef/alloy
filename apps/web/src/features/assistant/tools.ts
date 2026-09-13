@@ -27,8 +27,27 @@ const labels: Record<string, string> = {
   list_members: "Reading members",
 };
 
-export function toolLabel(name: string): string {
-  return labels[name] ?? name.replaceAll("_", " ");
+/** The past tense of each label's first word, for a call that has finished. */
+const finished: Record<string, string> = {
+  Searching: "Searched",
+  Reading: "Read",
+  Creating: "Created",
+  Updating: "Updated",
+  Deleting: "Deleted",
+  Logging: "Logged",
+  Attaching: "Attached",
+};
+
+/**
+ * What a tool call is shown as: "Searching contacts" while it runs, "Searched
+ * contacts" once it is done. Falls back to the tool name.
+ */
+export function toolLabel(name: string, options: { done?: boolean } = {}): string {
+  const label = labels[name] ?? name.replaceAll("_", " ");
+  if (!options.done) return label;
+  const [verb, ...rest] = label.split(" ");
+  const past = verb === undefined ? undefined : finished[verb];
+  return past ? [past, ...rest].join(" ") : label;
 }
 
 /** Worded like the API's own preview titles, for when a paused call has none. */

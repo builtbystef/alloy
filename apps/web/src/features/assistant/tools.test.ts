@@ -17,6 +17,13 @@ test("tool labels are readable, with a fallback for unknown tools", () => {
   expect(toolLabel("some_new_tool")).toBe("some new tool");
 });
 
+test("a finished call is labelled in the past tense", () => {
+  expect(toolLabel("search_contacts", { done: true })).toBe("Searched contacts");
+  expect(toolLabel("get_workspace", { done: true })).toBe("Read the workspace");
+  expect(toolLabel("log_activities", { done: true })).toBe("Logged activities");
+  expect(toolLabel("some_new_tool", { done: true })).toBe("some new tool");
+});
+
 test("write tools are the ones that change records", () => {
   for (const name of [
     "create_contacts",
