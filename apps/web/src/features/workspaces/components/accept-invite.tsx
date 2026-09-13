@@ -20,7 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { errorMessage } from "@/lib/api/errors";
-import { roleDescriptions, roleLabels } from "@/features/workspaces/roles";
+import { roleLabels } from "@/features/workspaces/roles";
 
 export function AcceptInvite({
   token,
@@ -59,8 +59,8 @@ export function AcceptInvite({
       <CardHeader>
         <CardTitle>Join {invite.workspace_name}</CardTitle>
         <CardDescription>
-          {invite.invited_by ?? "Someone"} invited <strong>{invite.email}</strong> as{" "}
-          {roleLabels[invite.role].toLowerCase()}. {roleDescriptions[invite.role]}
+          {invite.invited_by ?? "Someone"} invited <strong>{invite.email}</strong> to join as{" "}
+          {roleLabels[invite.role].toLowerCase()}.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
