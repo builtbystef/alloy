@@ -15,7 +15,7 @@ import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { logActivity } from "@/features/crm/contacts/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import { Form, FormError, useAppForm } from "@/components/shared/form";
 import { TruncatedNote } from "@/components/shared/truncated-note";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldGroup } from "@/components/ui/field";
@@ -126,13 +126,7 @@ function LogActivityForm({ contactId }: { contactId: string }) {
   });
 
   return (
-    <form
-      className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
+    <Form form={form} className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4">
       <FieldGroup>
         <FormError message={serverError} />
         <form.AppField name="type">
@@ -145,6 +139,6 @@ function LogActivityForm({ contactId }: { contactId: string }) {
       <form.AppForm>
         <form.SubmitButton className="self-start">Log activity</form.SubmitButton>
       </form.AppForm>
-    </form>
+    </Form>
   );
 }

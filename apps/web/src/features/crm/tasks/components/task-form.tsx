@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { createTask, updateTask } from "@/features/crm/tasks/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import { Form, FormActions, FormError, useAppForm } from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { browserApi } from "@/lib/api/client";
@@ -66,31 +66,37 @@ export function TaskForm({ task, defaults, timeZone, onSaved, onCancel }: TaskFo
   });
 
   return (
-    <form
-      className="flex flex-col gap-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
+    <Form form={form}>
       <FieldGroup>
         <FormError message={serverError} />
         <form.AppField name="title">
-          {(field) => <field.TextField label="Title" autoFocus />}
+          {(field) => (
+            <field.TextField
+              label="Title"
+              required
+              placeholder="Send the proposal"
+              autoComplete="off"
+              autoFocus
+            />
+          )}
         </form.AppField>
         <div className="grid gap-5 sm:grid-cols-2">
           <form.AppField name="due_at">
             {(field) => <field.DateTimeField label="Due" />}
           </form.AppField>
-          <form.AppField name="status">
-            {(field) => <field.SelectField label="Status" options={statusOptions} />}
-          </form.AppField>
+          {/* A new task is open; the choice only matters once it exists. */}
+          {task && (
+            <form.AppField name="status">
+              {(field) => <field.SelectField label="Status" options={statusOptions} />}
+            </form.AppField>
+          )}
         </div>
         <form.AppField name="related">
           {(field) => (
             <field.ComboboxField
               label="Related to"
-              placeholder="No contact or company"
+              placeholder="Search contacts and companies"
+              description="The task shows up on their page."
               selected={task ? taskLinkOption(task) : undefined}
               search={(q) => taskLinkPickerQuery(browserApi, workspaceId, q)}
               resolve={(key) => taskLinkQuery(browserApi, workspaceId, key)}
@@ -98,17 +104,25 @@ export function TaskForm({ task, defaults, timeZone, onSaved, onCancel }: TaskFo
           )}
         </form.AppField>
         <form.AppField name="notes">
-          {(field) => <field.TextareaField label="Notes" rows={3} />}
+          {(field) => (
+            <field.TextareaField
+              label="Notes"
+              rows={3}
+              placeholder="Anything to remember when you get to it."
+            />
+          )}
         </form.AppField>
       </FieldGroup>
-      <div className="flex justify-end gap-2">
+      <FormActions>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
         <form.AppForm>
-          <form.SubmitButton>{task ? "Save changes" : "Create task"}</form.SubmitButton>
+          <form.SubmitButton requireChanges={task !== undefined}>
+            {task ? "Save changes" : "Create task"}
+          </form.SubmitButton>
         </form.AppForm>
-      </div>
-    </form>
+      </FormActions>
+    </Form>
   );
 }

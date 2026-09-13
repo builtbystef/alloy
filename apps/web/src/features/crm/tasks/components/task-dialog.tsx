@@ -26,7 +26,7 @@ export function TaskDialog({
           <DialogDescription>
             {formProps.task
               ? "Marking a task done logs an activity on its contact."
-              : "Link it to a contact or company to see it on their page."}
+              : "Something to do, with a date to do it by."}
           </DialogDescription>
         </DialogHeader>
         {open && (

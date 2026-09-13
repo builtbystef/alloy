@@ -9,9 +9,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { createContact, updateContact } from "@/features/crm/contacts/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import {
+  Form,
+  FormActions,
+  FormError,
+  FormSection,
+  FormSections,
+  useAppForm,
+} from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
-import { FieldGroup } from "@/components/ui/field";
 import { browserApi } from "@/lib/api/client";
 import { errorMessage } from "@/lib/api/errors";
 import { isoToWallClock } from "@/lib/formatting/dates";
@@ -76,68 +82,97 @@ export function ContactForm({
   });
 
   return (
-    <form
-      className="flex max-w-xl flex-col gap-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
-      <FieldGroup>
-        <FormError message={serverError} />
-        <form.AppField name="name">
-          {(field) => <field.TextField label="Name" autoFocus={!contact} />}
-        </form.AppField>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <form.AppField name="email">
-            {(field) => <field.TextField label="Email" type="email" autoComplete="off" />}
-          </form.AppField>
-          <form.AppField name="phone">
-            {(field) => <field.TextField label="Phone" type="tel" autoComplete="off" />}
-          </form.AppField>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <form.AppField name="job_title">
-            {(field) => <field.TextField label="Job title" />}
-          </form.AppField>
-          <form.AppField name="company_id">
+    <Form form={form} warnOnLeave>
+      <FormError message={serverError} />
+      <FormSections>
+        <FormSection
+          title="Details"
+          description="
+          Only the name is required. Add the rest as you learn it.
+        "
+        >
+          <form.AppField name="name">
             {(field) => (
-              <field.ComboboxField
-                label="Company"
-                placeholder="No company"
-                selected={contact?.company}
-                search={(q) => companyPickerQuery(browserApi, workspaceId, q)}
-                resolve={(id) => companyQuery(browserApi, workspaceId, id)}
+              <field.TextField
+                label="Name"
+                required
+                placeholder="Jane Doe"
+                autoComplete="off"
+                autoFocus={!contact}
               />
             )}
           </form.AppField>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <form.AppField name="status">
-            {(field) => <field.SelectField label="Status" options={statusOptions} />}
-          </form.AppField>
-          <form.AppField name="last_contacted_at">
-            {(field) => (
-              <field.DateTimeField
-                label="Last contacted"
-                description="Logging a call, email, or meeting updates this by itself."
-              />
-            )}
-          </form.AppField>
-        </div>
-      </FieldGroup>
-      <div className="flex items-center gap-2">
-        <form.AppForm>
-          <form.SubmitButton>{contact ? "Save changes" : "Create contact"}</form.SubmitButton>
-        </form.AppForm>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <form.AppField name="email">
+              {(field) => (
+                <field.TextField
+                  label="Email"
+                  type="email"
+                  placeholder="jane@example.com"
+                  autoComplete="off"
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="phone">
+              {(field) => (
+                <field.TextField
+                  label="Phone"
+                  type="tel"
+                  placeholder="+1 555 0100"
+                  autoComplete="off"
+                />
+              )}
+            </form.AppField>
+          </div>
+        </FormSection>
+        <FormSection title="Work" description="Where they work and what they do there.">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <form.AppField name="company_id">
+              {(field) => (
+                <field.ComboboxField
+                  label="Company"
+                  placeholder="Search companies"
+                  selected={contact?.company}
+                  search={(q) => companyPickerQuery(browserApi, workspaceId, q)}
+                  resolve={(id) => companyQuery(browserApi, workspaceId, id)}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="job_title">
+              {(field) => <field.TextField label="Job title" placeholder="Head of Sales" />}
+            </form.AppField>
+          </div>
+        </FormSection>
+        <FormSection title="Relationship" description="Where things stand with this contact.">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <form.AppField name="status">
+              {(field) => <field.SelectField label="Status" options={statusOptions} />}
+            </form.AppField>
+            <form.AppField name="last_contacted_at">
+              {(field) => (
+                <field.DateTimeField
+                  label="Last contacted"
+                  description="Logging a call, email, or meeting updates this by itself."
+                />
+              )}
+            </form.AppField>
+          </div>
+        </FormSection>
+      </FormSections>
+      <FormActions className="border-t pt-8">
         <Button
-          variant="ghost"
+          variant="outline"
           nativeButton={false}
           render={<Link href={contact ? paths.contact(contact.id) : paths.contacts} />}
         >
           Cancel
         </Button>
-      </div>
-    </form>
+        <form.AppForm>
+          <form.SubmitButton requireChanges={contact !== undefined}>
+            {contact ? "Save changes" : "Create contact"}
+          </form.SubmitButton>
+        </form.AppForm>
+      </FormActions>
+    </Form>
   );
 }

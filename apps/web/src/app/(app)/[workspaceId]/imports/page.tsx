@@ -2,7 +2,6 @@ import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/shared/layout/page-header";
 import { TableSkeleton } from "@/components/shared/skeletons";
 import { importListQuery } from "@/features/crm/imports/queries";
 import { getQueryClient } from "@/lib/query-client";
@@ -33,15 +32,9 @@ export default function ImportsPage({
   searchParams: SearchParams;
 }) {
   return (
-    <>
-      <PageHeader
-        title="Imports"
-        description="Load contacts or companies from a CSV file. Rows that already exist are skipped."
-      />
-      <Suspense fallback={<TableSkeleton rows={3} />}>
-        <ImportsContent params={params} searchParams={searchParams} />
-      </Suspense>
-    </>
+    <Suspense fallback={<TableSkeleton rows={3} />}>
+      <ImportsContent params={params} searchParams={searchParams} />
+    </Suspense>
   );
 }
 

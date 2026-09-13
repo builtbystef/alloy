@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { changePassword } from "@/features/auth/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import { Form, FormError, useAppForm } from "@/components/shared/form";
 import { FieldGroup } from "@/components/ui/field";
 import { ApiError, errorMessage } from "@/lib/api/errors";
 import { passwordChangeSchema, type PasswordChangeInput } from "@/features/auth/schemas";
@@ -46,13 +46,7 @@ export function PasswordForm({ email }: { email: string }) {
   });
 
   return (
-    <form
-      className="flex flex-col gap-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
+    <Form form={form}>
       {/* Lets password managers associate the new password with the account. */}
       <input type="hidden" name="username" value={email} autoComplete="username" />
       <FieldGroup>
@@ -89,6 +83,6 @@ export function PasswordForm({ email }: { email: string }) {
       <form.AppForm>
         <form.SubmitButton className="self-start">Change password</form.SubmitButton>
       </form.AppForm>
-    </form>
+    </Form>
   );
 }

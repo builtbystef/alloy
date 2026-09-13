@@ -2,7 +2,7 @@ import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/shared/layout/page-header";
+import { FormPage } from "@/components/shared/layout/form-page";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { companyPickerQuery } from "@/features/crm/companies/queries";
 import { getQueryClient } from "@/lib/query-client";
@@ -25,12 +25,9 @@ export default function NewContactPage({
   searchParams: SearchParams;
 }) {
   return (
-    <>
-      <PageHeader title="New contact" />
-      <Suspense fallback={<FormSkeleton />}>
-        <NewContactForm params={params} searchParams={searchParams} />
-      </Suspense>
-    </>
+    <Suspense fallback={<FormSkeleton />}>
+      <NewContactForm params={params} searchParams={searchParams} />
+    </Suspense>
   );
 }
 
@@ -49,10 +46,12 @@ async function NewContactForm({
   await queryClient.query(companyPickerQuery(api, workspaceId, "")).catch(noop);
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <ContactForm
-        timeZone={timeZone}
-        {...(typeof company_id === "string" ? { defaultCompanyId: company_id } : {})}
-      />
+      <FormPage>
+        <ContactForm
+          timeZone={timeZone}
+          {...(typeof company_id === "string" ? { defaultCompanyId: company_id } : {})}
+        />
+      </FormPage>
     </HydrationBoundary>
   );
 }

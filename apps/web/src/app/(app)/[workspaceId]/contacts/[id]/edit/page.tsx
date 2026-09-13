@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/shared/layout/page-header";
+import { FormPage } from "@/components/shared/layout/form-page";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { companyPickerQuery } from "@/features/crm/companies/queries";
 import { getQueryClient } from "@/lib/query-client";
@@ -19,12 +20,9 @@ type Params = Promise<{ workspaceId: string; id: string }>;
 
 export default function EditContactPage({ params }: { params: Params }) {
   return (
-    <>
-      <PageHeader title="Edit contact" />
-      <Suspense fallback={<FormSkeleton />}>
-        <EditContactForm params={params} />
-      </Suspense>
-    </>
+    <Suspense fallback={<FormSkeleton />}>
+      <EditContactForm params={params} />
+    </Suspense>
   );
 }
 
@@ -42,7 +40,10 @@ async function EditContactForm({ params }: { params: Params }) {
   if (!contact) notFound();
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <ContactForm contact={contact} timeZone={timeZone} />
+      <FormPage>
+        <PageHeader title={contact.name} />
+        <ContactForm contact={contact} timeZone={timeZone} />
+      </FormPage>
     </HydrationBoundary>
   );
 }

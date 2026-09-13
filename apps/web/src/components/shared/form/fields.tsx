@@ -24,6 +24,17 @@ import { useFieldContext } from "./contexts";
 interface CommonProps {
   label: string;
   description?: string;
+  /** Marks the label; validation itself is the schema's job. */
+  required?: boolean;
+}
+
+/** Most fields are optional, so the few that are not carry a mark. */
+function RequiredMark() {
+  return (
+    <span aria-hidden="true" className="text-destructive">
+      *
+    </span>
+  );
 }
 
 function useFieldState() {
@@ -35,13 +46,17 @@ function useFieldState() {
 export function TextField({
   label,
   description,
+  required = false,
   ...inputProps
 }: CommonProps &
   Omit<ComponentProps<typeof Input>, "value" | "onChange" | "onBlur" | "id" | "name">) {
   const { field, invalid } = useFieldState();
   return (
     <Field data-invalid={invalid}>
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <FieldLabel htmlFor={field.name}>
+        {label}
+        {required && <RequiredMark />}
+      </FieldLabel>
       <Input
         id={field.name}
         name={field.name}
@@ -49,6 +64,7 @@ export function TextField({
         onBlur={field.handleBlur}
         onChange={(event) => field.handleChange(event.target.value)}
         aria-invalid={invalid}
+        aria-required={required}
         {...inputProps}
       />
       {description && <FieldDescription>{description}</FieldDescription>}
@@ -60,13 +76,17 @@ export function TextField({
 export function TextareaField({
   label,
   description,
+  required = false,
   ...textareaProps
 }: CommonProps &
   Omit<ComponentProps<typeof Textarea>, "value" | "onChange" | "onBlur" | "id" | "name">) {
   const { field, invalid } = useFieldState();
   return (
     <Field data-invalid={invalid}>
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <FieldLabel htmlFor={field.name}>
+        {label}
+        {required && <RequiredMark />}
+      </FieldLabel>
       <Textarea
         id={field.name}
         name={field.name}
@@ -74,6 +94,7 @@ export function TextareaField({
         onBlur={field.handleBlur}
         onChange={(event) => field.handleChange(event.target.value)}
         aria-invalid={invalid}
+        aria-required={required}
         {...textareaProps}
       />
       {description && <FieldDescription>{description}</FieldDescription>}
@@ -90,6 +111,7 @@ export interface SelectOption {
 export function SelectField({
   label,
   description,
+  required = false,
   options,
   placeholder,
   disabled,
@@ -102,7 +124,10 @@ export function SelectField({
   const { field, invalid } = useFieldState();
   return (
     <Field data-invalid={invalid}>
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <FieldLabel htmlFor={field.name}>
+        {label}
+        {required && <RequiredMark />}
+      </FieldLabel>
       <NativeSelect
         id={field.name}
         name={field.name}
@@ -110,6 +135,7 @@ export function SelectField({
         onBlur={field.handleBlur}
         onChange={(event) => field.handleChange(event.target.value)}
         aria-invalid={invalid}
+        aria-required={required}
         disabled={disabled}
         className="w-full"
       >
@@ -137,6 +163,7 @@ export function ComboboxField<
 >({
   label,
   description,
+  required = false,
   ...pickerProps
 }: CommonProps &
   Omit<
@@ -146,7 +173,10 @@ export function ComboboxField<
   const { field, invalid } = useFieldState();
   return (
     <Field data-invalid={invalid}>
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <FieldLabel htmlFor={field.name}>
+        {label}
+        {required && <RequiredMark />}
+      </FieldLabel>
       <EntityCombobox
         id={field.name}
         name={field.name}
@@ -162,11 +192,14 @@ export function ComboboxField<
   );
 }
 
-export function DateTimeField({ label, description }: CommonProps) {
+export function DateTimeField({ label, description, required = false }: CommonProps) {
   const { field, invalid } = useFieldState();
   return (
     <Field data-invalid={invalid}>
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <FieldLabel htmlFor={field.name}>
+        {label}
+        {required && <RequiredMark />}
+      </FieldLabel>
       <Input
         id={field.name}
         name={field.name}
@@ -175,6 +208,7 @@ export function DateTimeField({ label, description }: CommonProps) {
         onBlur={field.handleBlur}
         onChange={(event) => field.handleChange(event.target.value)}
         aria-invalid={invalid}
+        aria-required={required}
       />
       {description && <FieldDescription>{description}</FieldDescription>}
       {invalid && <FieldError errors={field.state.meta.errors} />}

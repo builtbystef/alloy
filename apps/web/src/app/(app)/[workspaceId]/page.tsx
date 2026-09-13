@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/shared/layout/page-header";
 import { Dashboard, DashboardSkeleton } from "@/features/crm/dashboard/components/dashboard";
 import { getDashboard } from "@/features/crm/dashboard/server";
 import { requireWorkspace } from "@/features/workspaces/server";
@@ -14,12 +13,9 @@ type Params = Promise<{ workspaceId: string }>;
 
 export default function DashboardPage({ params }: { params: Params }) {
   return (
-    <>
-      <PageHeader title="Dashboard" description="What needs your attention today." />
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent params={params} />
-      </Suspense>
-    </>
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent params={params} />
+    </Suspense>
   );
 }
 

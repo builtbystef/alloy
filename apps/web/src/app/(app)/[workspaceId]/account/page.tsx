@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/shared/layout/page-header";
 import { SettingsSection, SettingsSections } from "@/components/shared/layout/settings-section";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { requireUser } from "@/lib/auth/session";
@@ -19,12 +18,9 @@ type Params = Promise<{ workspaceId: string }>;
 
 export default function AccountPage({ params }: { params: Params }) {
   return (
-    <>
-      <PageHeader title="Settings" description="Your account, across every workspace." />
-      <Suspense fallback={<FormSkeleton />}>
-        <AccountContent params={params} />
-      </Suspense>
-    </>
+    <Suspense fallback={<FormSkeleton />}>
+      <AccountContent params={params} />
+    </Suspense>
   );
 }
 

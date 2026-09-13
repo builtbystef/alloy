@@ -8,7 +8,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { updateWorkspace } from "@/features/workspaces/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import { Form, FormError, useAppForm } from "@/components/shared/form";
 import { FieldGroup } from "@/components/ui/field";
 import { errorMessage } from "@/lib/api/errors";
 import { invalidateWorkspaces } from "@/features/workspaces/queries";
@@ -42,13 +42,7 @@ export function WorkspaceNameForm({ workspace }: { workspace: WorkspaceRead }) {
   });
 
   return (
-    <form
-      className="flex flex-col gap-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
+    <Form form={form}>
       <FieldGroup>
         <FormError message={serverError} />
         <form.AppField name="name">
@@ -57,9 +51,11 @@ export function WorkspaceNameForm({ workspace }: { workspace: WorkspaceRead }) {
       </FieldGroup>
       {canManage && (
         <form.AppForm>
-          <form.SubmitButton className="self-start">Save</form.SubmitButton>
+          <form.SubmitButton className="self-start" requireChanges>
+            Save
+          </form.SubmitButton>
         </form.AppForm>
       )}
-    </form>
+    </Form>
   );
 }

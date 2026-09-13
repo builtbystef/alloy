@@ -34,7 +34,7 @@ export default function CompaniesPage({
 }) {
   return (
     <>
-      <PageHeader title="Companies" description="The organisations your contacts belong to.">
+      <PageHeader>
         <Can permission="crm:write">
           <Suspense>
             <ImportButton params={params} />

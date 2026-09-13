@@ -2,7 +2,6 @@ import { dehydrate, HydrationBoundary, noop } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/shared/layout/page-header";
 import { TableSkeleton } from "@/components/shared/skeletons";
 import { paged } from "@/lib/lists";
 import { taskListQuery } from "@/features/crm/tasks/queries";
@@ -28,12 +27,9 @@ export default function TasksPage({
   searchParams: SearchParams;
 }) {
   return (
-    <>
-      <PageHeader title="Tasks" description="Soonest due first; undated tasks last." />
-      <Suspense fallback={<TableSkeleton />}>
-        <TasksContent params={params} searchParams={searchParams} />
-      </Suspense>
-    </>
+    <Suspense fallback={<TableSkeleton />}>
+      <TasksContent params={params} searchParams={searchParams} />
+    </Suspense>
   );
 }
 

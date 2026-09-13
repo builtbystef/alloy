@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { createInvite, resendInvite, revokeInvite } from "@/features/workspaces/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import { Form, FormError, useAppForm } from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { browserApi } from "@/lib/api/client";
@@ -78,13 +78,7 @@ export function Invites({ timeZone }: { timeZone: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <form
-        className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void form.handleSubmit();
-        }}
-      >
+      <Form form={form} className="gap-4 rounded-lg border bg-muted/30 p-4">
         <FieldGroup>
           <FormError message={serverError} />
           <div className="grid gap-5 sm:grid-cols-2">
@@ -99,7 +93,7 @@ export function Invites({ timeZone }: { timeZone: string }) {
         <form.AppForm>
           <form.SubmitButton className="self-start">Send invitation</form.SubmitButton>
         </form.AppForm>
-      </form>
+      </Form>
 
       {invites.length === 0 ? (
         <p className="text-sm text-muted-foreground">No pending invitations.</p>

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/shared/layout/page-header";
+import { FormPage } from "@/components/shared/layout/form-page";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { getSessionApi } from "@/lib/auth/session";
 import { requireWorkspace } from "@/features/workspaces/server";
@@ -15,12 +16,9 @@ type Params = Promise<{ workspaceId: string; id: string }>;
 
 export default function EditCompanyPage({ params }: { params: Params }) {
   return (
-    <>
-      <PageHeader title="Edit company" />
-      <Suspense fallback={<FormSkeleton />}>
-        <EditCompanyForm params={params} />
-      </Suspense>
-    </>
+    <Suspense fallback={<FormSkeleton />}>
+      <EditCompanyForm params={params} />
+    </Suspense>
   );
 }
 
@@ -32,5 +30,10 @@ async function EditCompanyForm({ params }: { params: Params }) {
     params: { path: { workspace_id: workspaceId, company_id: id } },
   });
   if (!company) notFound();
-  return <CompanyForm company={company} />;
+  return (
+    <FormPage>
+      <PageHeader title={company.name} />
+      <CompanyForm company={company} />
+    </FormPage>
+  );
 }

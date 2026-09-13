@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/shared/layout/page-header";
+import { FormPage } from "@/components/shared/layout/form-page";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { requireWorkspace } from "@/features/workspaces/server";
 
@@ -13,17 +13,18 @@ type Params = Promise<{ workspaceId: string }>;
 
 export default function NewCompanyPage({ params }: { params: Params }) {
   return (
-    <>
-      <PageHeader title="New company" />
-      <Suspense fallback={<FormSkeleton />}>
-        <NewCompanyForm params={params} />
-      </Suspense>
-    </>
+    <Suspense fallback={<FormSkeleton />}>
+      <NewCompanyForm params={params} />
+    </Suspense>
   );
 }
 
 async function NewCompanyForm({ params }: { params: Params }) {
   const { workspaceId } = await params;
   await requireWorkspace(workspaceId);
-  return <CompanyForm />;
+  return (
+    <FormPage>
+      <CompanyForm />
+    </FormPage>
+  );
 }

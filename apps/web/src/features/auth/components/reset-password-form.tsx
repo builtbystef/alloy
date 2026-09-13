@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { resetPassword } from "@/features/auth/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import { Form, FormError, useAppForm } from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -60,12 +60,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   });
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
+    <Form form={form}>
       <Card>
         <CardHeader>
           <CardTitle>Choose a new password</CardTitle>
@@ -115,6 +110,6 @@ export function ResetPasswordForm({ token }: { token: string }) {
           )}
         </CardFooter>
       </Card>
-    </form>
+    </Form>
   );
 }

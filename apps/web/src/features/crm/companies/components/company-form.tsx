@@ -9,9 +9,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { createCompany, updateCompany } from "@/features/crm/companies/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import {
+  Form,
+  FormActions,
+  FormError,
+  FormSection,
+  FormSections,
+  useAppForm,
+} from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
-import { FieldGroup } from "@/components/ui/field";
 import { errorMessage } from "@/lib/api/errors";
 import { invalidateCrm } from "@/features/crm/queries";
 import { companySchema, type CompanyInput } from "@/features/crm/companies/schemas";
@@ -50,49 +56,68 @@ export function CompanyForm({ company }: { company?: CompanyRead }) {
   });
 
   return (
-    <form
-      className="flex max-w-xl flex-col gap-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
-      <FieldGroup>
-        <FormError message={serverError} />
-        <form.AppField name="name">
-          {(field) => <field.TextField label="Name" autoFocus={!company} />}
-        </form.AppField>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <form.AppField name="website">
+    <Form form={form} warnOnLeave>
+      <FormError message={serverError} />
+      <FormSections>
+        <FormSection
+          title="Details"
+          description="
+          Only the name is required. Add the rest as you learn it.
+        "
+        >
+          <form.AppField name="name">
             {(field) => (
               <field.TextField
-                label="Website"
-                type="url"
-                placeholder="https://"
+                label="Name"
+                required
+                placeholder="Acme Inc."
                 autoComplete="off"
+                autoFocus={!company}
               />
             )}
           </form.AppField>
-          <form.AppField name="industry">
-            {(field) => <field.TextField label="Industry" />}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <form.AppField name="website">
+              {(field) => (
+                <field.TextField
+                  label="Website"
+                  type="url"
+                  placeholder="https://acme.com"
+                  autoComplete="off"
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="industry">
+              {(field) => <field.TextField label="Industry" placeholder="Software" />}
+            </form.AppField>
+          </div>
+        </FormSection>
+        <FormSection title="Notes" description="Anything the team should know about this company.">
+          <form.AppField name="notes">
+            {(field) => (
+              <field.TextareaField
+                label="Notes"
+                rows={5}
+                placeholder="Met at the trade show; they are moving off their old vendor in Q3."
+              />
+            )}
           </form.AppField>
-        </div>
-        <form.AppField name="notes">
-          {(field) => <field.TextareaField label="Notes" rows={4} />}
-        </form.AppField>
-      </FieldGroup>
-      <div className="flex items-center gap-2">
-        <form.AppForm>
-          <form.SubmitButton>{company ? "Save changes" : "Create company"}</form.SubmitButton>
-        </form.AppForm>
+        </FormSection>
+      </FormSections>
+      <FormActions className="border-t pt-8">
         <Button
-          variant="ghost"
+          variant="outline"
           nativeButton={false}
           render={<Link href={company ? paths.company(company.id) : paths.companies} />}
         >
           Cancel
         </Button>
-      </div>
-    </form>
+        <form.AppForm>
+          <form.SubmitButton requireChanges={company !== undefined}>
+            {company ? "Save changes" : "Create company"}
+          </form.SubmitButton>
+        </form.AppForm>
+      </FormActions>
+    </Form>
   );
 }

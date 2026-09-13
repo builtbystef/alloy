@@ -40,7 +40,7 @@ export default function ContactsPage({
 }) {
   return (
     <>
-      <PageHeader title="Contacts" description="Everyone you are working with.">
+      <PageHeader>
         <Can permission="crm:write">
           <Suspense>
             <ImportButton params={params} />

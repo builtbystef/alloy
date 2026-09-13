@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { PanelLeftIcon } from "lucide-react";
+import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -237,7 +237,8 @@ function Sidebar({
 }
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, open, openMobile, isMobile } = useSidebar();
+  const expanded = isMobile ? openMobile : open;
 
   return (
     <Button
@@ -252,8 +253,8 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       }}
       {...props}
     >
-      <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      {expanded ? <PanelRightOpenIcon /> : <PanelRightCloseIcon />}
+      <span className="sr-only">{expanded ? "Collapse sidebar" : "Expand sidebar"}</span>
     </Button>
   );
 }

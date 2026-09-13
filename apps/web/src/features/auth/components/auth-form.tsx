@@ -8,7 +8,7 @@ import { useState } from "react";
 
 import type { Signup } from "@alloy/api-client";
 import { login, signup } from "@/features/auth/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import { Form, FormError, useAppForm } from "@/components/shared/form";
 import {
   Card,
   CardContent,
@@ -79,12 +79,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   });
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
+    <Form form={form}>
       <Card>
         <CardHeader>
           <CardTitle>{isSignup ? "Create an account" : "Log in"}</CardTitle>
@@ -176,6 +171,6 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           </p>
         </CardFooter>
       </Card>
-    </form>
+    </Form>
   );
 }

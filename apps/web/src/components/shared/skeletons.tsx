@@ -27,9 +27,16 @@ export function DetailSkeleton() {
 
 export function FormSkeleton() {
   return (
-    <div className="flex max-w-xl flex-col gap-4">
-      {Array.from({ length: 5 }, (_, i) => (
-        <Skeleton key={i} className="h-14 w-full" />
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+      {Array.from({ length: 2 }, (_, i) => (
+        <div key={i} className="flex flex-col gap-4">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-14 w-full" />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Skeleton className="h-14" />
+            <Skeleton className="h-14" />
+          </div>
+        </div>
       ))}
     </div>
   );

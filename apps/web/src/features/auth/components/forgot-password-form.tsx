@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { forgotPassword } from "@/features/auth/mutations";
-import { FormError, useAppForm } from "@/components/shared/form";
+import { Form, FormError, useAppForm } from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -75,12 +75,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
+    <Form form={form}>
       <Card>
         <CardHeader>
           <CardTitle>Forgot your password?</CardTitle>
@@ -110,6 +105,6 @@ export function ForgotPasswordForm() {
           </p>
         </CardFooter>
       </Card>
-    </form>
+    </Form>
   );
 }
