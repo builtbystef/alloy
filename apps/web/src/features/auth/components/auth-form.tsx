@@ -168,12 +168,6 @@ export function AuthForm({
           <form.AppForm>
             <form.SubmitButton>{isSignup ? "Sign up" : "Log in"}</form.SubmitButton>
           </form.AppForm>
-          {isSignup && !isInvite && (
-            <p className="text-center text-sm text-muted-foreground">
-              Joining a team? Ask an admin to invite you: the link in that email creates your
-              account.
-            </p>
-          )}
           <p className="text-center text-sm text-muted-foreground">
             {isSignup ? (
               <>
