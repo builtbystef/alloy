@@ -41,7 +41,7 @@ async function OnboardingContent() {
           <div className="flex flex-col gap-1 border-t pt-6 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">Joining a team instead?</p>
             <p>
-              You do not need a workspace of your own. Ask an admin of your team's workspace to
+              If your team already has a workspace, you do not need one of your own. Ask an admin to
               invite you: the link in that email adds you to it. Invitations for{" "}
               <span className="text-foreground">your address</span> also appear here and in your
               account settings once sent.
