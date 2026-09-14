@@ -30,8 +30,16 @@ import { authFormSchema, type AuthFormInput } from "@/features/auth/schemas";
  *
  * A new account goes to /verify-email, unless it came from an invitation:
  * accepting one verifies the address, so the invite page is the shorter path.
+ * Only the invited address can accept, so sign-up fills it in, keeps it, and
+ * sends the token so the API skips the verification email.
  */
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+export function AuthForm({
+  mode,
+  invite = null,
+}: {
+  mode: "login" | "signup";
+  invite?: { token: string; email: string } | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -40,7 +48,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   // Kept across the login/sign-up links, so an invitation survives either path.
   const next = searchParams.get("next");
   const search = next ? `?next=${encodeURIComponent(next)}` : "";
-  const isInvite = next?.startsWith("/invites/") ?? false;
+  const isInvite = invite !== null;
   const destination = safeNextPath(next) as "/";
 
   const mutation = useMutation({
@@ -66,14 +74,24 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   });
 
   const form = useAppForm({
-    defaultValues: { name: "", email: "", password: "", confirm: "" } as AuthFormInput,
+    defaultValues: {
+      name: "",
+      email: invite?.email ?? "",
+      password: "",
+      confirm: "",
+    } as AuthFormInput,
     validationLogic: revalidateLogic(),
     validators: { onDynamic: authFormSchema(mode) },
     onSubmit: async ({ value }) => {
       setServerError(null);
       // Failures are shown through onError.
       await mutation
-        .mutateAsync({ name: value.name.trim(), email: value.email, password: value.password })
+        .mutateAsync({
+          name: value.name.trim(),
+          email: value.email,
+          password: value.password,
+          ...(isSignup && invite ? { invite_token: invite.token } : {}),
+        })
         .catch(() => {});
     },
   });
@@ -106,6 +124,10 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
                   type="email"
                   autoComplete="email"
                   autoFocus={!isSignup}
+                  readOnly={isSignup && isInvite}
+                  {...(isSignup && isInvite
+                    ? { description: "The invitation is for this address." }
+                    : {})}
                 />
               )}
             </form.AppField>
@@ -146,6 +168,12 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           <form.AppForm>
             <form.SubmitButton>{isSignup ? "Sign up" : "Log in"}</form.SubmitButton>
           </form.AppForm>
+          {isSignup && !isInvite && (
+            <p className="text-center text-sm text-muted-foreground">
+              Joining a team? Ask an admin to invite you: the link in that email creates your
+              account.
+            </p>
+          )}
           <p className="text-center text-sm text-muted-foreground">
             {isSignup ? (
               <>

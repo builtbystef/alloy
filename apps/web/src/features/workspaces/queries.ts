@@ -14,6 +14,8 @@ export const workspaceKeys = {
   detail: (id: string) => [...workspaceKeys.all, "detail", id] as const,
   members: (id: string) => [...workspaceKeys.detail(id), "members"] as const,
   invites: (id: string) => [...workspaceKeys.detail(id), "invites"] as const,
+  /** The caller's own, across workspaces. */
+  pending: () => [...workspaceKeys.all, "pending"] as const,
 };
 
 export function workspaceListQuery(api: ApiClient) {
@@ -44,6 +46,13 @@ export function inviteListQuery(api: ApiClient, ws: string) {
           params: { path: { workspace_id: ws } },
         }),
       ),
+  });
+}
+
+export function pendingInviteListQuery(api: ApiClient) {
+  return queryOptions({
+    queryKey: workspaceKeys.pending(),
+    queryFn: async () => unwrap(await api.GET("/invites/pending")),
   });
 }
 

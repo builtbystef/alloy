@@ -31,6 +31,7 @@ class WorkspaceRead(ReadModel):
     name: str
     created_at: datetime
     updated_at: datetime
+    onboarded_at: datetime | None
     role: WorkspaceRole
     permissions: list[Permission]
 
@@ -53,12 +54,15 @@ class InviteCreate(BaseModel):
 
 
 class InviteRead(ReadModel):
+    """As the workspace's admins see it: pending, or declined by the invitee."""
+
     id: UUID
     email: str
     role: WorkspaceRole
     invited_by: str | None
     created_at: datetime
     expires_at: datetime
+    declined_at: datetime | None
 
 
 class InvitePreview(BaseModel):
@@ -69,3 +73,10 @@ class InvitePreview(BaseModel):
     role: WorkspaceRole
     invited_by: str | None
     expires_at: datetime
+
+
+class PendingInviteRead(InvitePreview):
+    """One of the caller's own, by id: the token is not stored, so this is how the
+    app accepts or declines one without the link."""
+
+    id: UUID

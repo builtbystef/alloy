@@ -26,8 +26,9 @@ apps/web/
     │   ├── api/[...path]/route.ts   # the proxy to the API; forwards the visitor's address
     │   ├── logout/route.ts          # clears the session cookie
     │   ├── (auth)/       # centered layout with the logo; login, signup, verify-email, forgot-password, reset-password, confirm-email, invites/[token]
+    │   ├── (onboarding)/ # the same look, wider: invites (pending invitations), onboarding (name a workspace), [workspaceId]/onboarding (import, or skip)
     │   └── (app)/
-    │       ├── page.tsx              # `/`: opens the last-used (cookie) or first workspace; offers to create one if none
+    │       ├── page.tsx              # `/`: opens the last-used (cookie) or first workspace; with none, pending invitations or onboarding
     │       └── [workspaceId]/        # app layout (sidebar, <WorkspaceProvider>), error.tsx, not-found.tsx
     │           ├── page.tsx          # dashboard
     │           ├── contacts/, companies/   # list, new/, [id]/, [id]/edit/
@@ -80,9 +81,18 @@ The API stays the real check. Links are built with `workspacePaths(id)` from
 `lib/routes.ts`, typed as template literals so `typedRoutes` verifies them.
 
 `/` picks a workspace: the one in the `workspace` cookie that
-`<RememberWorkspace>` writes on every visit, else the first. Invitation links
-(`/invites/{token}`) preview without a login; the proxy sends logged-out
-visitors to `/login?next=…`, and the auth form keeps `next` across the
+`<RememberWorkspace>` writes on every visit, else the first. A user with none
+goes to `/invites` when invitations are waiting for their address (accept
+opens the workspace; declining the last one, or the link below, moves on), else
+to `/onboarding`. Onboarding is per workspace: name it, then import a CSV or
+skip, which stamps `onboarded_at`; the app layout sends owners and admins of
+a workspace still in onboarding back to `/{id}/onboarding`. "New workspace"
+in the switcher starts the same flow. Pending invitations also appear in the
+account settings.
+
+Invitation links (`/invites/{token}`) preview without a login and offer
+sign-up first, with the address filled in and the token sent along so the API
+skips the verification email; the auth form keeps `next` across the
 login/sign-up links so a new user lands back on the invitation.
 
 ## Styling: Tailwind CSS and shadcn/ui

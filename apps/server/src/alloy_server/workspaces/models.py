@@ -27,6 +27,7 @@ class Workspace(UUIDPrimaryKey, Timestamps, Base):
     __tablename__ = "workspaces"
 
     name: Mapped[str] = mapped_column(String(100))
+    onboarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     members: Mapped[list["WorkspaceMember"]] = relationship(
         back_populates="workspace", cascade="all, delete-orphan", passive_deletes=True
@@ -56,8 +57,8 @@ class WorkspaceInvite(UUIDPrimaryKey, Base):
     """An emailed link that grants a seat. The email holds a random token; only its
     SHA-256 is stored here.
 
-    Pending while `accepted_at` and `revoked_at` are null and `expires_at` is in the
-    future. Accepting or revoking stamps the row rather than deleting it.
+    Pending while `accepted_at`, `declined_at`, and `revoked_at` are null and
+    `expires_at` is in the future. Each outcome stamps the row rather than deleting it.
     """
 
     __tablename__ = "workspace_invites"
@@ -75,6 +76,7 @@ class WorkspaceInvite(UUIDPrimaryKey, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    declined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     workspace: Mapped[Workspace] = relationship(back_populates="invites")

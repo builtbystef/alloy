@@ -45,7 +45,7 @@ async def list_workspaces(session: SessionDep, user: VerifiedUserDep) -> list[Wo
 async def create_workspace(
     body: WorkspaceCreate, session: SessionDep, user: VerifiedUserDep
 ) -> WorkspaceRead:
-    """The caller becomes its owner."""
+    """The caller becomes its owner. Starts in onboarding; see `/onboarding/complete`."""
     member = service.create_workspace(session, body.name, user)
     await session.commit()
     return service.workspace_read(member.workspace, member.role)
@@ -62,6 +62,13 @@ async def update_workspace(
 ) -> WorkspaceRead:
     membership.workspace.name = body.name
     await session.commit()
+    return service.membership_read(membership)
+
+
+@scoped.post("/onboarding/complete")
+async def complete_onboarding(membership: CanManageWorkspace, session: SessionDep) -> WorkspaceRead:
+    """Sets `onboarded_at`. Idempotent."""
+    await service.complete_onboarding(session, membership.workspace)
     return service.membership_read(membership)
 
 
@@ -113,7 +120,7 @@ async def remove_member(
 
 @scoped.get("/invites")
 async def list_invites(membership: CanManageMembers, session: SessionDep) -> list[InviteRead]:
-    """Pending only: accepted, revoked, and expired invitations are not listed."""
+    """Pending and declined (`declined_at` set); not accepted, revoked, or expired."""
     invites = await session.scalars(service.invites_query(membership))
     return [service.invite_read(i) for i in invites]
 
@@ -155,8 +162,8 @@ async def resend_invite(
 async def revoke_invite(
     invite_id: UUID, membership: CanManageMembers, session: SessionDep
 ) -> Response:
-    """The link stops working. Only pending invitations can be revoked."""
-    invite = await service.get_pending_invite(session, membership, invite_id)
+    """The link stops working; a declined invitation leaves the list."""
+    invite = await service.get_pending_invite(session, membership, invite_id, declined=True)
     await service.revoke_invite(session, invite)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

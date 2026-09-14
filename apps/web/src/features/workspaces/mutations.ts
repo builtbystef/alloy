@@ -15,6 +15,14 @@ export async function createWorkspace(body: WorkspaceCreate): Promise<WorkspaceR
   return unwrap(await browserApi.POST("/workspaces/", { body }));
 }
 
+export async function completeOnboarding(ws: string): Promise<WorkspaceRead> {
+  return unwrap(
+    await browserApi.POST("/workspaces/{workspace_id}/onboarding/complete", {
+      params: { path: { workspace_id: ws } },
+    }),
+  );
+}
+
 export async function updateWorkspace(ws: string, body: WorkspaceUpdate): Promise<WorkspaceRead> {
   return unwrap(
     await browserApi.PATCH("/workspaces/{workspace_id}", {
@@ -91,4 +99,21 @@ export async function revokeInvite(ws: string, inviteId: string): Promise<void> 
 /** Take the seat an emailed link offers; answers with the workspace joined. */
 export async function acceptInvite(token: string): Promise<WorkspaceRead> {
   return unwrap(await browserApi.POST("/invites/{token}/accept", { params: { path: { token } } }));
+}
+
+/** Without the link: one of the caller's own. */
+export async function acceptPendingInvite(inviteId: string): Promise<WorkspaceRead> {
+  return unwrap(
+    await browserApi.POST("/invites/pending/{invite_id}/accept", {
+      params: { path: { invite_id: inviteId } },
+    }),
+  );
+}
+
+export async function declinePendingInvite(inviteId: string): Promise<void> {
+  unwrap(
+    await browserApi.POST("/invites/pending/{invite_id}/decline", {
+      params: { path: { invite_id: inviteId } },
+    }),
+  );
 }

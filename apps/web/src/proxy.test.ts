@@ -20,9 +20,8 @@ describe("without a session", () => {
     expect(redirectedTo(proxy(request("/ws1/tasks?due=today")))).toBe(
       `${ORIGIN}/login?next=${encodeURIComponent("/ws1/tasks?due=today")}`,
     );
-    expect(redirectedTo(proxy(request("/invites/tok")))).toBe(
-      `${ORIGIN}/login?next=%2Finvites%2Ftok`,
-    );
+    expect(redirectedTo(proxy(request("/invites")))).toBe(`${ORIGIN}/login?next=%2Finvites`);
+    expect(redirectedTo(proxy(request("/invites/")))).toBe(`${ORIGIN}/login?next=%2Finvites%2F`);
     // The home page needs no next: it is where login lands anyway.
     expect(redirectedTo(proxy(request("/")))).toBe(`${ORIGIN}/login`);
   });
@@ -34,6 +33,7 @@ describe("without a session", () => {
       "/verify-email",
       "/reset-password?token=x",
       "/logout",
+      "/invites/tok",
     ]) {
       expect(redirectedTo(proxy(request(path)))).toBeNull();
     }

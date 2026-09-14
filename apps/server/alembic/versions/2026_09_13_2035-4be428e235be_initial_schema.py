@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 22643acfb969
+Revision ID: 4be428e235be
 Revises:
-Create Date: 2026-09-13 16:23:17.974812
+Create Date: 2026-09-13 20:35:59.871239
 """
 
 from typing import TYPE_CHECKING
@@ -13,7 +13,7 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = "22643acfb969"
+revision: str = "4be428e235be"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -54,6 +54,7 @@ def upgrade() -> None:
         "workspaces",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("onboarded_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_workspaces")),
@@ -215,6 +216,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("declined_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(
             ["invited_by_user_id"],
@@ -470,6 +472,9 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.CheckConstraint(
+            "contact_id IS NULL OR company_id IS NULL", name=op.f("ck_tasks_one_link")
+        ),
         sa.ForeignKeyConstraint(
             ["company_id"],
             ["companies.id"],

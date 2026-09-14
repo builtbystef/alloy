@@ -35,7 +35,9 @@ export function AcceptInvite({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
-  const loginHref = `/login?next=${encodeURIComponent(`/invites/${token}`)}` as const;
+  const next = encodeURIComponent(`/invites/${token}`);
+  const loginHref = `/login?next=${next}` as const;
+  const signupHref = `/signup?next=${next}` as const;
 
   const accept = useMutation({
     mutationFn: () => acceptInvite(token),
@@ -67,7 +69,7 @@ export function AcceptInvite({
         <FormError message={serverError} />
         {userEmail === null && (
           <p className="text-sm text-muted-foreground">
-            Log in or create an account with {invite.email} to accept.
+            Create an account with {invite.email} to accept, or log in if you already have one.
           </p>
         )}
         {mismatch && (
@@ -79,9 +81,14 @@ export function AcceptInvite({
       </CardContent>
       <CardFooter className="flex-col items-stretch gap-3">
         {userEmail === null ? (
-          <Button nativeButton={false} render={<Link href={loginHref} />}>
-            Log in to accept
-          </Button>
+          <>
+            <Button nativeButton={false} render={<Link href={signupHref} />}>
+              Create an account
+            </Button>
+            <Button variant="outline" nativeButton={false} render={<Link href={loginHref} />}>
+              Log in
+            </Button>
+          </>
         ) : mismatch ? (
           <Button variant="outline" onClick={() => logout.mutate()} disabled={logout.isPending}>
             {logout.isPending && <Loader2Icon className="animate-spin" />}

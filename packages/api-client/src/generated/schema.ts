@@ -91,10 +91,12 @@ export interface paths {
         put?: never;
         /**
          * Signup
-         * @description Create an account, a first workspace owned by it, log in, and email a
-         *     verification link. Until it is followed, the account can only use `/auth/*`.
+         * @description Create an account, log in, and email a verification link. Until it is
+         *     followed, the account can only use `/auth/*`. No workspace: onboarding creates
+         *     one, or an invitation is accepted.
          *
-         *     An invitee gets no link: accepting the invitation verifies the address instead.
+         *     With an `invite_token` for this email, no verification link is sent: accepting
+         *     the invitation verifies the address.
          */
         post: operations["auth-signup"];
         delete?: never;
@@ -387,7 +389,7 @@ export interface paths {
         put?: never;
         /**
          * Create Workspace
-         * @description The caller becomes its owner.
+         * @description The caller becomes its owner. Starts in onboarding; see `/onboarding/complete`.
          */
         post: operations["workspaces-create_workspace"];
         delete?: never;
@@ -417,6 +419,26 @@ export interface paths {
         head?: never;
         /** Update Workspace */
         patch: operations["workspaces-update_workspace"];
+        trace?: never;
+    };
+    "/workspaces/{workspace_id}/onboarding/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Onboarding
+         * @description Sets `onboarded_at`. Idempotent.
+         */
+        post: operations["workspaces-complete_onboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/workspaces/{workspace_id}/leave": {
@@ -494,7 +516,7 @@ export interface paths {
         };
         /**
          * List Invites
-         * @description Pending only: accepted, revoked, and expired invitations are not listed.
+         * @description Pending and declined (`declined_at` set); not accepted, revoked, or expired.
          */
         get: operations["workspaces-list_invites"];
         put?: never;
@@ -543,9 +565,69 @@ export interface paths {
         post?: never;
         /**
          * Revoke Invite
-         * @description The link stops working. Only pending invitations can be revoked.
+         * @description The link stops working; a declined invitation leaves the list.
          */
         delete: operations["workspaces-revoke_invite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Pending Invites
+         * @description Oldest first.
+         */
+        get: operations["invites-list_pending_invites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/pending/{invite_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Pending Invite
+         * @description 404 unless pending and addressed to the caller.
+         */
+        post: operations["invites-accept_pending_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/pending/{invite_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline Pending Invite
+         * @description The link stops working; the workspace's admins see the refusal.
+         */
+        post: operations["invites-decline_pending_invite"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -561,7 +643,7 @@ export interface paths {
         /**
          * Read Invite
          * @description No login needed: the page shows who invited you where before you sign up.
-         *     404 for an unknown, revoked, or used token; 410 for an expired one.
+         *     404 for an unknown, revoked, declined, or used token; 410 for an expired one.
          */
         get: operations["invites-read_invite"];
         put?: never;
@@ -1688,7 +1770,10 @@ export interface components {
              */
             expires_at: string;
         };
-        /** InviteRead */
+        /**
+         * InviteRead
+         * @description As the workspace's admins see it: pending, or declined by the invitee.
+         */
         InviteRead: {
             /**
              * Id
@@ -1710,6 +1795,8 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+            /** Declined At */
+            declined_at: string | null;
         };
         /** MemberRead */
         MemberRead: {
@@ -1846,6 +1933,30 @@ export interface components {
             email: string;
         };
         /**
+         * PendingInviteRead
+         * @description One of the caller's own, by id: the token is not stored, so this is how the
+         *     app accepts or declines one without the link.
+         */
+        PendingInviteRead: {
+            /** Workspace Name */
+            workspace_name: string;
+            /** Email */
+            email: string;
+            role: components["schemas"]["WorkspaceRole"];
+            /** Invited By */
+            invited_by: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /**
          * Permission
          * @enum {string}
          */
@@ -1883,6 +1994,8 @@ export interface components {
             password: string;
             /** Name */
             name: string;
+            /** Invite Token */
+            invite_token?: string | null;
         };
         /**
          * SortOrder
@@ -2045,6 +2158,8 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Onboarded At */
+            onboarded_at: string | null;
             role: components["schemas"]["WorkspaceRole"];
             /** Permissions */
             permissions: components["schemas"]["Permission"][];
@@ -2118,6 +2233,7 @@ export type PageOfTaskRead = components['schemas']['PageOf_TaskRead_'];
 export type PasswordChange = components['schemas']['PasswordChange'];
 export type PasswordReset = components['schemas']['PasswordReset'];
 export type PasswordResetRequest = components['schemas']['PasswordResetRequest'];
+export type PendingInviteRead = components['schemas']['PendingInviteRead'];
 export type Permission = components['schemas']['Permission'];
 export type ProfileUpdate = components['schemas']['ProfileUpdate'];
 export type RowError = components['schemas']['RowError'];
@@ -2780,6 +2896,37 @@ export interface operations {
             };
         };
     };
+    "workspaces-complete_onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     "workspaces-leave_workspace": {
         parameters: {
             query?: never;
@@ -3011,6 +3158,86 @@ export interface operations {
             path: {
                 invite_id: string;
                 workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "invites-list_pending_invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingInviteRead"][];
+                };
+            };
+        };
+    };
+    "invites-accept_pending_invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    "invites-decline_pending_invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
             };
             cookie?: never;
         };

@@ -99,7 +99,7 @@
           "auth"
         ],
         "summary": "Signup",
-        "description": "Create an account, a first workspace owned by it, log in, and email a\nverification link. Until it is followed, the account can only use `/auth/*`.\n\nAn invitee gets no link: accepting the invitation verifies the address instead.",
+        "description": "Create an account, log in, and email a verification link. Until it is\nfollowed, the account can only use `/auth/*`. No workspace: onboarding creates\none, or an invitation is accepted.\n\nWith an `invite_token` for this email, no verification link is sent: accepting\nthe invitation verifies the address.",
         "operationId": "auth-signup",
         "requestBody": {
           "content": {
@@ -642,7 +642,7 @@
           "workspaces"
         ],
         "summary": "Create Workspace",
-        "description": "The caller becomes its owner.",
+        "description": "The caller becomes its owner. Starts in onboarding; see `/onboarding/complete`.",
         "operationId": "workspaces-create_workspace",
         "requestBody": {
           "content": {
@@ -813,6 +813,55 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/onboarding/complete": {
+      "post": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Complete Onboarding",
+        "description": "Sets `onboarded_at`. Idempotent.",
+        "operationId": "workspaces-complete_onboarding",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceRead"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -1047,7 +1096,7 @@
           "workspaces"
         ],
         "summary": "List Invites",
-        "description": "Pending only: accepted, revoked, and expired invitations are not listed.",
+        "description": "Pending and declined (`declined_at` set); not accepted, revoked, or expired.",
         "operationId": "workspaces-list_invites",
         "security": [
           {
@@ -1216,7 +1265,7 @@
           "workspaces"
         ],
         "summary": "Revoke Invite",
-        "description": "The link stops working. Only pending invitations can be revoked.",
+        "description": "The link stops working; a declined invitation leaves the list.",
         "operationId": "workspaces-revoke_invite",
         "security": [
           {
@@ -1262,13 +1311,135 @@
         }
       }
     },
+    "/invites/pending": {
+      "get": {
+        "tags": [
+          "invites"
+        ],
+        "summary": "List Pending Invites",
+        "description": "Oldest first.",
+        "operationId": "invites-list_pending_invites",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PendingInviteRead"
+                  },
+                  "type": "array",
+                  "title": "Response Invites-List Pending Invites"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ]
+      }
+    },
+    "/invites/pending/{invite_id}/accept": {
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "summary": "Accept Pending Invite",
+        "description": "404 unless pending and addressed to the caller.",
+        "operationId": "invites-accept_pending_invite",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invite_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Invite Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invites/pending/{invite_id}/decline": {
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "summary": "Decline Pending Invite",
+        "description": "The link stops working; the workspace's admins see the refusal.",
+        "operationId": "invites-decline_pending_invite",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invite_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Invite Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invites/{token}": {
       "get": {
         "tags": [
           "invites"
         ],
         "summary": "Read Invite",
-        "description": "No login needed: the page shows who invited you where before you sign up.\n404 for an unknown, revoked, or used token; 410 for an expired one.",
+        "description": "No login needed: the page shows who invited you where before you sign up.\n404 for an unknown, revoked, declined, or used token; 410 for an expired one.",
         "operationId": "invites-read_invite",
         "parameters": [
           {
@@ -5475,6 +5646,18 @@
             "type": "string",
             "format": "date-time",
             "title": "Expires At"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declined At"
           }
         },
         "type": "object",
@@ -5484,9 +5667,11 @@
           "role",
           "invited_by",
           "created_at",
-          "expires_at"
+          "expires_at",
+          "declined_at"
         ],
-        "title": "InviteRead"
+        "title": "InviteRead",
+        "description": "As the workspace's admins see it: pending, or declined by the invitee."
       },
       "MemberRead": {
         "properties": {
@@ -5784,6 +5969,53 @@
         ],
         "title": "PasswordResetRequest"
       },
+      "PendingInviteRead": {
+        "properties": {
+          "workspace_name": {
+            "type": "string",
+            "title": "Workspace Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "invited_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invited By"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_name",
+          "email",
+          "role",
+          "invited_by",
+          "expires_at",
+          "id"
+        ],
+        "title": "PendingInviteRead",
+        "description": "One of the caller's own, by id: the token is not stored, so this is how the\napp accepts or declines one without the link."
+      },
       "Permission": {
         "type": "string",
         "enum": [
@@ -5857,6 +6089,19 @@
             "maxLength": 100,
             "minLength": 1,
             "title": "Name"
+          },
+          "invite_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Token"
           }
         },
         "type": "object",
@@ -6298,6 +6543,18 @@
             "format": "date-time",
             "title": "Updated At"
           },
+          "onboarded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onboarded At"
+          },
           "role": {
             "$ref": "#/components/schemas/WorkspaceRole"
           },
@@ -6315,6 +6572,7 @@
           "name",
           "created_at",
           "updated_at",
+          "onboarded_at",
           "role",
           "permissions"
         ],

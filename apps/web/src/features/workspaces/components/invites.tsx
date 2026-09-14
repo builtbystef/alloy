@@ -56,8 +56,9 @@ export function Invites({ timeZone }: { timeZone: string }) {
 
   const revoke = useMutation({
     mutationFn: async (id: string) => revokeInvite(workspace.id, id),
-    onSuccess: async () => {
-      toast.success("Invitation revoked");
+    onSuccess: async (_, id) => {
+      const declined = invites.some((invite) => invite.id === id && invite.declined_at !== null);
+      toast.success(declined ? "Invitation dismissed" : "Invitation revoked");
       await invalidateWorkspaces(queryClient);
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -99,36 +100,46 @@ export function Invites({ timeZone }: { timeZone: string }) {
         <p className="text-sm text-muted-foreground">No pending invitations.</p>
       ) : (
         <ul className="divide-y rounded-lg border px-4">
-          {invites.map((pending) => (
-            <li key={pending.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{pending.email}</p>
-                <p className="text-sm text-muted-foreground">
-                  {roleLabels[pending.role]}
-                  {pending.invited_by && ` · invited by ${pending.invited_by}`}
-                  {` · expires ${formatDate(pending.expires_at, timeZone)}`}
-                </p>
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={resend.isPending}
-                  onClick={() => resend.mutate(pending.id)}
-                >
-                  Resend
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={revoke.isPending}
-                  onClick={() => revoke.mutate(pending.id)}
-                >
-                  Revoke
-                </Button>
-              </div>
-            </li>
-          ))}
+          {invites.map((pending) => {
+            const declined = pending.declined_at !== null;
+            return (
+              <li
+                key={pending.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{pending.email}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {roleLabels[pending.role]}
+                    {pending.invited_by && ` · invited by ${pending.invited_by}`}
+                    {declined
+                      ? ` · declined ${formatDate(pending.declined_at, timeZone)}`
+                      : ` · expires ${formatDate(pending.expires_at, timeZone)}`}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  {!declined && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={resend.isPending}
+                      onClick={() => resend.mutate(pending.id)}
+                    >
+                      Resend
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={revoke.isPending}
+                    onClick={() => revoke.mutate(pending.id)}
+                  >
+                    {declined ? "Dismiss" : "Revoke"}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

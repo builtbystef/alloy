@@ -1,16 +1,21 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { SettingsSection, SettingsSections } from "@/components/shared/layout/settings-section";
 import { FormSkeleton } from "@/components/shared/skeletons";
-import { requireUser } from "@/lib/auth/session";
+import { getQueryClient } from "@/lib/query-client";
+import { pendingInviteListQuery } from "@/features/workspaces/queries";
+import { getSessionApi, requireUser } from "@/lib/auth/session";
 import { requireWorkspace } from "@/features/workspaces/server";
+import { getTimeZone } from "@/lib/time-zone/server";
 
 import { DeleteAccountCard } from "@/features/auth/components/delete-account-card";
 import { EmailForm } from "@/features/auth/components/email-form";
 import { NameForm } from "@/features/auth/components/name-form";
 import { PasswordForm } from "@/features/auth/components/password-form";
 import { SessionsCard } from "@/features/auth/components/sessions-card";
+import { PendingInvites } from "@/features/workspaces/components/pending-invites";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -26,9 +31,27 @@ export default function AccountPage({ params }: { params: Params }) {
 
 async function AccountContent({ params }: { params: Params }) {
   const { workspaceId } = await params;
-  const [user] = await Promise.all([requireUser(), requireWorkspace(workspaceId)]);
+  const [user, , api, timeZone] = await Promise.all([
+    requireUser(),
+    requireWorkspace(workspaceId),
+    getSessionApi(),
+    getTimeZone(),
+  ]);
+  const queryClient = getQueryClient();
+  const invites = await queryClient.query(pendingInviteListQuery(api));
   return (
     <SettingsSections>
+      {invites.length > 0 && (
+        <SettingsSection
+          wide
+          title="Invitations"
+          description="Workspaces you have been invited to join."
+        >
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            <PendingInvites timeZone={timeZone} />
+          </HydrationBoundary>
+        </SettingsSection>
+      )}
       <SettingsSection title="Profile" description="How you appear across your workspaces.">
         <NameForm name={user.name} />
       </SettingsSection>

@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import type { WorkspaceRead } from "@alloy/api-client";
 import { Suspense, type ReactNode } from "react";
 
 import { RememberWorkspace } from "@/features/workspaces/components/remember-workspace";
@@ -5,6 +7,7 @@ import { TimeZoneSync } from "@/components/shared/time-zone-sync";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
+import { workspacePaths } from "@/lib/routes";
 import { WorkspaceProvider } from "@/features/workspaces/workspace-provider";
 
 import { AppSidebar } from "@/components/shared/layout/app-sidebar";
@@ -17,6 +20,7 @@ type Params = Promise<{ workspaceId: string }>;
  * awaited: the promise goes to <WorkspaceProvider>, and every consumer
  * (nav links, permission gates, tables) suspends on it behind its own
  * <Suspense>, so the rest of the shell ships before the API answers.
+ * <OnboardingGate> sends those who can finish an unfinished onboarding to it.
  */
 export default function WorkspaceLayout({
   children,
@@ -40,12 +44,21 @@ export default function WorkspaceLayout({
           <main className="mx-auto w-full max-w-6xl flex-1 p-6 md:py-8">{children}</main>
         </SidebarInset>
         <Suspense>
+          <OnboardingGate workspace={workspace} />
           <CurrentTimeZone />
           <CurrentWorkspaceCookie params={params} />
         </Suspense>
       </SidebarProvider>
     </WorkspaceProvider>
   );
+}
+
+async function OnboardingGate({ workspace }: { workspace: Promise<WorkspaceRead> }) {
+  const current = await workspace;
+  if (current.onboarded_at === null && current.permissions.includes("workspace:manage")) {
+    redirect(workspacePaths(current.id).onboarding);
+  }
+  return null;
 }
 
 async function CurrentTimeZone() {

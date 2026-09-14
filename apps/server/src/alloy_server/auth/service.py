@@ -14,16 +14,15 @@ from alloy_server.auth.emails import (
 from alloy_server.auth.models import User, UserSession
 from alloy_server.auth.passwords import hash_password
 from alloy_server.auth.tokens import hash_token, new_token
-from alloy_server.core.exceptions import ConflictError, GoneError, NotFoundError
+from alloy_server.core.exceptions import AppError, ConflictError, GoneError, NotFoundError
 from alloy_server.db.base import utcnow
 from alloy_server.jobs.emails import send_email
 from alloy_server.workspaces.models import (
     Workspace,
-    WorkspaceInvite,
     WorkspaceMember,
     WorkspaceRole,
 )
-from alloy_server.workspaces.service import DEFAULT_WORKSPACE_NAME, create_workspace
+from alloy_server.workspaces.service import get_invite_by_token
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -44,18 +43,16 @@ async def email_taken(session: AsyncSession, email: str) -> bool:
     return await session.scalar(select(User.id).where(User.email == email).limit(1)) is not None
 
 
-async def has_pending_invite(session: AsyncSession, email: str) -> bool:
-    """Whether an invitation is waiting for this address. Accepting it verifies the
-    email, so such a signup gets no verification email of its own."""
-    invite_id = await session.scalar(
-        select(WorkspaceInvite.id)
-        .where(WorkspaceInvite.email == email)
-        .where(WorkspaceInvite.accepted_at.is_(None))
-        .where(WorkspaceInvite.revoked_at.is_(None))
-        .where(WorkspaceInvite.expires_at > utcnow())
-        .limit(1)
-    )
-    return invite_id is not None
+async def invite_addressed_to(session: AsyncSession, token: str | None, email: str) -> bool:
+    """Whether `token` is a pending invitation for `email`. A bad token is not an
+    error: the signup goes ahead and gets a verification email."""
+    if token is None:
+        return False
+    try:
+        invite = await get_invite_by_token(session, token)
+    except AppError:
+        return False
+    return invite.email == email
 
 
 async def workspaces_needing_an_owner(session: AsyncSession, user: User) -> list[str]:
@@ -107,15 +104,13 @@ async def workspaces_needing_an_owner(session: AsyncSession, user: User) -> list
 
 
 async def create_account(session: AsyncSession, email: str, password: str, name: str) -> User:
-    """A user with a first workspace they own. Flushed, not committed.
-    `ConflictError` when the address is registered."""
+    """Flushed, not committed. `ConflictError` when the address is registered."""
     user = User(email=email, name=name, password_hash=await hash_password(password))
     session.add(user)
     try:
         await session.flush()
     except IntegrityError:
         raise ConflictError("Email already registered") from None
-    create_workspace(session, DEFAULT_WORKSPACE_NAME, user)
     return user
 
 

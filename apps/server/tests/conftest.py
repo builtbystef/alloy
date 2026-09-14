@@ -218,9 +218,6 @@ def signup(client: TestClient, outbox: Outbox, email: str) -> dict[str, str]:
     token = response.cookies[SESSION_COOKIE]
     client.cookies.clear()
     headers = {"Cookie": f"{SESSION_COOKIE}={token}"}
-    if not outbox or outbox[-1].subject != "Verify your email":
-        # An invitee gets no link at signup; ask for one, as the page would.
-        assert client.post("/auth/resend-verification", headers=headers).status_code == 204
     assert outbox[-1].to == email.lower()
     verified = client.post("/auth/verify-email", json={"token": verification_token(outbox)})
     assert verified.status_code == 200, verified.text
@@ -265,12 +262,15 @@ class Actor:
         return self.client.delete(self.ws(path), headers=self.headers)
 
 
+WORKSPACE_NAME = "My Workspace"
+
+
 def actor(client: TestClient, outbox: Outbox, email: str) -> Actor:
-    """Sign up and act in the workspace signup created."""
+    """Sign up and create a workspace to act in, as onboarding would."""
     headers = signup(client, outbox, email)
-    workspaces = client.get("/workspaces/", headers=headers).json()
-    assert len(workspaces) == 1
-    return Actor(client, email, headers, workspaces[0]["id"])
+    created = client.post("/workspaces/", json={"name": WORKSPACE_NAME}, headers=headers)
+    assert created.status_code == 201, created.text
+    return Actor(client, email, headers, created.json()["id"])
 
 
 @pytest.fixture

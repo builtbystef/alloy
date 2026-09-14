@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { safeNextPath, workspacePaths } from "./routes";
+import { isInviteLink, safeNextPath, workspacePaths } from "./routes";
 
 test("workspace paths all live under the workspace id", () => {
   const paths = workspacePaths("ws1");
@@ -26,4 +26,12 @@ test("a next path is kept only when it stays on this site", () => {
   expect(safeNextPath("//evil.example/")).toBe("/");
   expect(safeNextPath("/\\evil.example/")).toBe("/");
   expect(safeNextPath("evil.example")).toBe("/");
+});
+
+test("an invite link is /invites/ plus a token, not the /invites list", () => {
+  expect(isInviteLink("/invites/abc")).toBe(true);
+  expect(isInviteLink("/invites/abc?x=1")).toBe(true);
+  expect(isInviteLink("/invites")).toBe(false);
+  expect(isInviteLink("/invites/")).toBe(false);
+  expect(isInviteLink("/ws1/invites/abc")).toBe(false);
 });

@@ -7,17 +7,40 @@ if TYPE_CHECKING:
     from tests.conftest import Actor
 
     Join = Callable[[Actor, str, str], Actor]
+    NewLogin = Callable[[str], dict[str, str]]
 
 
-def test_signup_creates_a_workspace_owned_by_the_user(client: TestClient, alice: Actor):
+def test_signup_creates_no_workspace(client: TestClient, new_login: NewLogin):
+    """Onboarding asks for one, unless an invitation is accepted first."""
+    ada = new_login("ada@example.com")
+    assert client.get("/workspaces/", headers=ada).json() == []
+
+
+def test_creating_a_workspace_seats_the_user_as_owner(client: TestClient, alice: Actor):
     workspaces = client.get("/workspaces/", headers=alice.headers).json()
     assert len(workspaces) == 1
     assert workspaces[0]["name"] == "My Workspace"
     assert workspaces[0]["role"] == "owner"
     assert "workspace:delete" in workspaces[0]["permissions"]
+    assert workspaces[0]["onboarded_at"] is None
 
     members = alice.get("/members").json()
     assert [(m["email"], m["role"]) for m in members] == [("alice@example.com", "owner")]
+
+
+def test_onboarding_is_completed_once(alice: Actor, join: Join):
+    done = alice.post("/onboarding/complete")
+    assert done.status_code == 200, done.text
+    stamp = done.json()["onboarded_at"]
+    assert stamp is not None
+    assert alice.get("").json()["onboarded_at"] == stamp
+    # A second call keeps the first timestamp.
+    assert alice.post("/onboarding/complete").json()["onboarded_at"] == stamp
+    # Members and viewers cannot; admins can.
+    member = join(alice, "member@example.com", "member")
+    assert member.post("/onboarding/complete").status_code == 403
+    admin = join(alice, "admin@example.com", "admin")
+    assert admin.post("/onboarding/complete").status_code == 200
 
 
 def test_workspaces_require_login(client: TestClient):

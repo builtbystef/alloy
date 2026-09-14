@@ -1,22 +1,62 @@
 from datetime import timedelta
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 
-from alloy_server.auth.deps import CurrentUserDep
+from alloy_server.auth.deps import CurrentUserDep, VerifiedUserDep
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import TOKEN_PER_IP, Limit, LimiterDep, per_ip
 from alloy_server.workspaces import service
-from alloy_server.workspaces.schemas import InvitePreview, WorkspaceRead
+from alloy_server.workspaces.schemas import InvitePreview, PendingInviteRead, WorkspaceRead
 
 router = APIRouter(prefix="/invites", tags=["invites"])
 
 INVITE_ACCEPT_PER_USER = Limit("invite-accept:user", 10, timedelta(minutes=1))
 
 
+# --- By id: the caller's own pending invitations ------------------------------------
+#
+# Before the token routes, or `/pending` would be read as a token. Verified users
+# only: the emailed token proves the inbox is the caller's, an id does not.
+
+
+@router.get("/pending")
+async def list_pending_invites(
+    session: SessionDep, user: VerifiedUserDep
+) -> list[PendingInviteRead]:
+    """Oldest first."""
+    invites = await session.scalars(service.pending_invites_for(user.email))
+    return [service.pending_invite_read(i) for i in invites]
+
+
+@router.post("/pending/{invite_id}/accept")
+async def accept_pending_invite(
+    invite_id: UUID, session: SessionDep, user: VerifiedUserDep, limiter: LimiterDep
+) -> WorkspaceRead:
+    """404 unless pending and addressed to the caller."""
+    await limiter.hit(INVITE_ACCEPT_PER_USER, str(user.id))
+    invite = await service.get_pending_invite_for(session, user, invite_id)
+    member = await service.accept_invite(session, invite, user)
+    return service.workspace_read(invite.workspace, member.role)
+
+
+@router.post("/pending/{invite_id}/decline", status_code=status.HTTP_204_NO_CONTENT)
+async def decline_pending_invite(
+    invite_id: UUID, session: SessionDep, user: VerifiedUserDep
+) -> Response:
+    """The link stops working; the workspace's admins see the refusal."""
+    invite = await service.get_pending_invite_for(session, user, invite_id)
+    await service.decline_invite(session, invite)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- By token: the emailed link ----------------------------------------------------
+
+
 @router.get("/{token}", dependencies=[Depends(per_ip(TOKEN_PER_IP))])
 async def read_invite(token: str, session: SessionDep) -> InvitePreview:
     """No login needed: the page shows who invited you where before you sign up.
-    404 for an unknown, revoked, or used token; 410 for an expired one."""
+    404 for an unknown, revoked, declined, or used token; 410 for an expired one."""
     invite = await service.get_invite_by_token(session, token)
     return InvitePreview(
         workspace_name=invite.workspace.name,

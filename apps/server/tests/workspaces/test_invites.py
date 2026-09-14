@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     Join = Callable[[Actor, str, str], Actor]
 
 
+GRACE = {"email": "grace@example.com", "password": "correct horse battery", "name": "Grace"}
+
+
 def token_from(outbox: Outbox) -> str:
     return outbox[-1].text.split("/invites/")[1].split()[0]
 
@@ -72,8 +75,8 @@ def test_invite_emails_a_link_the_invitee_accepts(
     assert accepted.json()["id"] == alice.workspace
     assert accepted.json()["role"] == "member"
     assert client.get(alice.ws("/companies/"), headers=grace).status_code == 200
-    names = [w["name"] for w in client.get("/workspaces/", headers=grace).json()]
-    assert names == ["My Workspace", "My Workspace"]  # her own, and Alice's
+    joined = client.get("/workspaces/", headers=grace).json()
+    assert [w["id"] for w in joined] == [alice.workspace]
 
     # Used up: no longer listed, no longer accepted.
     assert alice.get("/invites").json() == []
@@ -149,7 +152,7 @@ def test_accepting_an_invitation_verifies_the_email(
     token = token_from(outbox)
     signup = client.post(
         "/auth/signup",
-        json={"email": "Grace@example.com", "password": "correct horse battery", "name": "Grace"},
+        json={**GRACE, "email": "Grace@example.com", "invite_token": token},
     )
     assert signup.status_code == 201
     assert signup.json()["email_verified_at"] is None
@@ -166,6 +169,116 @@ def test_accepting_an_invitation_verifies_the_email(
     # The requested verification link is spent.
     stale = outbox[-1].text.split("/verify-email?token=")[1].split()[0]
     assert client.post("/auth/verify-email", json={"token": stale}).status_code == 404
+
+
+def test_signup_without_a_matching_link_still_gets_a_verification_email(
+    client: TestClient, alice: Actor, outbox: Outbox
+):
+    """The token is what proves the inbox. A pending invitation alone, a stale
+    token, or one for another address changes nothing about the signup."""
+    alice.post("/invites", json={"email": "grace@example.com"})
+    token = token_from(outbox)
+
+    signup = client.post("/auth/signup", json=GRACE)
+    assert signup.status_code == 201, signup.text
+    assert outbox[-1].subject == "Verify your email"
+    assert outbox[-1].to == "grace@example.com"
+
+    client.cookies.clear()
+    other = client.post(
+        "/auth/signup", json={**GRACE, "email": "bob@example.com", "invite_token": token}
+    )
+    assert other.status_code == 201, other.text
+    assert outbox[-1].to == "bob@example.com"
+
+    client.cookies.clear()
+    stale = client.post(
+        "/auth/signup", json={**GRACE, "email": "carol@example.com", "invite_token": "nope"}
+    )
+    assert stale.status_code == 201, stale.text
+    assert outbox[-1].to == "carol@example.com"
+
+
+class TestPending:
+    """The caller's own invitations, by id: the flow for someone who signed up
+    without following the link, and the account settings page."""
+
+    def test_list_accept_and_decline(
+        self, client: TestClient, alice: Actor, bob: Actor, outbox: Outbox, new_login: NewLogin
+    ):
+        from_alice = alice.post("/invites", json={"email": "grace@example.com", "role": "admin"})
+        from_bob = bob.post("/invites", json={"email": "grace@example.com"})
+        assert from_alice.status_code == 201, from_alice.text
+        assert from_bob.status_code == 201, from_bob.text
+        # Someone else's invitation is not Grace's business.
+        other = bob.post("/invites", json={"email": "other@example.com"}).json()
+
+        grace = new_login("grace@example.com")
+        pending = client.get("/invites/pending", headers=grace)
+        assert pending.status_code == 200, pending.text
+        assert [(i["workspace_name"], i["role"], i["invited_by"]) for i in pending.json()] == [
+            ("My Workspace", "admin", "alice@example.com"),
+            ("My Workspace", "member", "bob@example.com"),
+        ]
+        assert pending.json()[0]["id"] == from_alice.json()["id"]
+        for invite in pending.json():
+            assert invite["email"] == "grace@example.com"
+            assert "expires_at" in invite
+
+        accepted = client.post(f"/invites/pending/{from_alice.json()['id']}/accept", headers=grace)
+        assert accepted.status_code == 200, accepted.text
+        assert accepted.json()["id"] == alice.workspace
+        assert accepted.json()["role"] == "admin"
+        assert client.get(alice.ws(), headers=grace).status_code == 200
+        assert alice.get("/invites").json() == []
+
+        declined = client.post(f"/invites/pending/{from_bob.json()['id']}/decline", headers=grace)
+        assert declined.status_code == 204, declined.text
+        assert client.get("/invites/pending", headers=grace).json() == []
+        assert client.get(bob.ws(), headers=grace).status_code == 404
+        # Bob sees the refusal until he dismisses it; the link is dead meanwhile.
+        listed = bob.get("/invites").json()
+        assert [(i["id"], i["declined_at"] is not None) for i in listed] == [
+            (from_bob.json()["id"], True),
+            (other["id"], False),
+        ]
+        token = outbox[1].text.split("/invites/")[1].split()[0]
+        assert client.get(f"/invites/{token}").status_code == 404
+        assert bob.post(f"/invites/{from_bob.json()['id']}/resend").status_code == 404
+        # A declined address can be invited again; the old row is not "pending".
+        assert bob.post("/invites", json={"email": "grace@example.com"}).status_code == 201
+        assert bob.delete(f"/invites/{from_bob.json()['id']}").status_code == 204
+        assert all(i["declined_at"] is None for i in bob.get("/invites").json())
+
+        # Gone from the list: neither can be acted on again.
+        for invite in (from_alice, from_bob):
+            url = f"/invites/pending/{invite.json()['id']}"
+            assert client.post(f"{url}/accept", headers=grace).status_code == 404
+            assert client.post(f"{url}/decline", headers=grace).status_code == 404
+
+    def test_needs_a_verified_email(self, client: TestClient, alice: Actor):
+        """An id proves nothing about the inbox, unlike the emailed token: anyone
+        could sign up with the invited address and take the seat."""
+        invite = alice.post("/invites", json={"email": "grace@example.com"}).json()
+        assert client.post("/auth/signup", json=GRACE).status_code == 201
+        url = f"/invites/pending/{invite['id']}"
+        assert client.get("/invites/pending").status_code == 403
+        assert client.post(f"{url}/accept").status_code == 403
+        assert client.post(f"{url}/decline").status_code == 403
+        client.cookies.clear()
+        assert client.get("/invites/pending").status_code == 401
+
+    def test_another_address_gets_404(self, client: TestClient, alice: Actor, new_login: NewLogin):
+        invite = alice.post("/invites", json={"email": "grace@example.com"}).json()
+        bob = new_login("bob@example.com")
+        assert client.get("/invites/pending", headers=bob).json() == []
+        assert (
+            client.post(f"/invites/pending/{invite['id']}/accept", headers=bob).status_code == 404
+        )
+        assert (
+            client.post(f"/invites/pending/{invite['id']}/decline", headers=bob).status_code == 404
+        )
+        assert alice.get("/invites").json()[0]["declined_at"] is None
 
 
 def test_invitation_role_defaults_to_member_and_is_validated(alice: Actor):

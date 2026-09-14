@@ -62,14 +62,16 @@ async def signup(
     settings: SettingsDep,
     response: Response,
 ) -> UserRead:
-    """Create an account, a first workspace owned by it, log in, and email a
-    verification link. Until it is followed, the account can only use `/auth/*`.
+    """Create an account, log in, and email a verification link. Until it is
+    followed, the account can only use `/auth/*`. No workspace: onboarding creates
+    one, or an invitation is accepted.
 
-    An invitee gets no link: accepting the invitation verifies the address instead.
+    With an `invite_token` for this email, no verification link is sent: accepting
+    the invitation verifies the address.
     """
     user = await service.create_account(session, body.email.lower(), body.password, body.name)
     read = await log_in(session, settings, user, response)
-    if not await service.has_pending_invite(session, user.email):
+    if not await service.invite_addressed_to(session, body.invite_token, user.email):
         await service.send_verification(session, settings, user)
     return read
 

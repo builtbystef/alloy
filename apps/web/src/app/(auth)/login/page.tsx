@@ -2,14 +2,21 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AuthForm } from "@/features/auth/components/auth-form";
+import { inviteFromNext } from "@/features/auth/invite-from-next";
 
 export const metadata: Metadata = { title: "Log in" };
 
-export default function LoginPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default function LoginPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    // useSearchParams() in the form reads the `next` parameter at request time.
     <Suspense>
-      <AuthForm mode="login" />
+      <LoginContent searchParams={searchParams} />
     </Suspense>
   );
+}
+
+async function LoginContent({ searchParams }: { searchParams: SearchParams }) {
+  const { next } = await searchParams;
+  return <AuthForm mode="login" invite={await inviteFromNext(next)} />;
 }

@@ -21,6 +21,7 @@ export function workspacePaths(workspaceId: string) {
     assistant: `${base}/assistant` as const,
     assistantChat: (id: string) => `${base}/assistant/${id}` as const,
     imports: `${base}/imports` as const,
+    onboarding: `${base}/onboarding` as const,
     settings: `${base}/settings` as const,
     members: `${base}/settings/members` as const,
     account: `${base}/account` as const,
@@ -28,6 +29,11 @@ export function workspacePaths(workspaceId: string) {
 }
 
 export type WorkspacePaths = ReturnType<typeof workspacePaths>;
+
+/** `/invites/{token}`, as opposed to the `/invites` list. */
+export function isInviteLink(pathname: string): boolean {
+  return pathname.startsWith("/invites/") && pathname.length > "/invites/".length;
+}
 
 /**
  * A `?next=` value as a path on this site, or "/" when it is anything else.

@@ -14,6 +14,8 @@ const OPEN_PATHS = [
   "/reset-password",
   "/logout",
 ];
+// Invitation links preview without a login; the `/invites` list needs one.
+const OPEN_PREFIXES = ["/invites/"];
 
 const matches = (paths: string[], pathname: string) =>
   paths.some((path) => pathname === path || pathname === `${path}/`);
@@ -23,12 +25,15 @@ export function proxy(request: NextRequest) {
   const hasSession = request.cookies.has(SESSION_COOKIE);
   const isAuthPath = matches(AUTH_PATHS, pathname);
 
-  if (matches(OPEN_PATHS, pathname)) {
+  if (
+    matches(OPEN_PATHS, pathname) ||
+    OPEN_PREFIXES.some((prefix) => pathname.length > prefix.length && pathname.startsWith(prefix))
+  ) {
     return NextResponse.next();
   }
   if (!hasSession && !isAuthPath) {
     const login = new URL("/login", request.url);
-    // The whole location, so a filtered list or an invite link survives the login.
+    // The whole location, so a filtered list survives the login.
     const next = pathname + search;
     if (next !== "/") login.searchParams.set("next", next);
     return NextResponse.redirect(login);

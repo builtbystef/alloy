@@ -17,7 +17,12 @@ from alloy_server.workspaces.models import (
     WorkspaceRole,
 )
 from alloy_server.workspaces.permissions import can_manage_role, permissions_for
-from alloy_server.workspaces.schemas import InviteRead, MemberRead, WorkspaceRead
+from alloy_server.workspaces.schemas import (
+    InviteRead,
+    MemberRead,
+    PendingInviteRead,
+    WorkspaceRead,
+)
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -28,8 +33,6 @@ if TYPE_CHECKING:
     from alloy_server.config import Settings
     from alloy_server.integrations.storage import ObjectStore
     from alloy_server.workspaces.deps import Membership
-
-DEFAULT_WORKSPACE_NAME = "My Workspace"
 
 WITH_USER = selectinload(WorkspaceMember.user)
 WITH_INVITER = selectinload(WorkspaceInvite.invited_by)
@@ -44,6 +47,7 @@ def workspace_read(workspace: Workspace, role: WorkspaceRole) -> WorkspaceRead:
         name=workspace.name,
         created_at=workspace.created_at,
         updated_at=workspace.updated_at,
+        onboarded_at=workspace.onboarded_at,
         role=role,
         permissions=sorted(permissions_for(role)),
     )
@@ -73,6 +77,19 @@ def invite_read(invite: WorkspaceInvite) -> InviteRead:
         invited_by=invite.invited_by.email if invite.invited_by else None,
         created_at=invite.created_at,
         expires_at=invite.expires_at,
+        declined_at=invite.declined_at,
+    )
+
+
+def pending_invite_read(invite: WorkspaceInvite) -> PendingInviteRead:
+    """Needs `invite.workspace` and `invite.invited_by` loaded."""
+    return PendingInviteRead(
+        id=invite.id,
+        workspace_name=invite.workspace.name,
+        email=invite.email,
+        role=invite.role,
+        invited_by=invite.invited_by.email if invite.invited_by else None,
+        expires_at=invite.expires_at,
     )
 
 
@@ -95,6 +112,14 @@ def create_workspace(session: AsyncSession, name: str, owner: User) -> Workspace
     member = WorkspaceMember(workspace=workspace, user=owner, role=WorkspaceRole.OWNER)
     session.add_all([workspace, member])
     return member
+
+
+async def complete_onboarding(session: AsyncSession, workspace: Workspace) -> Workspace:
+    """Idempotent. Commits."""
+    if workspace.onboarded_at is None:
+        workspace.onboarded_at = utcnow()
+    await session.commit()
+    return workspace
 
 
 async def delete_workspace(session: AsyncSession, store: ObjectStore, workspace: Workspace) -> None:
@@ -208,33 +233,67 @@ async def leave(session: AsyncSession, membership: Membership) -> None:
 # --- Invitations -------------------------------------------------------------------
 
 
-def pending_invites(workspace_id: UUID) -> Select[tuple[WorkspaceInvite]]:
+def open_invites() -> Select[tuple[WorkspaceInvite]]:
+    """Not accepted, not revoked, not expired: pending, or declined by the invitee."""
     return (
         select(WorkspaceInvite)
-        .where(WorkspaceInvite.workspace_id == workspace_id)
         .where(WorkspaceInvite.accepted_at.is_(None))
         .where(WorkspaceInvite.revoked_at.is_(None))
         .where(WorkspaceInvite.expires_at > utcnow())
     )
 
 
-def invites_query(membership: Membership) -> Select[tuple[WorkspaceInvite]]:
+def pending_invites(workspace_id: UUID) -> Select[tuple[WorkspaceInvite]]:
     return (
-        pending_invites(membership.workspace.id)
+        open_invites()
+        .where(WorkspaceInvite.workspace_id == workspace_id)
+        .where(WorkspaceInvite.declined_at.is_(None))
+    )
+
+
+def invites_query(membership: Membership) -> Select[tuple[WorkspaceInvite]]:
+    """Pending and declined, so admins see a refusal."""
+    return (
+        open_invites()
+        .where(WorkspaceInvite.workspace_id == membership.workspace.id)
         .options(WITH_INVITER)
         .order_by(WorkspaceInvite.created_at, WorkspaceInvite.id)
     )
 
 
-async def get_pending_invite(
-    session: AsyncSession, membership: Membership, invite_id: UUID
+def pending_invites_for(email: str) -> Select[tuple[WorkspaceInvite]]:
+    """With the workspace and inviter loaded."""
+    return (
+        open_invites()
+        .where(WorkspaceInvite.email == email)
+        .where(WorkspaceInvite.declined_at.is_(None))
+        .options(selectinload(WorkspaceInvite.workspace), WITH_INVITER)
+        .order_by(WorkspaceInvite.created_at, WorkspaceInvite.id)
+    )
+
+
+async def get_pending_invite_for(
+    session: AsyncSession, user: User, invite_id: UUID
 ) -> WorkspaceInvite:
-    """`NotFoundError` unless pending; `ForbiddenError` unless the caller's role may
-    manage the invited one."""
+    """`NotFoundError` for any other id, another address's included."""
     invite = await session.scalar(
-        pending_invites(membership.workspace.id)
-        .options(WITH_INVITER)
-        .where(WorkspaceInvite.id == invite_id)
+        pending_invites_for(user.email).where(WorkspaceInvite.id == invite_id)
+    )
+    if invite is None:
+        raise NotFoundError("Invitation not found")
+    return invite
+
+
+async def get_pending_invite(
+    session: AsyncSession, membership: Membership, invite_id: UUID, *, declined: bool = False
+) -> WorkspaceInvite:
+    """`NotFoundError` unless pending (or declined, with `declined`); `ForbiddenError`
+    unless the caller's role may manage the invited one."""
+    query = open_invites().where(WorkspaceInvite.workspace_id == membership.workspace.id)
+    if not declined:
+        query = query.where(WorkspaceInvite.declined_at.is_(None))
+    invite = await session.scalar(
+        query.options(WITH_INVITER).where(WorkspaceInvite.id == invite_id)
     )
     if invite is None:
         raise NotFoundError("Invitation not found")
@@ -245,13 +304,14 @@ async def get_pending_invite(
 
 async def get_invite_by_token(session: AsyncSession, token: str) -> WorkspaceInvite:
     """The pending invitation behind an emailed link, with the workspace and the
-    inviter loaded. `NotFoundError` for an unknown, revoked, or used token;
-    `GoneError` for an expired one."""
+    inviter loaded. `NotFoundError` for an unknown, revoked, declined, or used
+    token; `GoneError` for an expired one."""
     invite = await session.scalar(
         select(WorkspaceInvite)
         .options(selectinload(WorkspaceInvite.workspace), WITH_INVITER)
         .where(WorkspaceInvite.token_hash == hash_token(token))
         .where(WorkspaceInvite.revoked_at.is_(None))
+        .where(WorkspaceInvite.declined_at.is_(None))
         .where(WorkspaceInvite.accepted_at.is_(None))
     )
     if invite is None:
@@ -322,6 +382,12 @@ async def resend_invite(
 async def revoke_invite(session: AsyncSession, invite: WorkspaceInvite) -> None:
     """The link stops working. Commits."""
     invite.revoked_at = utcnow()
+    await session.commit()
+
+
+async def decline_invite(session: AsyncSession, invite: WorkspaceInvite) -> None:
+    """The link stops working; the address can be invited again. Commits."""
+    invite.declined_at = utcnow()
     await session.commit()
 
 

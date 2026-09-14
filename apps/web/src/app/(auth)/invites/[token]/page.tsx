@@ -17,7 +17,7 @@ type Params = Promise<{ token: string }>;
 
 /**
  * The link from the invitation email. The preview needs no login; accepting
- * does, and the proxy sends logged-out visitors to /login?next=... first.
+ * needs the invited address's account, so a visitor is offered sign-up first.
  */
 export default function InvitePage({ params }: { params: Params }) {
   return (

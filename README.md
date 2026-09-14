@@ -135,7 +135,8 @@ Email verification, password reset, and email change all work the same way:
 an emailed link carrying a random token whose hash sits on the `users` row
 until the link is followed. Signup emails a verification link
 (`ALLOY_VERIFICATION_TTL`); until it is followed, everything past `/auth/*`
-answers 403. `forgot-password` answers 204 whether or not the address exists.
+answers 403. A signup carrying the `invite_token` of an invitation for its
+address gets no link: accepting the invitation verifies the address instead. `forgot-password` answers 204 whether or not the address exists.
 A password reset revokes every session and logs the browser in. Changing the
 address stores a `pending_email`, emails the new address, and notifies the
 old one once swapped. Deleting an account stamps `deleted_at`, revokes every
@@ -170,8 +171,10 @@ route sets that header to the visitor's address (see Deploying).
 ### Workspaces, roles, and invitations
 
 Every business record belongs to a workspace, reached through a seat in
-`workspace_members` with one of four roles. Signing up creates a first
-workspace with the user as owner.
+`workspace_members` with one of four roles. Signing up creates no workspace:
+the web app's onboarding asks for one (`POST /workspaces/`, then the setup
+steps, then `POST /workspaces/{id}/onboarding/complete`, which stamps
+`onboarded_at`), unless the user accepts an invitation first.
 
 | Role   | Permissions                                                                   |
 | ------ | ----------------------------------------------------------------------------- |

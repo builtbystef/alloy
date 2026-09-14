@@ -5,23 +5,17 @@ import { revalidateLogic } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { createWorkspace } from "@/features/workspaces/mutations";
 import { Form, FormError, useAppForm } from "@/components/shared/form";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
 import { errorMessage } from "@/lib/api/errors";
 import { invalidateWorkspaces } from "@/features/workspaces/queries";
+import { workspacePaths } from "@/lib/routes";
 import { workspaceSchema, type WorkspaceInput } from "@/features/workspaces/schemas";
 
-export function CreateWorkspaceForm({ onCreated }: { onCreated?: () => void }) {
+/** Step one of onboarding; creating the workspace opens step two. */
+export function CreateWorkspaceForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -29,10 +23,8 @@ export function CreateWorkspaceForm({ onCreated }: { onCreated?: () => void }) {
   const mutation = useMutation({
     mutationFn: async (body: WorkspaceCreate) => createWorkspace(body),
     onSuccess: async (workspace) => {
-      toast.success(`Workspace "${workspace.name}" created`);
       await invalidateWorkspaces(queryClient);
-      onCreated?.();
-      router.push(`/${workspace.id}`);
+      router.push(workspacePaths(workspace.id).onboarding);
       router.refresh();
     },
     onError: (error) => setServerError(errorMessage(error)),
@@ -59,31 +51,8 @@ export function CreateWorkspaceForm({ onCreated }: { onCreated?: () => void }) {
         </form.AppField>
       </FieldGroup>
       <form.AppForm>
-        <form.SubmitButton className="self-start">Create workspace</form.SubmitButton>
+        <form.SubmitButton className="self-start">Continue</form.SubmitButton>
       </form.AppForm>
     </Form>
-  );
-}
-
-export function WorkspaceDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>New workspace</DialogTitle>
-          <DialogDescription>
-            A separate set of contacts, companies, and tasks, with its own members. You will be its
-            owner.
-          </DialogDescription>
-        </DialogHeader>
-        {open && <CreateWorkspaceForm onCreated={() => onOpenChange(false)} />}
-      </DialogContent>
-    </Dialog>
   );
 }
