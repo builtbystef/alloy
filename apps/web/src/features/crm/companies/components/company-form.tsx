@@ -49,11 +49,19 @@ export function CompanyForm({ company }: { company?: CompanyRead }) {
     } satisfies CompanyInput,
     validationLogic: revalidateLogic(),
     validators: { onDynamic: companySchema },
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value, formApi }) => {
       setServerError(null);
-      await mutation.mutateAsync(companySchema.parse(value)).catch(() => {});
+      const saved = await mutation.mutateAsync(companySchema.parse(value)).catch(() => null);
+      // Next.js keeps this page mounted, hidden, after the navigation, so the
+      // form is blank rather than full of the last company when opened again.
+      if (saved && !company) formApi.reset();
     },
   });
+
+  const discard = () => {
+    form.reset();
+    setServerError(null);
+  };
 
   return (
     <Form form={form} warnOnLeave>
@@ -108,7 +116,9 @@ export function CompanyForm({ company }: { company?: CompanyRead }) {
         <Button
           variant="outline"
           nativeButton={false}
-          render={<Link href={company ? paths.company(company.id) : paths.companies} />}
+          render={
+            <Link href={company ? paths.company(company.id) : paths.companies} onClick={discard} />
+          }
         >
           Cancel
         </Button>

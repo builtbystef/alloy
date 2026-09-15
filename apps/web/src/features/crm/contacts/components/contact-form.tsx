@@ -75,11 +75,19 @@ export function ContactForm({
     } satisfies ContactInput,
     validationLogic: revalidateLogic(),
     validators: { onDynamic: schema },
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value, formApi }) => {
       setServerError(null);
-      await mutation.mutateAsync(schema.parse(value)).catch(() => {});
+      const saved = await mutation.mutateAsync(schema.parse(value)).catch(() => null);
+      // Next.js keeps this page mounted, hidden, after the navigation, so the
+      // form is blank rather than full of the last contact when opened again.
+      if (saved && !contact) formApi.reset();
     },
   });
+
+  const discard = () => {
+    form.reset();
+    setServerError(null);
+  };
 
   return (
     <Form form={form} warnOnLeave>
@@ -163,7 +171,9 @@ export function ContactForm({
         <Button
           variant="outline"
           nativeButton={false}
-          render={<Link href={contact ? paths.contact(contact.id) : paths.contacts} />}
+          render={
+            <Link href={contact ? paths.contact(contact.id) : paths.contacts} onClick={discard} />
+          }
         >
           Cancel
         </Button>

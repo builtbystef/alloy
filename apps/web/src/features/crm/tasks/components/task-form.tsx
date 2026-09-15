@@ -72,11 +72,19 @@ export function TaskForm({
     } satisfies TaskInput,
     validationLogic: revalidateLogic(),
     validators: { onDynamic: schema },
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value, formApi }) => {
       setServerError(null);
-      await mutation.mutateAsync(schema.parse(value)).catch(() => {});
+      const saved = await mutation.mutateAsync(schema.parse(value)).catch(() => null);
+      // Next.js keeps this page mounted, hidden, after the navigation, so the
+      // form is blank rather than full of the last task when opened again.
+      if (saved && !task) formApi.reset();
     },
   });
+
+  const discard = () => {
+    form.reset();
+    setServerError(null);
+  };
 
   return (
     <Form form={form} warnOnLeave>
@@ -141,7 +149,7 @@ export function TaskForm({
         <Button
           variant="outline"
           nativeButton={false}
-          render={<Link href={task ? paths.task(task.id) : paths.tasks} />}
+          render={<Link href={task ? paths.task(task.id) : paths.tasks} onClick={discard} />}
         >
           Cancel
         </Button>
