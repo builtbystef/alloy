@@ -8,8 +8,8 @@ from typing import Literal
 
 LogFormat = Literal["text", "json"]
 
-# Set by the API's request-ID middleware for the length of a request, and by the
-# job broker's middleware for the length of a job run. "-" outside both.
+# Set by the API's request-ID middleware for the length of a request, and by
+# `jobs.context.running` for the length of a job run. "-" outside both.
 request_id: ContextVar[str] = ContextVar("request_id", default="-")
 
 TEXT_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(request_id)s] %(message)s"
@@ -19,6 +19,10 @@ TEXT_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(request_id)s] %(message)s
 # `alloy_server.access`, which carries the request ID.
 _UVICORN_LOGGERS = ("uvicorn", "uvicorn.error")
 _UVICORN_ACCESS_LOGGER = "uvicorn.access"
+# Its lines quote every job's arguments (an email with its link, say), so its
+# chatter is dropped in favour of `alloy_server.jobs`, one line per run. A job
+# that has failed for good is still reported here, arguments and traceback included.
+_PROCRASTINATE_WORKER_LOGGER = "procrastinate.worker"
 
 
 def new_request_id() -> str:
@@ -85,3 +89,4 @@ def configure(level: str, log_format: LogFormat = "text") -> None:
     access = logging.getLogger(_UVICORN_ACCESS_LOGGER)
     access.handlers.clear()
     access.propagate = False
+    logging.getLogger(_PROCRASTINATE_WORKER_LOGGER).setLevel(logging.WARNING)

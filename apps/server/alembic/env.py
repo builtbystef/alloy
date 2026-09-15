@@ -7,6 +7,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from alloy_server.config import get_settings
+from alloy_server.db.base import include_name
 from alloy_server.db.models import Base
 
 if TYPE_CHECKING:
@@ -26,6 +27,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=str(get_settings().database_url),
         target_metadata=target_metadata,
+        include_name=include_name,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -35,7 +37,9 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, include_name=include_name
+    )
 
     with context.begin_transaction():
         context.run_migrations()

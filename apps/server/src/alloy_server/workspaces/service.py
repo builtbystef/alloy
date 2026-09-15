@@ -8,7 +8,7 @@ from alloy_server.auth.tokens import hash_token, new_token
 from alloy_server.core.exceptions import ConflictError, ForbiddenError, GoneError, NotFoundError
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
-from alloy_server.jobs.emails import send_email
+from alloy_server.jobs.emails import queue_email
 from alloy_server.workspaces.emails import invite_email
 from alloy_server.workspaces.models import (
     Workspace,
@@ -361,8 +361,8 @@ async def create_invite(
         expires_at=now + settings.invite_ttl,
     )
     session.add(invite)
+    await queue_email(session, invite_email(invite, token, str(settings.frontend_url)))
     await session.commit()
-    await send_email.kiq(invite_email(invite, token, str(settings.frontend_url)))
     return invite
 
 
@@ -374,8 +374,8 @@ async def resend_invite(
     token = new_token()
     invite.token_hash = hash_token(token)
     invite.expires_at = utcnow() + settings.invite_ttl
+    await queue_email(session, invite_email(invite, token, str(settings.frontend_url)))
     await session.commit()
-    await send_email.kiq(invite_email(invite, token, str(settings.frontend_url)))
     return invite
 
 

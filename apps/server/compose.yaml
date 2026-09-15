@@ -1,4 +1,4 @@
-# Local PostgreSQL, Redis, and RustFS for apps/server: `vp run db:up`. Credentials match
+# Local PostgreSQL and RustFS for apps/server: `vp run db:up`. Credentials match
 # the default settings in src/alloy_server/config.py and the CI services.
 name: alloy
 
@@ -22,21 +22,6 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
-
-  # The job queue (Redis streams) and the delayed-retry schedule.
-  redis:
-    image: redis:8
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
 
   # S3-compatible object storage for attachments. The browser uploads to and
   # downloads from port 9000 directly, through presigned URLs the API signs.
@@ -92,5 +77,4 @@ services:
 
 volumes:
   db-data:
-  redis-data:
   storage-data:

@@ -1,94 +1,37 @@
-from datetime import timedelta
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
-from redis.asyncio import Redis
-from taskiq import (
-    AsyncBroker,
-    InMemoryBroker,
-    SmartRetryMiddleware,
-    TaskiqScheduler,
-)
-from taskiq.schedule_sources import LabelScheduleSource
-from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend, RedisStreamBroker
-
-from alloy_server.core import telemetry
-from alloy_server.jobs.context import RequestIdMiddleware
+from procrastinate import App, PsycopgConnector
+from sqlalchemy.engine import make_url
 
 if TYPE_CHECKING:
-    from taskiq import ScheduleSource
-
     from alloy_server.config import Settings
 
-JobsBroker = Literal["redis", "memory"]
-
-# One stream, one consumer group: every worker process reads from it and acks
-# what it finished, so a message survives a worker crash.
-QUEUE_NAME = "alloy"
-CONSUMER_GROUP = "alloy-workers"
-RETRY_SCHEDULE_PREFIX = "alloy:retries"
-# Results are kept for an hour, so a caller can still ask how a job went.
-RESULT_TTL_SECONDS = 60 * 60
-
-
-def create_broker(settings: Settings) -> AsyncBroker:
-    broker = _create_broker(settings)
-    broker.add_middlewares(RequestIdMiddleware())
-    if telemetry.enabled(settings):
-        broker.add_middlewares(telemetry.TracingMiddleware())
-    return broker
+# Imported by the worker before it starts, so every task is registered. The API
+# imports the ones it queues.
+TASK_MODULES = [
+    "alloy_server.jobs.emails",
+    "alloy_server.jobs.imports",
+    "alloy_server.jobs.purge",
+    "alloy_server.jobs.stalled",
+]
 
 
-def _create_broker(settings: Settings) -> AsyncBroker:
-    match settings.jobs_broker:
-        case "redis":
-            url = str(settings.redis_url)
-            return (
-                RedisStreamBroker(url, queue_name=QUEUE_NAME, consumer_group_name=CONSUMER_GROUP)
-                .with_result_backend(
-                    RedisAsyncResultBackend(url, result_ex_time=RESULT_TTL_SECONDS)
-                )
-                .with_middlewares(
-                    # Retries only for tasks labelled `retry_on_error`. The stream
-                    # broker cannot delay a message itself, so a retry is put on
-                    # `retry_source`, and the scheduler process sends it when due.
-                    SmartRetryMiddleware(
-                        default_retry_count=5,
-                        default_delay=10,
-                        use_jitter=True,
-                        use_delay_exponent=True,
-                        max_delay_exponent=600,
-                        schedule_source=create_retry_source(settings),
-                    )
-                )
-            )
-        case "memory":
-            return InMemoryBroker()
+def conninfo(settings: Settings) -> str:
+    """The database URL for psycopg itself: no SQLAlchemy driver in the scheme."""
+    url = make_url(str(settings.database_url)).set(drivername="postgresql")
+    return url.render_as_string(hide_password=False)
 
 
-def create_retry_source(settings: Settings) -> ListRedisScheduleSource:
-    return ListRedisScheduleSource(str(settings.redis_url), prefix=RETRY_SCHEDULE_PREFIX)
+def create_app(settings: Settings) -> App:
+    return App(
+        connector=PsycopgConnector(
+            conninfo=conninfo(settings), min_size=1, max_size=settings.database_pool_size
+        ),
+        import_paths=TASK_MODULES,
+        # A job that succeeded is dropped from the table; one that failed stays
+        # to be looked at (`procrastinate shell`) until the purge job removes it.
+        worker_defaults={"delete_jobs": "successful"},
+    )
 
 
-def create_scheduler(broker: AsyncBroker, settings: Settings) -> TaskiqScheduler:
-    """Fires the `schedule` labels (cron) and, on Redis, the delayed retries.
-
-    Run exactly one scheduler process: two would send every periodic task twice.
-    """
-    sources: list[ScheduleSource] = [LabelScheduleSource(broker)]
-    if settings.jobs_broker == "redis":
-        sources.append(create_retry_source(settings))
-    return TaskiqScheduler(broker, sources=sources)
-
-
-async def ping_redis(url: str, wait: timedelta = timedelta(seconds=2)) -> None:
-    """Raises `redis.ConnectionError` (or `redis.TimeoutError`) when the server does
-    not answer within `wait`."""
-    seconds = wait.total_seconds()
-    client = Redis.from_url(url, socket_connect_timeout=seconds, socket_timeout=seconds)
-    try:
-        await client.ping()
-    finally:
-        await client.aclose()
-
-
-__all__ = ["JobsBroker", "create_broker", "create_retry_source", "create_scheduler", "ping_redis"]
+__all__ = ["TASK_MODULES", "conninfo", "create_app"]

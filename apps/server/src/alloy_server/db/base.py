@@ -26,6 +26,13 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def include_name(name: str | None, type_: str, _parent_names: object) -> bool:
+    """For Alembic's autogenerate: the job queue's tables are Procrastinate's
+    (its schema is applied by a migration), not the models', so a comparison
+    must not propose dropping them."""
+    return not (type_ == "table" and name is not None and name.startswith("procrastinate_"))
+
+
 class UUIDPrimaryKey:
     """Time-ordered UUIDv7 ids, generated client-side, so they never enumerate."""
 

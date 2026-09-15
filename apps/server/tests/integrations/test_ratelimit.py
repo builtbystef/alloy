@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
@@ -8,37 +7,30 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient as BareTestClient
 
 from alloy_server.auth.router import LOGIN_PER_EMAIL, LOGIN_PER_IP
-from alloy_server.config import Settings
 from alloy_server.core.exceptions import AppError, RateLimitedError, handle_app_error
+from alloy_server.db.base import utcnow
 from alloy_server.integrations.ratelimit import (
+    DatabaseRateLimitStore,
     Hit,
     Limit,
     Limiter,
     MemoryRateLimitStore,
-    RedisRateLimitStore,
-    create_rate_limit_store,
     get_limiter,
     per_ip,
 )
+from alloy_server.integrations.ratelimit.models import RateLimitWindow
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor, Outbox
+    from tests.conftest import Actor, Database, Outbox
 
 TWO_PER_MINUTE = Limit("test", 2, timedelta(minutes=1))
 CREDENTIALS = {"email": "ada@example.com", "password": "correct horse battery", "name": "Ada"}
 
 
 # --- Stores -------------------------------------------------------------------
-
-
-def test_settings_pick_the_store():
-    redis = create_rate_limit_store(Settings(rate_limit_store="redis"))
-    memory = create_rate_limit_store(Settings(rate_limit_store="memory"))
-    assert isinstance(redis, RedisRateLimitStore)
-    assert isinstance(memory, MemoryRateLimitStore)
 
 
 def test_memory_store_counts_within_a_window_and_forgets_after_it():
@@ -63,28 +55,32 @@ def test_memory_store_counts_within_a_window_and_forgets_after_it():
     asyncio.run(scenario())
 
 
-def test_redis_store_counts_within_a_window_and_forgets_after_it():
-    """Real Redis: uses a key of its own and removes it afterwards."""
-    key = f"ratelimit:test:{uuid.uuid4()}"
+def test_database_store_counts_within_a_window_and_forgets_after_it(db: Database):
+    """The store the API runs on, here on the test transaction."""
+    rate_limits = DatabaseRateLimitStore(db.session)
 
     async def scenario() -> None:
-        store = RedisRateLimitStore(str(Settings().redis_url))
-        try:
-            first = await store.hit(key, timedelta(seconds=30))
-            second = await store.hit(key, timedelta(seconds=30))
-            assert (first.count, second.count) == (1, 2)
-            assert timedelta(seconds=25) < second.retry_after <= timedelta(seconds=30)
-            standing = await store.peek(key)
-            assert standing.count == 2
-            assert timedelta(seconds=25) < standing.retry_after <= timedelta(seconds=30)
-            assert await store.peek(f"{key}:missing") == Hit(0, timedelta(0))
-            await store.reset(key)
-            assert await store.peek(key) == Hit(0, timedelta(0))
-        finally:
-            await store.reset(key)
-            await store.aclose()
+        first = await rate_limits.hit("k", timedelta(seconds=30))
+        second = await rate_limits.hit("k", timedelta(seconds=30))
+        assert (first.count, second.count) == (1, 2)
+        assert timedelta(seconds=25) < second.retry_after <= timedelta(seconds=30)
+        standing = await rate_limits.peek("k")
+        assert standing.count == 2
+        assert timedelta(seconds=25) < standing.retry_after <= timedelta(seconds=30)
+        assert await rate_limits.peek("missing") == Hit(0, timedelta(0))
+        # The window ends: the next hit starts a new one.
+        async with db.session() as session:
+            window = await session.get_one(RateLimitWindow, "k")
+            window.expires_at = utcnow() - timedelta(seconds=1)
+            await session.commit()
+        assert await rate_limits.peek("k") == Hit(0, timedelta(0))
+        third = await rate_limits.hit("k", timedelta(seconds=30))
+        assert third.count == 1
+        assert timedelta(seconds=25) < third.retry_after <= timedelta(seconds=30)
+        await rate_limits.reset("k")
+        assert await rate_limits.peek("k") == Hit(0, timedelta(0))
 
-    asyncio.run(scenario())
+    db.run(scenario)
 
 
 # --- Limiter -------------------------------------------------------------------

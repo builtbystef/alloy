@@ -1,12 +1,12 @@
 import logging
+import math
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import Result, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
-from taskiq import TaskiqDepends
 
 from alloy_server.agent.models import ChatUpload
 from alloy_server.auth.models import User, UserSession
@@ -14,10 +14,11 @@ from alloy_server.config import Settings
 from alloy_server.crm.attachments.models import Attachment
 from alloy_server.crm.imports.models import Import, ImportStatus
 from alloy_server.db.base import utcnow
+from alloy_server.integrations.ratelimit.models import RateLimitWindow
 from alloy_server.integrations.storage import ObjectStore
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
-from alloy_server.jobs.broker import broker
-from alloy_server.jobs.deps import get_object_store, get_session, get_settings
+from alloy_server.jobs.app import app, task
+from alloy_server.jobs.resources import Resources
 from alloy_server.workspaces.models import Workspace, WorkspaceInvite, WorkspaceMember
 
 if TYPE_CHECKING:
@@ -138,8 +139,8 @@ async def purge(
         report.imports += 1
 
     # Queued but never delivered (the API died between commit and send), or a run
-    # the broker will not hand out again: the file goes, and the row says why.
-    # The broker redelivers an unfinished run after ten minutes, so anything
+    # that failed for good: the file goes, and the row says why. A run whose
+    # worker died is requeued within minutes (jobs/stalled.py), so anything
     # older than `import_timeout` is not coming back on its own.
     stuck = await session.scalars(
         select(Import)
@@ -181,17 +182,22 @@ async def purge(
         await session.delete(user)
         report.accounts += 1
 
+    # Rate limit windows past their end. Not reported: the store already reads
+    # them as empty, this only keeps the table small.
+    await session.execute(delete(RateLimitWindow).where(RateLimitWindow.expires_at < now))
+
     await session.commit()
     await delete_stored(store, keys=keys, prefixes=prefixes)
     return report
 
 
-@broker.task(task_name="purge.expired", schedule=[{"cron": "0 * * * *"}])
-async def purge_expired(
-    session: AsyncSession = TaskiqDepends(get_session),
-    store: ObjectStore = TaskiqDepends(get_object_store),
-    settings: Settings = TaskiqDepends(get_settings),
-) -> dict[str, int]:
-    report = await purge(session, store, settings)
+@task("purge.expired", cron="0 * * * *")
+async def purge_expired(res: Resources) -> dict[str, int]:
+    async with res.session() as session:
+        report = await purge(session, res.object_store, res.settings)
+    # Failed jobs, kept for inspection (jobs/__init__.py), go after the same time.
+    await app.job_manager.delete_old_jobs(
+        nb_hours=math.ceil(res.settings.purge_after / timedelta(hours=1)), include_failed=True
+    )
     logger.info("Purged %s", report)
     return asdict(report)

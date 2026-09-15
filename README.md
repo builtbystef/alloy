@@ -17,7 +17,7 @@ checking, and tests:
 ## Requirements
 
 - Node ≥ 24 (`.node-version`), Python ≥ 3.14 (`.python-version`, uv downloads it), uv ≥ 0.12
-- Docker with Compose, for the local PostgreSQL, Redis, and RustFS that `apps/server` and its tests use
+- Docker with Compose, for the local PostgreSQL and RustFS that `apps/server` and its tests use
 
 ## Commands
 
@@ -26,13 +26,12 @@ vp run check         # format + lint + typecheck, both languages (check:fix to a
 vp run test          # Vitest + pytest
 vp run build
 vp run ci            # everything CI runs
-vp run db:up         # PostgreSQL, Redis, and RustFS in Docker; waits until ready
+vp run db:up         # PostgreSQL and RustFS in Docker; waits until ready
 vp run db:migrate    # alembic upgrade head
 vp run db:down       # stop (data is kept; add --volumes to wipe it)
-vp run dev           # API, worker, scheduler, and web together, one colour-coded console
+vp run dev           # API, worker, and web together, one colour-coded console
 vp run dev:api       # FastAPI with reload, http://127.0.0.1:8000/docs
-vp run dev:worker    # Taskiq worker: the background jobs
-vp run dev:scheduler # Taskiq scheduler: the hourly purge (run exactly one)
+vp run dev:worker    # the background jobs and the hourly purge, restarted on changes
 vp run dev:web       # Next.js, http://localhost:3000
 ```
 
@@ -54,27 +53,27 @@ holds the Ruff, ty, and pytest settings.
 
 ## apps/server
 
-The backend: a [FastAPI](https://fastapi.tiangolo.com) app, a Taskiq worker and scheduler, and the assistant agent. Package `alloy_server`:
+The backend: a [FastAPI](https://fastapi.tiangolo.com) app, a Procrastinate worker, and the assistant agent. Package `alloy_server`:
 
 ```text
 apps/server/
-├── compose.yaml              # local PostgreSQL 18, Redis 8, RustFS (S3-compatible storage)
-├── Dockerfile                # one image for the API, worker, and scheduler
+├── compose.yaml              # local PostgreSQL 18 (also the job queue), RustFS (S3-compatible storage)
+├── Dockerfile                # one image for the API and the worker
 ├── alembic/                  # env.py reads the URL from Settings; versions/
 ├── .env.example              # every ALLOY_* setting, documented
 ├── src/alloy_server/
-│   ├── main.py               # app, lifespan (engine, store, broker), middleware, the AppError handler
+│   ├── main.py               # app, lifespan (engine, store, job queue), middleware, the AppError handler
 │   ├── config.py             # Settings (pydantic-settings) + get_settings
 │   ├── api/router.py         # the HTTP composition root: includes every feature router
 │   ├── core/                 # exceptions.py (AppError family + handler), middleware.py (request IDs, body limit), logs.py, telemetry.py
 │   ├── db/                   # session.py (engine, SessionDep), base.py (Base, mixins; imports every model)
 │   ├── integrations/         # ports and adapters: mail/, storage/, ratelimit/ (a protocol + implementations each)
-│   ├── health/               # GET /health/ (liveness); /health/{db,redis,storage} (readiness)
+│   ├── health/               # GET /health/ (liveness); /health/{db,storage} (readiness)
 │   ├── auth/                 # accounts, cookie sessions, emailed links; CurrentUserDep
 │   ├── workspaces/           # workspaces, members, roles, invitations; the Can* dependencies
 │   ├── crm/                  # the demo: companies/, contacts/, tasks/, attachments/, imports/, dashboard/ + shared mixins, pagination, ownership
 │   ├── agent/                # the assistant: a Pydantic AI agent over the CRM
-│   └── jobs/                 # Taskiq broker, worker deps; tasks: emails, purge, imports
+│   └── jobs/                 # Procrastinate app, task decorator, worker; tasks: emails, purge, imports, stalled
 └── tests/                    # mirrors the package; one rolled-back transaction per test
 ```
 
@@ -146,8 +145,9 @@ the user is the sole owner of a workspace that has other members.
 
 ### Rate limits
 
-`integrations/ratelimit/` keeps fixed-window counters in Redis (or memory)
-and answers 429 with `Retry-After`. A `Limit` names the policy; the subject
+`integrations/ratelimit/` keeps fixed-window counters in the database (an
+unlogged table, one upsert per hit; in memory for the tests) and answers 429
+with `Retry-After`. A `Limit` names the policy; the subject
 (client address, email, user) picks the counter. Routes attach
 `per_ip(limit)` or call the `Limiter` themselves; the `Limit`s sit next to
 the routes that use them.
@@ -195,8 +195,8 @@ accept; the token's hash is stored and the row is stamped, not deleted.
 
 Both are ports in `integrations/`. `Mailer` has one method, `send(Email)`;
 `ConsoleMailer` logs the message, which is what development and tests use.
-Handlers never send directly: they queue `send_email.kiq(email)`, so only
-the worker holds the mailer. `ALLOY_MAIL_PROVIDER` picks the implementation.
+Handlers never send directly: they queue `queue_email(session, email)`,
+so only the worker holds the mailer. `ALLOY_MAIL_PROVIDER` picks the implementation.
 
 `ObjectStore` has `put`, `get`, `head`, `delete`, `delete_prefix`,
 `upload_url`, and `download_url`. `S3ObjectStore` (aiobotocore) is the only
@@ -219,20 +219,36 @@ CORS rule for the web app's origin; Compose sets one for `localhost:3000`.
 
 ### Background jobs
 
-`jobs/` runs on [Taskiq](https://taskiq-python.github.io):
+`jobs/` runs on [Procrastinate](https://procrastinate.readthedocs.io): the
+queue is a set of tables in the app's PostgreSQL, so there is no broker to
+run, and a job is a row a worker takes with `SKIP LOCKED`.
 
-| Task            | Trigger                       | What it does                                                              |
-| --------------- | ----------------------------- | ------------------------------------------------------------------------- |
-| `mail.send`     | anything that emails          | hands the `Email` to the mailer; retried with backoff                     |
-| `purge.expired` | hourly                        | removes stamped-dead rows and abandoned uploads after `ALLOY_PURGE_AFTER` |
-| `imports.run`   | `POST .../imports/{id}/start` | loads a CSV of contacts or companies                                      |
+| Task                 | Trigger                       | What it does                                                                            |
+| -------------------- | ----------------------------- | --------------------------------------------------------------------------------------- |
+| `mail.send`          | anything that emails          | hands the `Email` to the mailer; retried with backoff                                   |
+| `purge.expired`      | hourly                        | removes stamped-dead rows, abandoned uploads, and failed jobs after `ALLOY_PURGE_AFTER` |
+| `imports.run`        | `POST .../imports/{id}/start` | loads a CSV of contacts or companies                                                    |
+| `jobs.retry_stalled` | every ten minutes             | requeues jobs whose worker stopped sending heartbeats mid-run                           |
 
-`ALLOY_JOBS_BROKER=redis` (default) uses Redis streams, so a crashed
-worker's message is redelivered; retries go through the scheduler.
-`memory` runs tasks inside the API process, for a laptop without Docker and
-for the tests, where `kiq()` runs the task before it returns. The worker and
-scheduler are separate processes on the same `jobs/broker.py`; run exactly
-one scheduler.
+A task is a function of `Resources` (settings, a session factory, the mailer,
+the object store) and JSON arguments, registered with `task()` in
+`jobs/app.py`; each has a `queue_*` helper that takes the handler's session.
+The job row is written on that session's connection, before the commit, so
+it is committed, or rolled back, with the rows it is about, and the worker
+is notified at commit, never before: the queue is its own outbox. This
+leans on the sessions running on psycopg, the connection Procrastinate
+accepts; a change of driver would need another way in. A run carries the request ID and trace context it was queued with, and logs
+one `alloy_server.jobs` line. `alloy-worker` (`jobs/worker.py`) runs the
+jobs, `ALLOY_JOBS_CONCURRENCY` at a time, and fires the `cron` tasks; run
+any number, the database keeps each tick to one run. The tests swap in
+Procrastinate's in-memory connector and run a worker as soon as a job is
+deferred, so a queued email is in the outbox when the handler returns.
+
+The queue's tables come from a migration that applies Procrastinate's
+schema. When bumping Procrastinate across a version that ships migrations
+(`procrastinate/sql/migrations/` in the package), add an Alembic migration
+that runs them; `alembic/env.py` leaves the `procrastinate_*` tables out of
+autogenerate.
 
 ### CSV imports
 
@@ -344,17 +360,16 @@ covers it. Tests run under Vitest with the `@/` alias from
 The template does not pick a host. It ships an image per app, one command
 per process, settings from environment variables, and a migration step.
 
-| Process     | Image         | Command                                                     | Port | Instances |
-| ----------- | ------------- | ----------------------------------------------------------- | ---- | --------- |
-| `api`       | `apps/server` | `fastapi run --port 8000 --proxy-headers` (default)         | 8000 | any       |
-| `worker`    | `apps/server` | `taskiq worker alloy_server.jobs.broker:broker --workers 2` | none | any       |
-| `scheduler` | `apps/server` | `taskiq scheduler alloy_server.jobs.broker:scheduler`       | none | exactly 1 |
-| `web`       | `apps/web`    | `node apps/web/server.js` (default)                         | 3000 | any       |
+| Process  | Image         | Command                                             | Port | Instances |
+| -------- | ------------- | --------------------------------------------------- | ---- | --------- |
+| `api`    | `apps/server` | `fastapi run --port 8000 --proxy-headers` (default) | 8000 | any       |
+| `worker` | `apps/server` | `alloy-worker`                                      | none | any       |
+| `web`    | `apps/web`    | `node apps/web/server.js` (default)                 | 3000 | any       |
 
-Plus managed PostgreSQL, Redis, and an S3-compatible bucket the browser can
-reach. Only `web` needs a public address; it forwards `/api/*` to the API
-over the private network. Give `api` a health check on `/health/`
-(`/health/{db,redis,storage}` for readiness). Run `alembic upgrade head`
+Plus managed PostgreSQL and an S3-compatible bucket the browser can reach.
+Only `web` needs a public address; it forwards `/api/*` to the API over the
+private network. Give `api` a health check on `/health/`
+(`/health/{db,storage}` for readiness). Run `alembic upgrade head`
 from `/app/apps/server` before new code starts (a pre-deploy command, release
 command, or init container); migrations are written to be safe to apply
 before the old code stops.
@@ -372,7 +387,6 @@ ones that change per environment:
 
 ```sh
 ALLOY_DATABASE_URL=postgresql+psycopg://...
-ALLOY_REDIS_URL=redis://...
 ALLOY_STORAGE_ENDPOINT_URL=... ALLOY_STORAGE_BUCKET=... ALLOY_STORAGE_ACCESS_KEY=... ALLOY_STORAGE_SECRET_KEY=...
 ALLOY_STORAGE_PATH_STYLE=false                   # true for MinIO and RustFS
 ALLOY_FRONTEND_URL=https://app.example.com       # links in emails

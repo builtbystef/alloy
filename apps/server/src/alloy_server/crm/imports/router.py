@@ -9,7 +9,6 @@ from alloy_server.crm.imports.schemas import ImportCreate, ImportRead, ImportUpl
 from alloy_server.crm.pagination import Page, PageOf, paginate
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.storage import ObjectStoreDep
-from alloy_server.jobs.imports import run_import_job
 from alloy_server.workspaces.deps import CanReadCrm, CanWriteCrm
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -49,9 +48,8 @@ async def start_import(
     settings: SettingsDep,
     membership: CanWriteCrm,
 ) -> ImportRead:
-    """Called after the `PUT`: sends the job. 409 when the file is not in the store
+    """Called after the `PUT`: queues the job. 409 when the file is not in the store
     yet or the import was already started; 413, and the file is removed, when it is
     bigger than allowed."""
     record = await service.mark_queued(session, store, settings, membership, import_id)
-    await run_import_job.kiq(record.id)
     return ImportRead.model_validate(record)

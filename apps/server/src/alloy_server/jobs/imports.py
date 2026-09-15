@@ -1,18 +1,21 @@
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from taskiq import TaskiqDepends
-
 from alloy_server.crm.imports.loader import run_import
-from alloy_server.integrations.storage import ObjectStore
-from alloy_server.jobs.broker import broker
-from alloy_server.jobs.deps import get_object_store, get_session
+from alloy_server.jobs.app import defer, task
+from alloy_server.jobs.resources import Resources
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
-@broker.task(task_name="imports.run")
-async def run_import_job(
-    import_id: UUID,
-    session: AsyncSession = TaskiqDepends(get_session),
-    store: ObjectStore = TaskiqDepends(get_object_store),
-) -> None:
-    await run_import(session, store, import_id)
+@task("imports.run")
+async def run_import_job(res: Resources, import_id: str) -> None:
+    async with res.session() as session:
+        await run_import(session, res.object_store, UUID(import_id))
+
+
+async def queue_import(session: AsyncSession, import_id: UUID) -> int:
+    """Loads the import's CSV. Queued in `session`'s transaction, with the row
+    going to `queued`."""
+    return await defer(session, run_import_job, import_id=str(import_id))

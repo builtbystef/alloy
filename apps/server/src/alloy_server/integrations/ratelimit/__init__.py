@@ -1,10 +1,10 @@
-"""Fixed-window rate limiting. Each feature owns its `Limit` constants. Routes
-attach `per_ip(limit)` as a dependency, or use `LimiterDep` when the subject is
-in the body or only failures should count."""
+"""Fixed-window rate limiting, counted in the database. Each feature owns its
+`Limit` constants. Routes attach `per_ip(limit)` as a dependency, or use
+`LimiterDep` when the subject is in the body or only failures should count."""
 
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated
 
 from fastapi import Depends, Request
 
@@ -15,25 +15,12 @@ from alloy_server.integrations.ratelimit.base import (
     RateLimitStoreProtocol,
     too_many_requests,
 )
+from alloy_server.integrations.ratelimit.database import DatabaseRateLimitStore
 from alloy_server.integrations.ratelimit.memory import MemoryRateLimitStore
-from alloy_server.integrations.ratelimit.redis import RedisRateLimitStore
-
-if TYPE_CHECKING:
-    from alloy_server.config import Settings
-
-RateLimitStore = Literal["redis", "memory"]
 
 # Routes that take an emailed token. Not against guessing (tokens are 32 random
 # bytes): keeps scanners off the database.
 TOKEN_PER_IP = Limit("token:ip", 10, timedelta(minutes=1))
-
-
-def create_rate_limit_store(settings: Settings) -> RateLimitStoreProtocol:
-    match settings.rate_limit_store:
-        case "redis":
-            return RedisRateLimitStore(str(settings.redis_url), settings.redis_timeout)
-        case "memory":
-            return MemoryRateLimitStore()
 
 
 async def get_limiter(request: Request) -> Limiter:
@@ -63,16 +50,14 @@ def per_ip(limit: Limit) -> Callable[[Request, Limiter], Awaitable[None]]:
 __all__ = [
     "TOKEN_PER_IP",
     "ClientIp",
+    "DatabaseRateLimitStore",
     "Hit",
     "Limit",
     "Limiter",
     "LimiterDep",
     "MemoryRateLimitStore",
-    "RateLimitStore",
     "RateLimitStoreProtocol",
-    "RedisRateLimitStore",
     "client_ip",
-    "create_rate_limit_store",
     "get_limiter",
     "per_ip",
     "too_many_requests",

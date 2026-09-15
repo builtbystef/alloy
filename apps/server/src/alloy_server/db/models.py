@@ -1,8 +1,6 @@
-"""Every model, so `Base.metadata` and the mapper registry are complete.
+"""Load all models to register them with Base.
 
-Imported by the package init. Kept apart from `db/base.py`: the models import
-`Base`, so importing them from there is a cycle for any process that reaches
-a model before `Base`.
+Imported by the package init; separate from db/base.py to avoid circular imports.
 """
 
 from alloy_server.agent import models as _agent_models  # noqa: F401
@@ -13,6 +11,7 @@ from alloy_server.crm.contacts import models as _contact_models  # noqa: F401
 from alloy_server.crm.imports import models as _import_models  # noqa: F401
 from alloy_server.crm.tasks import models as _task_models  # noqa: F401
 from alloy_server.db.base import Base
+from alloy_server.integrations.ratelimit import models as _ratelimit_models  # noqa: F401
 from alloy_server.workspaces import models as _workspace_models  # noqa: F401
 
 __all__ = ["Base"]

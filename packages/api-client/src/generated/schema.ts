@@ -28,30 +28,9 @@ export interface paths {
         };
         /**
          * Read Health Db
-         * @description Readiness: the database answers.
+         * @description Readiness: the database, which also holds the job queue, answers.
          */
         get: operations["health-read_health_db"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/health/redis": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Read Health Redis
-         * @description Readiness: the Redis behind the job queue answers. Always ok on the in-memory
-         *     broker, which needs no Redis.
-         */
-        get: operations["health-read_health_redis"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1040,7 +1019,7 @@ export interface paths {
         put?: never;
         /**
          * Start Import
-         * @description Called after the `PUT`: sends the job. 409 when the file is not in the store
+         * @description Called after the `PUT`: queues the job. 409 when the file is not in the store
          *     yet or the import was already started; 413, and the file is removed, when it is
          *     bigger than allowed.
          */
@@ -2275,26 +2254,6 @@ export interface operations {
         };
     };
     "health-read_health_db": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Health"];
-                };
-            };
-        };
-    };
-    "health-read_health_redis": {
         parameters: {
             query?: never;
             header?: never;

@@ -1,13 +1,13 @@
 """Tests use a real PostgreSQL database, `alloy_test`, created on first use. Each
 test runs in one transaction that is rolled back at the end, DDL included.
 
-Jobs run inline on the in-memory broker, inside the test transaction and with
-the same doubles the handlers get, so a queued email is in `outbox` by the time
-the handler responds.
+Jobs are queued in memory and run by a real worker as soon as they are deferred,
+inside the test transaction and with the same doubles the handlers get, so a
+queued email is in `outbox` by the time the handler responds.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -17,10 +17,6 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
-# Before `alloy_server` is imported: the broker is chosen when its module loads, and
-# `main` reads `Settings` at import too.
-os.environ["ALLOY_JOBS_BROKER"] = "memory"
-os.environ["ALLOY_RATE_LIMIT_STORE"] = "memory"
 from alloy_server.config import Settings, get_settings
 
 TEST_DATABASE = "alloy_test"
@@ -33,7 +29,7 @@ os.environ["ALLOY_DATABASE_URL"] = _configured_url.set(database=TEST_DATABASE).r
 get_settings.cache_clear()
 
 from fastapi.testclient import TestClient  # noqa: E402
-from taskiq import InMemoryBroker  # noqa: E402
+from procrastinate.testing import InMemoryConnector  # noqa: E402
 
 from alloy_server.auth.cookies import SESSION_COOKIE  # noqa: E402
 from alloy_server.db.models import Base  # noqa: E402
@@ -46,14 +42,21 @@ from alloy_server.integrations.ratelimit import (  # noqa: E402
 )
 from alloy_server.integrations.storage import get_object_store  # noqa: E402
 from alloy_server.integrations.storage.memory import MemoryObjectStore  # noqa: E402
-from alloy_server.jobs.broker import broker  # noqa: E402
-from alloy_server.jobs.deps import configure as configure_jobs  # noqa: E402
+from alloy_server.jobs.app import app as jobs_app  # noqa: E402
+from alloy_server.jobs.resources import Resources, worker_context  # noqa: E402
 from alloy_server.main import app  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
 
     from anyio.from_thread import BlockingPortal
+    from procrastinate.testing import JobRow
+    from procrastinate.types import JobToDefer
+
+# A worker fires a periodic task on start when its last tick was less than this
+# long ago (ten minutes by default). Never in the tests, which start a worker
+# per deferred job.
+jobs_app.periodic_defaults["max_delay"] = 0
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -104,10 +107,44 @@ def object_store() -> MemoryObjectStore:
     return MemoryObjectStore()
 
 
+class InlineConnector(InMemoryConnector):
+    """Runs a job as soon as it is deferred, in the deferring request, by a worker
+    started with `resources`. A job that does not succeed fails the request."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.resources: Resources | None = None
+
+    async def defer_jobs_all(self, jobs: list[JobToDefer]) -> list[JobRow]:
+        rows = await super().defer_jobs_all(jobs)
+        assert self.resources is not None, "deferred before the app client was set up"
+        await jobs_app.run_worker_async(
+            wait=False,
+            install_signal_handlers=False,
+            listen_notify=False,
+            delete_jobs="never",
+            additional_context=worker_context(self.resources),
+        )
+        for row in rows:
+            job = self.jobs[row["id"]]
+            assert job["status"] == "succeeded", job
+        return rows
+
+
+@pytest.fixture
+def queue() -> Iterator[InlineConnector]:
+    """The in-memory job queue, swapped in for the length of the test."""
+    connector = InlineConnector()
+    with jobs_app.replace_connector(connector):
+        yield connector
+
+
 @pytest.fixture
 def rate_limits() -> MemoryRateLimitStore:
     """Per test: every request has the same client address, so shared counters
-    would leak attempts between tests."""
+    would leak attempts between tests. In memory rather than on the test
+    transaction: a hit must outlive the request that then fails, and a savepoint
+    inside the request's would not."""
     return MemoryRateLimitStore()
 
 
@@ -117,6 +154,7 @@ def app_client(
     outbox: Outbox,
     object_store: MemoryObjectStore,
     rate_limits: MemoryRateLimitStore,
+    queue: InlineConnector,
 ) -> Iterator[TestClient]:
     """Settings, object store, and rate limit counters overridden, real database
     wiring. The jobs get the same settings and store, plus `outbox` as their
@@ -124,14 +162,11 @@ def app_client(
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_object_store] = lambda: object_store
     app.dependency_overrides[get_limiter] = lambda: Limiter(rate_limits)
-    assert isinstance(broker, InMemoryBroker)
-    broker.await_inplace = True
     # https: the session cookie is `Secure`, and httpx's jar only sends it over https.
     with TestClient(app, base_url="https://testserver") as client:
-        configure_jobs(
-            broker.state,
+        queue.resources = Resources(
             settings=settings,
-            session_factory=broker.state.session_factory,
+            session_factory=client.app_state["session_factory"],
             mailer=outbox,
             object_store=object_store,
         )
@@ -178,13 +213,14 @@ async def _end(connection: AsyncConnection, engine: AsyncEngine) -> None:
 
 
 @pytest.fixture
-def db(app_client: TestClient, engine: AsyncEngine) -> Iterator[Database]:
-    """The app's sessions join this transaction."""
+def db(app_client: TestClient, engine: AsyncEngine, queue: InlineConnector) -> Iterator[Database]:
+    """The app's sessions and the jobs' join this transaction."""
     assert app_client.portal is not None
     connection = app_client.portal.call(_begin, engine)
     database = Database(app_client.portal, connection)
     app.dependency_overrides[get_session] = database.get_session
-    broker.state.session_factory = database.session
+    assert queue.resources is not None
+    queue.resources = replace(queue.resources, session_factory=database.session)
     try:
         yield database
     finally:

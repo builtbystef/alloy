@@ -10,6 +10,7 @@ from alloy_server.crm.imports.schemas import ImportRead, ImportUpload
 from alloy_server.crm.ownership import fetch_owned
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.storage.cleanup import storage_prefix
+from alloy_server.jobs.imports import queue_import
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -87,10 +88,10 @@ async def mark_queued(
     membership: Membership,
     import_id: UUID,
 ) -> Import:
-    """Called after the `PUT`: check the file is there and move the row to `queued`.
-    Commits; the caller sends the job. `ConflictError` when the file is not in the
-    store yet or the import was already started; `PayloadTooLargeError`, and the
-    file is removed, when it is bigger than allowed."""
+    """Called after the `PUT`: check the file is there, move the row to `queued`,
+    and queue the job with it. Commits. `ConflictError` when the file is not in
+    the store yet or the import was already started; `PayloadTooLargeError`, and
+    the file is removed, when it is bigger than allowed."""
     record = await get_import(session, membership, import_id)
     if record.status is not ImportStatus.PENDING:
         raise ConflictError("The import has already been started")
@@ -111,5 +112,6 @@ async def mark_queued(
         raise ConflictError("The import has already been started")
     record.status = ImportStatus.QUEUED
     record.size = info.size
+    await queue_import(session, record.id)
     await session.commit()
     return record

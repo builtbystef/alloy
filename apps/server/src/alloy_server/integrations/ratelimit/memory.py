@@ -14,7 +14,7 @@ class _Window:
 
 @dataclass(slots=True)
 class MemoryRateLimitStore:
-    """Per process, so development and tests only."""
+    """Per process: the test double, as `MemoryObjectStore` is for storage."""
 
     clock: Callable[[], float] = time.monotonic
     _windows: dict[str, _Window] = field(default_factory=dict)

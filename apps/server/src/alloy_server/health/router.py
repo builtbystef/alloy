@@ -5,11 +5,9 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from alloy_server.config import SettingsDep
 from alloy_server.core import telemetry
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.storage import ObjectStoreDep
-from alloy_server.jobs import ping_redis
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +40,6 @@ async def read_health() -> Health:
 async def read_health_db(session: SessionDep) -> Health:
     """Readiness: the database answers."""
     return await probe("database", lambda: session.execute(text("SELECT 1")))
-
-
-@router.get("/redis")
-async def read_health_redis(settings: SettingsDep) -> Health:
-    """Readiness: the Redis behind the job queue answers. Always ok on the in-memory
-    broker, which needs no Redis."""
-    if settings.jobs_broker != "redis":
-        return Health(status="ok")
-    return await probe("redis", lambda: ping_redis(str(settings.redis_url), settings.redis_timeout))
 
 
 @router.get("/storage")

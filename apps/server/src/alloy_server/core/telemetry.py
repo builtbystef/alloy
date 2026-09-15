@@ -1,20 +1,17 @@
 import logging
-from contextlib import AbstractContextManager
-from contextvars import Token
+from collections.abc import Iterator, Mapping
+from contextlib import AbstractContextManager, contextmanager
 from typing import TYPE_CHECKING, Any
 
 import logfire
-from opentelemetry import context, propagate, trace
-from opentelemetry.context import Context
-from opentelemetry.trace import Span, SpanKind, StatusCode
-from taskiq import TaskiqMiddleware
+from opentelemetry import propagate, trace
+from opentelemetry.trace import SpanKind
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
     from sqlalchemy.ext.asyncio import AsyncEngine
     from starlette.requests import Request
     from starlette.websockets import WebSocket
-    from taskiq import TaskiqMessage, TaskiqResult
 
     from alloy_server.config import Settings
 
@@ -45,7 +42,7 @@ def configure(settings: Settings, *, service_name: str) -> logfire.LogfireLoggin
 
 class _OwnLogsAndWarnings(logging.Filter):
     """The app's own records at any level; libraries only when something is wrong.
-    Keeps Taskiq's and Uvicorn's per-request chatter out."""
+    Keeps Procrastinate's and Uvicorn's per-request chatter out."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         return record.name.startswith("alloy_server") or record.levelno >= logging.WARNING
@@ -83,42 +80,24 @@ def _drop_endpoint_arguments(
     return {"errors": attributes["errors"]} if attributes.get("errors") else {}
 
 
-class TracingMiddleware(TaskiqMiddleware):
-    """One span per job run, linked to the request that queued it.
+def inject(carrier: dict[str, str]) -> None:
+    """Write the current trace context into `carrier`, for a job's arguments.
+    Writes nothing when telemetry is off."""
+    propagate.inject(carrier)
 
-    The trace context travels in the message labels, as Taskiq has no
-    OpenTelemetry support of its own. Add it to the broker in every process
-    that sends or runs jobs.
-    """
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._runs: dict[str, tuple[Span, Token[Context]]] = {}
-
-    def pre_send(self, message: TaskiqMessage) -> TaskiqMessage:
-        propagate.inject(message.labels)
-        return message
-
-    def pre_execute(self, message: TaskiqMessage) -> TaskiqMessage:
-        parent = propagate.extract(message.labels)
-        span = trace.get_tracer(__name__).start_span(
-            f"job {message.task_name}",
-            context=parent,
-            kind=SpanKind.CONSUMER,
-            attributes={"job.name": message.task_name, "job.id": message.task_id},
-        )
-        token = context.attach(trace.set_span_in_context(span))
-        self._runs[message.task_id] = (span, token)
-        return message
-
-    def post_execute(self, message: TaskiqMessage, result: TaskiqResult[Any]) -> None:
-        run = self._runs.pop(message.task_id, None)
-        if run is None:
-            return
-        span, token = run
-        if result.is_err:
-            span.set_status(StatusCode.ERROR)
-            if result.error is not None:
-                span.record_exception(result.error)
-        context.detach(token)
-        span.end()
+@contextmanager
+def job_span(name: str, job_id: int | None, carrier: Mapping[str, str]) -> Iterator[None]:
+    """One span per job run, under the request that queued it when `carrier` holds
+    its trace context. An exception is recorded and re-raised. Nothing is
+    recorded when telemetry is off."""
+    attributes: dict[str, str | int] = {"job.name": name}
+    if job_id is not None:
+        attributes["job.id"] = job_id
+    with trace.get_tracer(__name__).start_as_current_span(
+        f"job {name}",
+        context=propagate.extract(carrier),
+        kind=SpanKind.CONSUMER,
+        attributes=attributes,
+    ):
+        yield

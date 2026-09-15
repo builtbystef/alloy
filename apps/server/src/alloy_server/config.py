@@ -3,14 +3,12 @@ from functools import lru_cache
 from typing import Annotated, Literal
 
 from fastapi import Depends
-from pydantic import Field, HttpUrl, PostgresDsn, RedisDsn, SecretStr
+from pydantic import Field, HttpUrl, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from alloy_server.core.logs import LogFormat
 from alloy_server.integrations.mail import MailProvider
-from alloy_server.integrations.ratelimit import RateLimitStore
 from alloy_server.integrations.storage import StorageProvider
-from alloy_server.jobs import JobsBroker
 
 
 class Settings(BaseSettings):
@@ -72,15 +70,8 @@ class Settings(BaseSettings):
     import_max_bytes: int = Field(10 * 1024 * 1024, ge=1)
 
     # --- Background jobs ---
-    # "redis": Redis streams and `taskiq worker`. "memory": the API process runs jobs itself.
-    jobs_broker: JobsBroker = "redis"
-    redis_url: RedisDsn = RedisDsn("redis://localhost:6379/0")
-    # How long a rate-limit or health-check call waits for Redis before failing.
-    redis_timeout: timedelta = timedelta(seconds=2)
-
-    # --- Rate limits ---
-    # Where the counters live. "redis": shared by every instance. "memory": in the process.
-    rate_limit_store: RateLimitStore = "redis"
+    # Jobs one worker process runs at a time.
+    jobs_concurrency: int = Field(2, ge=1)
     # How long revoked logins, used invitations, and abandoned uploads stay before purge.
     purge_after: timedelta = timedelta(days=7)
     # An import still queued or running after this is marked failed by the purge job.

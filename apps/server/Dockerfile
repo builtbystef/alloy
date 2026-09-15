@@ -1,5 +1,5 @@
-# The API, worker, and scheduler. One image; the deployment picks the command
-# (see Deploying in the root README).
+# The API and the worker. One image; the deployment picks the command (see
+# Deploying in the root README).
 # Build from the repository root, where the uv workspace and lockfile live:
 #
 #   docker build --file apps/server/Dockerfile --tag alloy-server .
@@ -50,8 +50,8 @@ USER app
 
 EXPOSE 8000
 
-# No HEALTHCHECK here: the worker and scheduler run from this image too and
-# serve no HTTP, so an image-level check would mark them unhealthy for good.
+# No HEALTHCHECK here: the worker runs from this image too and serves no HTTP,
+# so an image-level check would mark it unhealthy for good.
 # The deployment gives the `api` process one (see Processes in the root README).
 
 # No reload, binds 0.0.0.0.

@@ -16,7 +16,7 @@ from alloy_server.auth.passwords import hash_password
 from alloy_server.auth.tokens import hash_token, new_token
 from alloy_server.core.exceptions import AppError, ConflictError, GoneError, NotFoundError
 from alloy_server.db.base import utcnow
-from alloy_server.jobs.emails import send_email
+from alloy_server.jobs.emails import queue_email
 from alloy_server.workspaces.models import (
     Workspace,
     WorkspaceMember,
@@ -134,6 +134,14 @@ async def start_session(session: AsyncSession, settings: Settings, user: User) -
 
 async def revoke_sessions(session: AsyncSession, user_id: UUID, *, keep: UUID | None) -> None:
     """Log the user out everywhere, except `keep`. Commits."""
+    await revoke_sessions_pending(session, user_id, keep=keep)
+    await session.commit()
+
+
+async def revoke_sessions_pending(
+    session: AsyncSession, user_id: UUID, *, keep: UUID | None
+) -> None:
+    """`revoke_sessions` without the commit, for a caller with more to do."""
     statement = (
         update(UserSession)
         .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
@@ -142,7 +150,6 @@ async def revoke_sessions(session: AsyncSession, user_id: UUID, *, keep: UUID | 
     if keep is not None:
         statement = statement.where(UserSession.id != keep)
     await session.execute(statement)
-    await session.commit()
 
 
 async def change_password(
@@ -167,10 +174,12 @@ async def schedule_deletion(session: AsyncSession, settings: Settings, user: Use
     user.deleted_at = utcnow()
     clear_email_change(user)
     clear_password_reset(user)
-    await revoke_sessions(session, user.id, keep=None)
-    await send_email.kiq(
-        account_deletion_email(user, str(settings.frontend_url), settings.account_deletion_grace)
+    await revoke_sessions_pending(session, user.id, keep=None)
+    await queue_email(
+        session,
+        account_deletion_email(user, str(settings.frontend_url), settings.account_deletion_grace),
     )
+    await session.commit()
 
 
 # --- Email verification ------------------------------------------------------------
@@ -182,10 +191,11 @@ async def send_verification(session: AsyncSession, settings: Settings, user: Use
     token = new_token()
     user.verification_token_hash = hash_token(token)
     user.verification_sent_at = utcnow()
-    await session.commit()
-    await send_email.kiq(
-        verification_email(user, token, str(settings.frontend_url), settings.verification_ttl)
+    await queue_email(
+        session,
+        verification_email(user, token, str(settings.frontend_url), settings.verification_ttl),
     )
+    await session.commit()
 
 
 def mark_verified(user: User) -> None:
@@ -219,10 +229,11 @@ async def send_password_reset(session: AsyncSession, settings: Settings, user: U
     token = new_token()
     user.password_reset_token_hash = hash_token(token)
     user.password_reset_sent_at = utcnow()
-    await session.commit()
-    await send_email.kiq(
-        password_reset_email(user, token, str(settings.frontend_url), settings.password_reset_ttl)
+    await queue_email(
+        session,
+        password_reset_email(user, token, str(settings.frontend_url), settings.password_reset_ttl),
     )
+    await session.commit()
 
 
 def clear_password_reset(user: User) -> None:
@@ -268,10 +279,11 @@ async def request_email_change(
     user.pending_email = new_email
     user.email_change_token_hash = hash_token(token)
     user.email_change_sent_at = utcnow()
-    await session.commit()
-    await send_email.kiq(
-        email_change_email(new_email, token, str(settings.frontend_url), settings.email_change_ttl)
+    await queue_email(
+        session,
+        email_change_email(new_email, token, str(settings.frontend_url), settings.email_change_ttl),
     )
+    await session.commit()
 
 
 def clear_email_change(user: User) -> None:
@@ -300,9 +312,10 @@ async def confirm_email_change(session: AsyncSession, settings: Settings, token:
     mark_verified(user)
     clear_email_change(user)
     try:
-        await session.commit()
+        # Queueing flushes, which is where the unique index would object.
+        await queue_email(session, email_changed_notice(old_email, new_email))
     except IntegrityError:
         # Registered between the check above and here.
         raise ConflictError("Email already registered") from None
-    await send_email.kiq(email_changed_notice(old_email, new_email))
+    await session.commit()
     return user

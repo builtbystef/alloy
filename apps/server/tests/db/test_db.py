@@ -9,6 +9,7 @@ from alembic.runtime.migration import MigrationContext
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
+from alloy_server.db.base import include_name
 from alloy_server.db.models import Base
 from alloy_server.main import app
 
@@ -32,7 +33,8 @@ def _upgrade_and_compare(connection: Connection) -> list[object]:
     # env.py migrates on this connection instead of opening its own.
     config.attributes["connection"] = connection
     command.upgrade(config, "head")
-    diff = compare_metadata(MigrationContext.configure(connection), Base.metadata)
+    context = MigrationContext.configure(connection, opts={"include_name": include_name})
+    diff = compare_metadata(context, Base.metadata)
     command.downgrade(config, "base")
     return diff
 

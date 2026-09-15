@@ -5,12 +5,14 @@ from typing import TYPE_CHECKING
 import pytest
 
 from alloy_server.core.logs import JsonFormatter, RequestIdFilter, TextFormatter, request_id
-from alloy_server.jobs.broker import broker
+from alloy_server.jobs.app import defer, task
+from alloy_server.jobs.resources import Resources
 
 if TYPE_CHECKING:
     from types import TracebackType
 
     from fastapi.testclient import TestClient
+    from tests.conftest import Database
 
     ExcInfo = tuple[type[BaseException], BaseException, TracebackType | None]
 
@@ -48,28 +50,31 @@ def test_json_lines_are_one_object_each():
     assert "\n" not in JsonFormatter().format(record("one\nline"))
 
 
-@broker.task(task_name="tests.log_request_id")
-async def log_request_id() -> str:
+seen: list[str] = []
+
+
+@task("tests.log_request_id")
+async def log_request_id(_res: Resources) -> None:
     log.info("inside the job")
-    return request_id.get()
+    seen.append(request_id.get())
 
 
-async def run_job() -> str:
-    result = await (await log_request_id.kiq()).wait_result()
-    assert result.return_value is not None
-    return result.return_value
+async def run_job(db: Database) -> str:
+    async with db.session() as session:
+        await defer(session, log_request_id)
+    return seen.pop()
 
 
 def test_a_job_runs_under_the_request_id_that_queued_it(
-    client: TestClient, caplog: pytest.LogCaptureFixture
+    client: TestClient, db: Database, caplog: pytest.LogCaptureFixture
 ):
-    """Jobs run inline on the in-memory broker (see conftest), so the queueing
+    """Jobs run as soon as they are deferred (see conftest), so the queueing
     context is a plain `request_id.set`, as the API's middleware does it."""
 
     async def queue_inside_request() -> str:
         token = request_id.set("report-9")
         try:
-            return await run_job()
+            return await run_job(db)
         finally:
             request_id.reset(token)
 
@@ -81,10 +86,10 @@ def test_a_job_runs_under_the_request_id_that_queued_it(
     assert getattr(inside, "request_id", None) == "report-9"
 
 
-def test_a_job_queued_outside_a_request_gets_its_own_id(client: TestClient):
+def test_a_job_queued_outside_a_request_gets_its_own_id(client: TestClient, db: Database):
     assert client.portal is not None
-    rid = client.portal.call(run_job)
+    rid = client.portal.call(run_job, db)
     assert rid != "-"
     assert len(rid) == 16
-    assert client.portal.call(run_job) != rid
+    assert client.portal.call(run_job, db) != rid
     assert request_id.get() == "-"

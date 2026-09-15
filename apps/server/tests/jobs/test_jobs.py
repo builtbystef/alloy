@@ -1,93 +1,152 @@
-import asyncio
+import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 import pytest
-from redis.exceptions import ConnectionError as RedisConnectionError
-from taskiq import InMemoryBroker, SmartRetryMiddleware, TaskiqScheduler
-from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend, RedisStreamBroker
+from procrastinate import PsycopgConnector, RetryStrategy
+from procrastinate.schema import SchemaManager
+from sqlalchemy import text
 
 from alloy_server.config import Settings
 from alloy_server.crm.imports.models import Import, ImportStatus
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.mail import Email
-from alloy_server.jobs import create_broker, create_scheduler, ping_redis
-from alloy_server.jobs.context import RequestIdMiddleware
-from alloy_server.jobs.emails import send_email
+from alloy_server.jobs import TASK_MODULES, conninfo, create_app
+from alloy_server.jobs.app import RETRY_ON_ERROR, AnyTask, app, defer
+from alloy_server.jobs.emails import queue_email, send_email
+from alloy_server.jobs.imports import run_import_job
 from alloy_server.jobs.purge import PurgeReport, purge, purge_expired
+from alloy_server.jobs.stalled import retry_stalled
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor, Database, Outbox
+    from tests.conftest import Actor, Database, InlineConnector, Outbox
 
     from alloy_server.integrations.storage.memory import MemoryObjectStore
 
     Join = Callable[[Actor, str, str], Actor]
 
 
-@pytest.fixture
-def settings() -> Settings:
-    """This module's app talks to the real Redis, so `/health/redis` is exercised."""
-    return Settings(app_name="Test API", jobs_broker="redis")
+async def run_now(db: Database, task: AnyTask) -> int:
+    """Defer `task` from a session on the test transaction; the inline worker runs it."""
+    async with db.session() as session:
+        return await defer(session, task)
 
 
-def test_redis_settings_build_a_stream_broker_with_retries_and_a_scheduler():
-    settings = Settings(app_name="Test API", jobs_broker="redis")
-    broker = create_broker(settings)
-    assert isinstance(broker, RedisStreamBroker)
-    assert isinstance(broker.result_backend, RedisAsyncResultBackend)
-    retry, request_ids = broker.middlewares
-    assert isinstance(retry, SmartRetryMiddleware)
-    assert isinstance(retry.schedule_source, ListRedisScheduleSource)
-    assert isinstance(request_ids, RequestIdMiddleware)
-
-    scheduler = create_scheduler(broker, settings)
-    assert isinstance(scheduler, TaskiqScheduler)
-    assert len(scheduler.sources) == 2  # cron labels, plus the delayed retries
+def test_the_app_queues_through_the_database():
+    settings = Settings(database_url="postgresql+psycopg://u:p@db:5432/alloy")
+    assert conninfo(settings) == "postgresql://u:p@db:5432/alloy"
+    created = create_app(settings)
+    assert isinstance(created.connector, PsycopgConnector)
+    assert created.import_paths == TASK_MODULES
+    assert created.worker_defaults == {"delete_jobs": "successful"}
 
 
-def test_memory_settings_build_an_in_memory_broker():
-    settings = Settings(app_name="Test API", jobs_broker="memory")
-    broker = create_broker(settings)
-    assert isinstance(broker, InMemoryBroker)
-    (request_ids,) = broker.middlewares
-    assert isinstance(request_ids, RequestIdMiddleware)
-    assert len(create_scheduler(broker, settings).sources) == 1
+def test_tasks_are_registered_with_their_retries_and_schedules():
+    assert app.tasks["mail.send"] is send_email
+    assert send_email.retry_strategy is RETRY_ON_ERROR
+    assert isinstance(RETRY_ON_ERROR, RetryStrategy)
+    assert RETRY_ON_ERROR.max_attempts == 5
+    assert app.tasks["imports.run"] is run_import_job
+    assert run_import_job.retry_strategy is None
+    periodic = {name: task.cron for (name, _), task in app.periodic_registry.periodic_tasks.items()}
+    assert periodic == {"purge.expired": "0 * * * *", "jobs.retry_stalled": "*/10 * * * *"}
+    assert app.tasks["purge.expired"] is purge_expired
+    assert app.tasks["jobs.retry_stalled"] is retry_stalled
 
 
-def test_tasks_are_registered_with_their_labels():
-    assert send_email.task_name == "mail.send"
-    assert send_email.labels["retry_on_error"] is True
-    assert purge_expired.task_name == "purge.expired"
-    assert purge_expired.labels["schedule"] == [{"cron": "0 * * * *"}]
-
-
-def test_health_redis_pings_the_server(client: TestClient):
-    response = client.get("/health/redis")
-    assert response.status_code == 200, response.text
-    assert response.json() == {"status": "ok"}
-
-
-def test_ping_redis_reports_an_unreachable_server():
-    with pytest.raises(RedisConnectionError):
-        asyncio.run(ping_redis("redis://127.0.0.1:1/0"))
-
-
-def test_a_queued_email_goes_through_the_broker_to_the_mailer(db: Database, outbox: Outbox):
-    """The message is serialized on the way, so what the mailer gets is a copy."""
+def test_a_queued_email_goes_through_the_queue_to_the_mailer(
+    db: Database, outbox: Outbox, queue: InlineConnector
+):
+    """The message is stored as JSON on the way, so what the mailer gets is a copy."""
     email = Email(to="grace@example.com", subject="Hi", text="Body", html="<p>Body</p>")
 
-    async def send() -> None:
-        task = await send_email.kiq(email)
-        result = await task.wait_result(timeout=5)
-        assert result.is_err is False, result.error
+    async def queue_it() -> int:
+        async with db.session() as session:
+            return await queue_email(session, email)
 
-    db.run(send)
+    job_id = db.run(queue_it)
     assert outbox == [email]
     assert outbox[0] is not email
+    stored = queue.jobs[job_id]
+    assert stored["task_name"] == "mail.send"
+    assert stored["args"]["email"] == {
+        "to": "grace@example.com",
+        "subject": "Hi",
+        "text": "Body",
+        "html": "<p>Body</p>",
+    }
+
+
+def test_a_job_is_queued_in_the_transaction_of_the_rows_it_is_about(
+    db: Database, settings: Settings
+):
+    """Through the real connector (the in-memory one ignores the connection): the
+    job row goes on the session's own connection, so it is rolled back, or
+    committed, with the rest. The queue's tables are created in the test
+    transaction and go with it."""
+    real = create_app(settings)
+
+    @real.task(name="tests.transactional")
+    async def noop() -> None:
+        pass
+
+    async def scenario() -> tuple[int, int, list[int]]:
+        if await db.connection.scalar(text("SELECT to_regclass('procrastinate_jobs')")) is None:
+            await db.connection.exec_driver_sql(SchemaManager.get_schema().replace("%", "%%"))
+        async with db.session() as session:
+            rolled_back = await defer(session, noop)
+            await session.rollback()
+        async with db.session() as session:
+            committed = await defer(session, noop)
+            await session.commit()
+        rows = await db.connection.scalars(
+            text("SELECT id FROM procrastinate_jobs WHERE task_name = 'tests.transactional'")
+        )
+        return rolled_back, committed, list(rows)
+
+    rolled_back, committed, rows = db.run(scenario)
+    assert rolled_back != committed
+    assert rows == [committed]
+
+
+def test_retry_stalled_requeues_the_jobs_of_a_dead_worker(db: Database, queue: InlineConnector):
+    """A job left running by a worker whose heartbeat stopped goes back to the
+    queue (and, here, is run at once by the same worker); one held by a live
+    worker is left alone."""
+    dead, live = 1, 2
+    long_ago = utcnow() - timedelta(minutes=5)
+    queue.workers = {dead: long_ago, live: utcnow()}
+    for job_id, worker_id in ((10, dead), (11, live)):
+        queue.jobs[job_id] = {
+            "id": job_id,
+            "status": "doing",
+            "task_name": "jobs.retry_stalled",
+            "priority": 0,
+            "lock": None,
+            "queueing_lock": None,
+            "args": {},
+            "scheduled_at": None,
+            "queue_name": "default",
+            "attempts": 1,
+            "worker_id": worker_id,
+            "abort_requested": False,
+        }
+        queue.events[job_id] = [{"type": "started", "at": long_ago}]
+
+    assert db.run(run_now, db, retry_stalled) > 0
+    assert [e["type"] for e in queue.events[10]] == [
+        "started",
+        "scheduled",
+        "deferred_for_retry",
+        "started",
+        "succeeded",
+    ]
+    assert queue.jobs[10]["status"] == "succeeded"
+    assert queue.jobs[11]["status"] == "doing"
 
 
 def test_purge_removes_only_what_has_been_dead_long_enough(  # noqa: PLR0913, PLR0917
@@ -195,26 +254,29 @@ def test_purge_fails_imports_stuck_in_queued_or_running(
     assert db.run(run, later) == PurgeReport()
 
 
-def test_the_purge_task_runs_with_the_worker_resources(db: Database):
-    async def run() -> dict[str, int]:
-        task = await purge_expired.kiq()
-        result = await task.wait_result(timeout=5)
-        assert result.is_err is False, result.error
-        return result.return_value
-
-    assert db.run(run) == {
-        "sessions": 0,
-        "invites": 0,
-        "verification_tokens": 0,
-        "password_reset_tokens": 0,
-        "email_change_tokens": 0,
-        "attachments": 0,
-        "chat_uploads": 0,
-        "imports": 0,
-        "timed_out_imports": 0,
-        "accounts": 0,
-        "workspaces": 0,
+def test_the_purge_task_runs_with_the_worker_resources_and_drops_old_failed_jobs(
+    db: Database, queue: InlineConnector, caplog: pytest.LogCaptureFixture
+):
+    failed_long_ago = {
+        "id": 10,
+        "status": "failed",
+        "task_name": "mail.send",
+        "priority": 0,
+        "lock": None,
+        "queueing_lock": None,
+        "args": {},
+        "scheduled_at": None,
+        "queue_name": "default",
+        "attempts": 5,
+        "worker_id": None,
+        "abort_requested": False,
     }
+    queue.jobs[10] = failed_long_ago
+    queue.events[10] = [{"type": "failed", "at": utcnow() - timedelta(days=30)}]
+    with caplog.at_level(logging.INFO, logger="alloy_server.jobs.purge"):
+        db.run(run_now, db, purge_expired)
+    assert "Purged PurgeReport(sessions=0, invites=0" in caplog.text
+    assert 10 not in queue.jobs
 
 
 def test_purge_removes_deleted_accounts_and_the_workspaces_they_were_alone_in(  # noqa: PLR0913, PLR0917

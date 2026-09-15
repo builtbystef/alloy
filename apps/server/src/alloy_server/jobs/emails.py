@@ -1,10 +1,20 @@
-from taskiq import TaskiqDepends
+from dataclasses import asdict
+from typing import TYPE_CHECKING, Any
 
-from alloy_server.integrations.mail import Email, Mailer
-from alloy_server.jobs.broker import broker
-from alloy_server.jobs.deps import get_mailer
+from alloy_server.integrations.mail import Email
+from alloy_server.jobs.app import RETRY_ON_ERROR, defer, task
+from alloy_server.jobs.resources import Resources
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
-@broker.task(task_name="mail.send", retry_on_error=True, max_retries=5)
-async def send_email(email: Email, mailer: Mailer = TaskiqDepends(get_mailer)) -> None:
-    await mailer.send(email)
+@task("mail.send", retry=RETRY_ON_ERROR)
+async def send_email(res: Resources, email: dict[str, Any]) -> None:
+    await res.mailer.send(Email(**email))
+
+
+async def queue_email(session: AsyncSession, email: Email) -> int:
+    """Hands `email` to the worker's mailer, retried with backoff. Queued in
+    `session`'s transaction, so nothing is sent if that does not commit."""
+    return await defer(session, send_email, email=asdict(email))

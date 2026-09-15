@@ -1,41 +1,49 @@
-from contextvars import Token
-from typing import TYPE_CHECKING, Any
+import logging
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 
-from taskiq import TaskiqMiddleware
-
+from alloy_server.core import telemetry
 from alloy_server.core.logs import new_request_id, request_id
 
-if TYPE_CHECKING:
-    from taskiq import TaskiqMessage, TaskiqResult
+type Trace = dict[str, str]
 
-LABEL = "request_id"
+REQUEST_ID = "request_id"
+
+# One line per run, like `alloy_server.access` has one per request.
+log = logging.getLogger("alloy_server.jobs")
 
 
-class RequestIdMiddleware(TaskiqMiddleware):
-    """Sends the request ID in the message labels and sets it for the run.
+def trace() -> Trace:
+    """The current request ID (none outside a request) and trace context."""
+    carrier: Trace = {}
+    if (rid := request_id.get()) != "-":
+        carrier[REQUEST_ID] = rid
+    telemetry.inject(carrier)
+    return carrier
 
-    A job queued outside a request (the scheduler's) gets a fresh ID, so its lines
-    still group; a retry keeps the labels, so it keeps the ID. `pre_execute`, the
-    task, and `post_execute` run in one coroutine, so the context variable set
-    here is the one the task sees.
-    """
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._tokens: dict[str, Token[str]] = {}
+@contextmanager
+def running(name: str, job_id: int | None, carrier: Trace | None) -> Iterator[None]:
+    """The context a run executes in. A job the schedule sent, or a retry of one,
+    has no request: it gets an ID of its own, so its lines still group."""
+    carrier = carrier or {}
+    token = request_id.set(carrier.get(REQUEST_ID) or new_request_id())
+    started = time.perf_counter()
+    try:
+        with telemetry.job_span(name, job_id, carrier):
+            yield
+    except Exception:
+        log.exception("%s[%s] failed after %.1fms", name, job_id, _ms(started))
+        raise
+    else:
+        log.info("%s[%s] done in %.1fms", name, job_id, _ms(started))
+    finally:
+        request_id.reset(token)
 
-    def pre_send(self, message: TaskiqMessage) -> TaskiqMessage:
-        rid = request_id.get()
-        if rid != "-":
-            message.labels[LABEL] = rid
-        return message
 
-    def pre_execute(self, message: TaskiqMessage) -> TaskiqMessage:
-        rid = message.labels.get(LABEL) or new_request_id()
-        self._tokens[message.task_id] = request_id.set(rid)
-        return message
+def _ms(started: float) -> float:
+    return (time.perf_counter() - started) * 1000
 
-    def post_execute(self, message: TaskiqMessage, result: TaskiqResult[Any]) -> None:  # noqa: ARG002
-        token = self._tokens.pop(message.task_id, None)
-        if token is not None:
-            request_id.reset(token)
+
+__all__ = ["REQUEST_ID", "Trace", "running", "trace"]
