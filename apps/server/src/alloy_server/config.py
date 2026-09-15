@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     logfire_token: SecretStr | None = None
     # Shown in Logfire to tell deployments apart.
     logfire_environment: str = "development"
-    cors_origins: list[str] = ["http://localhost:3000"]
     # Where links in emails point.
     frontend_url: HttpUrl = HttpUrl("http://localhost:3000")
 

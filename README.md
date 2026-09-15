@@ -126,8 +126,7 @@ migration fails CI.
 Sessions are opaque and server-side: a random token in an `HttpOnly`
 `__Host-session` cookie, its SHA-256 in `user_sessions`. No JWTs. Passwords
 are Argon2id via pwdlib, hashed off the event loop. `SameSite=Lax` plus
-JSON-only bodies is the CSRF defence; CORS uses the explicit
-`ALLOY_CORS_ORIGINS` list. Logout revokes the row rather than deleting it;
+JSON-only bodies is the CSRF defence. Logout revokes the row rather than deleting it;
 the purge job removes old rows later.
 
 Email verification, password reset, and email change all work the same way:
@@ -390,7 +389,6 @@ ALLOY_DATABASE_URL=postgresql+psycopg://...
 ALLOY_STORAGE_ENDPOINT_URL=... ALLOY_STORAGE_BUCKET=... ALLOY_STORAGE_ACCESS_KEY=... ALLOY_STORAGE_SECRET_KEY=...
 ALLOY_STORAGE_PATH_STYLE=false                   # true for MinIO and RustFS
 ALLOY_FRONTEND_URL=https://app.example.com       # links in emails
-ALLOY_CORS_ORIGINS='["https://app.example.com"]'
 ALLOY_LOGFIRE_TOKEN=...                          # optional
 ALLOY_OPENAI_API_KEY=...                         # optional; empty turns the assistant off
 API_URL=http://api.internal:8000                 # web only

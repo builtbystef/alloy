@@ -3,13 +3,12 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from alloy_server.api.router import router as api_router
 from alloy_server.config import SettingsDep, get_settings
 from alloy_server.core import logs, telemetry
 from alloy_server.core.exceptions import AppError, handle_app_error
-from alloy_server.core.middleware import BodySizeLimitMiddleware, RequestIdMiddleware
+from alloy_server.core.middleware import RequestIdMiddleware
 from alloy_server.db.session import DatabaseState, create_database_state
 from alloy_server.integrations.mail import Mailer, create_mailer
 from alloy_server.integrations.ratelimit import DatabaseRateLimitStore, RateLimitStoreProtocol
@@ -71,17 +70,10 @@ app = FastAPI(
 if telemetry.enabled(settings):
     telemetry.instrument_app(app)
     telemetry.instrument_agents()
-# Innermost: inside the Logfire span, so the request ID reaches its logs, and
-# inside CORS, so a 500 still carries the CORS headers.
-app.add_middleware(BodySizeLimitMiddleware)
+# Inside the Logfire span, so the request ID reaches its logs. No CORS and no
+# body limit: browsers only reach the API through the Next.js proxy route,
+# which is same-origin and refuses large bodies itself.
 app.add_middleware(RequestIdMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 app.add_exception_handler(AppError, handle_app_error)
 app.include_router(api_router)
 

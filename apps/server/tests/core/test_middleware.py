@@ -6,12 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from alloy_server.core.logs import RequestIdFilter, request_id
-from alloy_server.core.middleware import (
-    BODY_TOO_LARGE_DETAIL,
-    INTERNAL_ERROR_DETAIL,
-    BodySizeLimitMiddleware,
-    RequestIdMiddleware,
-)
+from alloy_server.core.middleware import INTERNAL_ERROR_DETAIL, RequestIdMiddleware
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -113,34 +108,3 @@ def test_real_app_answers_with_a_request_id(client: TestClient):
     response = client.get("/health/")
     assert response.status_code == 200
     assert len(response.headers["x-request-id"]) == 16
-
-
-@pytest.fixture
-def limited_client() -> Iterator[TestClient]:
-    app = FastAPI()
-    app.add_middleware(BodySizeLimitMiddleware, limit=10)
-
-    @app.post("/echo")
-    async def echo(body: dict[str, str]) -> dict[str, str]:
-        return body
-
-    with TestClient(app) as client:
-        yield client
-
-
-def test_body_above_the_limit_is_refused(limited_client: TestClient):
-    assert limited_client.post("/echo", json={"a": "b"}).status_code == 200
-
-    declared = limited_client.post("/echo", json={"a": "b" * 20})
-    assert declared.status_code == 413
-    assert declared.json() == {"detail": BODY_TOO_LARGE_DETAIL}
-
-    # No Content-Length: caught on the bytes as they arrive.
-    def chunks():
-        yield b'{"a": "'
-        yield b"b" * 20
-        yield b'"}'
-
-    streamed = limited_client.post("/echo", content=chunks())
-    assert streamed.status_code == 413
-    assert streamed.json() == {"detail": BODY_TOO_LARGE_DETAIL}
