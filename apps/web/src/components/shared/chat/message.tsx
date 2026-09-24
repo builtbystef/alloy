@@ -2,7 +2,9 @@
 
 import type { FileUIPart, UIMessage } from "ai";
 import { PaperclipIcon, XIcon } from "lucide-react";
-import { memo, type ComponentProps, type HTMLAttributes } from "react";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
+import { memo, type ComponentProps, type HTMLAttributes, type MouseEvent } from "react";
 import { Streamdown } from "streamdown";
 
 import { Button } from "@/components/ui/button";
@@ -86,11 +88,56 @@ export const MessageAction = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
+/**
+ * A link in a reply. The assistant links records by their full URL, so where a
+ * link goes is decided on click: the app's own pages navigate in place, anything
+ * else opens in a new tab. Rendering the same anchor everywhere keeps the server
+ * and browser markup identical.
+ */
+function MarkdownLink({
+  href,
+  children,
+  node: _node,
+  onClick,
+  ...props
+}: ComponentProps<"a"> & { node?: unknown }) {
+  const router = useRouter();
+  const follow = (event: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event);
+    if (!href || event.defaultPrevented) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    const url = new URL(href, window.location.href);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return;
+    event.preventDefault();
+    if (url.origin === window.location.origin) {
+      router.push((url.pathname + url.search + url.hash) as Route);
+    } else {
+      window.open(url.href, "_blank", "noreferrer");
+    }
+  };
+  return (
+    <a
+      href={href}
+      className="font-medium text-primary underline wrap-anywhere"
+      onClick={follow}
+      {...props}
+    >
+      {children}
+    </a>
+  );
+}
+
+const markdownComponents = { a: MarkdownLink };
+
 /** Streamed Markdown. Memoized on the text so a growing reply re-renders only the last block. */
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
     <Streamdown
       className={cn("size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0", className)}
+      components={markdownComponents}
+      linkSafety={{ enabled: false }}
       {...props}
     />
   ),

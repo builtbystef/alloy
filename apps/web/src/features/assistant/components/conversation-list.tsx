@@ -88,7 +88,7 @@ export function ConversationList({ timeZone }: { timeZone: string }) {
         onOpenChange={(open) => {
           if (!open) setTarget(null);
         }}
-        title={`Delete ${target?.title ?? "this conversation"}?`}
+        title={target ? `Delete “${target.title}”?` : "Delete this conversation?"}
         description="The transcript is removed. Files it attached to records stay on those records."
         pending={remove.isPending}
         onConfirm={() => target && remove.mutate(target.id)}

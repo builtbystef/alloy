@@ -2,6 +2,7 @@ import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from pydantic import BaseModel
 from pydantic_ai import ApprovalRequired, CustomEvent, RunContext
 from sqlalchemy import func, select
 
@@ -219,6 +220,14 @@ def plural(count: int, noun: str) -> str:
 def short(value: object, width: int = 60) -> str:
     text = "" if value is None else str(value)
     return text if len(text) <= width else text[: width - 1] + "…"
+
+
+def describe_changes(changes: BaseModel, width: int = 80) -> str:
+    """The fields an update sets, as `status: inactive, job_title: VP Sales`, for
+    an approval preview. Enums, ids, and dates appear as their JSON values."""
+    fields = changes.model_dump(mode="json", exclude_unset=True)
+    text = ", ".join(f"{name}: {'—' if value is None else value}" for name, value in fields.items())
+    return short(text, width)
 
 
 async def chat_uploads(deps: AgentDeps, upload_ids: Sequence[UUID]) -> list[ChatUpload]:

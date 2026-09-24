@@ -5,6 +5,7 @@ import { CheckIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, UndoIcon } from 
 import Link from "next/link";
 
 import { createDataTableColumnHelper, SortableHeader } from "@/components/shared/data-table";
+import { TaskStatusBadge } from "@/features/crm/tasks/components/task-status-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatDateTime, formatRelativeDays, isBeforeToday } from "@/lib/formatting/dates";
 import type { WorkspacePaths } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +21,13 @@ import type { useTaskMutations } from "@/features/crm/tasks/hooks/use-task-mutat
 
 const column = createDataTableColumnHelper<TaskResponse>();
 
-/** The list shows the names only; everything else is on the task's page. */
+/** Title, due date, status, and what the task is about; notes are on the task's page. */
 export function taskColumns({
+  timeZone,
   paths,
   actions,
 }: {
+  timeZone: string;
   paths: WorkspacePaths;
   /** Null hides the row actions (read-only roles). */
   actions: ReturnType<typeof useTaskMutations> | null;
@@ -85,6 +89,50 @@ export function taskColumns({
           {row.original.title}
         </Link>
       ),
+    }),
+    column.accessor("due_at", {
+      header: ({ column }) => <SortableHeader column={column}>Due</SortableHeader>,
+      cell: ({ row }) => {
+        const task = row.original;
+        if (!task.due_at) return <span className="text-muted-foreground">–</span>;
+        const overdue = task.status === "open" && isBeforeToday(task.due_at, timeZone);
+        return (
+          <span
+            title={formatDateTime(task.due_at, timeZone)}
+            className={cn(overdue && "font-medium text-destructive")}
+          >
+            {formatRelativeDays(task.due_at, timeZone)}
+          </span>
+        );
+      },
+    }),
+    column.accessor("status", {
+      header: "Status",
+      cell: ({ row }) => <TaskStatusBadge status={row.original.status} />,
+    }),
+    column.accessor((row) => row.contact?.name ?? "", {
+      id: "contact",
+      header: ({ column }) => <SortableHeader column={column}>Contact</SortableHeader>,
+      cell: ({ row }) =>
+        row.original.contact ? (
+          <Link href={paths.contact(row.original.contact.id)} className="hover:underline">
+            {row.original.contact.name}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">–</span>
+        ),
+    }),
+    column.accessor((row) => row.company?.name ?? "", {
+      id: "company",
+      header: ({ column }) => <SortableHeader column={column}>Company</SortableHeader>,
+      cell: ({ row }) =>
+        row.original.company ? (
+          <Link href={paths.company(row.original.company.id)} className="hover:underline">
+            {row.original.company.name}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">–</span>
+        ),
     }),
     ...(actions ? [actionsColumn] : []),
   ]);

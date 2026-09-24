@@ -15,13 +15,13 @@ from alloy_server.modules.assistant.tools.common import (
     company_row,
     contact_row,
     count_rows,
+    describe_changes,
     next_page,
     owned,
     owned_all,
     page_bounds,
     pause_for_approval,
     plural,
-    short,
     write_allowed,
 )
 from alloy_server.modules.assistant.tools.registry import (
@@ -161,7 +161,7 @@ async def update_companies(
             title=f"Update {len(items)} companies",
             columns=["Company", "Changes"],
             rows=[
-                [company.name, short(item.changes.model_dump(exclude_unset=True), 80)]
+                [company.name, describe_changes(item.changes)]
                 for company, item in zip(companies, items, strict=True)
             ],
         )

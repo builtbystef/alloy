@@ -82,7 +82,7 @@ export function TasksTable({
         </span>
       </div>
       <DataTable<TaskResponse>
-        columns={taskColumns({ paths, actions: canWrite ? actions : null })}
+        columns={taskColumns({ timeZone, paths, actions: canWrite ? actions : null })}
         data={tasks.items}
         total={tasks.total}
         page={list.page}

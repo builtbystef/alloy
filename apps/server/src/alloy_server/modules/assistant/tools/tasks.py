@@ -7,12 +7,12 @@ from alloy_server.modules.assistant.dependencies import AgentDeps
 from alloy_server.modules.assistant.tools.common import (
     check_bulk,
     count_rows,
+    describe_changes,
     next_page,
     owned_all,
     page_bounds,
     pause_for_approval,
     plural,
-    short,
     task_row,
     write_allowed,
 )
@@ -106,7 +106,7 @@ async def update_tasks(ctx: RunContext[AgentDeps], items: list[TaskChange]) -> l
             title=f"Update {plural(len(items), 'task')}",
             columns=["Task", "Changes"],
             rows=[
-                [task.title, short(item.changes.model_dump(exclude_unset=True), 80)]
+                [task.title, describe_changes(item.changes)]
                 for task, item in zip(tasks, items, strict=True)
             ],
         )

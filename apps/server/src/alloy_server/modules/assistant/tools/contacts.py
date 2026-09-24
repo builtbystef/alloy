@@ -18,13 +18,13 @@ from alloy_server.modules.assistant.tools.common import (
     company_row,
     contact_row,
     count_rows,
+    describe_changes,
     next_page,
     owned,
     owned_all,
     page_bounds,
     pause_for_approval,
     plural,
-    short,
     task_row,
     write_allowed,
 )
@@ -255,7 +255,7 @@ async def update_contacts(
             title=f"Update {plural(len(items), 'contact')}",
             columns=["Contact", "Changes"],
             rows=[
-                [contact.name, short(item.changes.model_dump(exclude_unset=True), 80)]
+                [contact.name, describe_changes(item.changes)]
                 for contact, item in zip(contacts, items, strict=True)
             ],
         )
