@@ -11,6 +11,10 @@ updates:
       # Keep @types/node on the same major as .node-version.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # packages/api-client pins typescript 5: openapi-typescript needs the
+      # TypeScript 5 compiler API and crashes under 7. The catalog is on 7.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       # See the catalog note in pnpm-workspace.yaml.
       vite-plus:
