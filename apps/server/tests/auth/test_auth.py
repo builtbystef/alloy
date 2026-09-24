@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from alloy_server.auth.cookies import SESSION_COOKIE
-from alloy_server.auth.emails import describe_duration
 from alloy_server.config import Settings
+from alloy_server.modules.auth.cookies import SESSION_COOKIE
+from alloy_server.modules.auth.emails import describe_duration
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -438,7 +438,7 @@ class TestEmailChange:
         async def missed(session, email) -> bool:  # noqa: ARG001
             return False
 
-        monkeypatch.setattr("alloy_server.auth.service.email_taken", missed)
+        monkeypatch.setattr("alloy_server.modules.auth.service.email_taken", missed)
         assert client.post("/auth/confirm-email", json={"token": token}).status_code == 409
 
     def test_a_new_request_replaces_the_pending_one_and_cancel_drops_it(

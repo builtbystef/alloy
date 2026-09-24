@@ -8,18 +8,18 @@ from sqlalchemy import Result, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from alloy_server.agent.models import ChatUpload
-from alloy_server.auth.models import User, UserSession
 from alloy_server.config import Settings
-from alloy_server.crm.attachments.models import Attachment
-from alloy_server.crm.imports.models import Import, ImportStatus
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.ratelimit.models import RateLimitWindow
 from alloy_server.integrations.storage import ObjectStore
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
 from alloy_server.jobs.app import app, task
 from alloy_server.jobs.resources import Resources
-from alloy_server.workspaces.models import Workspace, WorkspaceInvite, WorkspaceMember
+from alloy_server.modules.agent.models import ChatUpload
+from alloy_server.modules.auth.models import User, UserSession
+from alloy_server.modules.crm.attachments.models import Attachment
+from alloy_server.modules.crm.imports.models import Import, ImportStatus
+from alloy_server.modules.workspaces.models import Workspace, WorkspaceInvite, WorkspaceMember
 
 if TYPE_CHECKING:
     from sqlalchemy import CursorResult

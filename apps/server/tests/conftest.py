@@ -31,7 +31,6 @@ get_settings.cache_clear()
 from fastapi.testclient import TestClient  # noqa: E402
 from procrastinate.testing import InMemoryConnector  # noqa: E402
 
-from alloy_server.auth.cookies import SESSION_COOKIE  # noqa: E402
 from alloy_server.db.models import Base  # noqa: E402
 from alloy_server.db.session import get_session  # noqa: E402
 from alloy_server.integrations.mail import Email  # noqa: E402
@@ -45,6 +44,7 @@ from alloy_server.integrations.storage.memory import MemoryObjectStore  # noqa: 
 from alloy_server.jobs.app import app as jobs_app  # noqa: E402
 from alloy_server.jobs.resources import Resources, worker_context  # noqa: E402
 from alloy_server.main import app  # noqa: E402
+from alloy_server.modules.auth.cookies import SESSION_COOKIE  # noqa: E402
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping

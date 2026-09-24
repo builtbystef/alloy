@@ -6,12 +6,12 @@ from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolRetu
 from pydantic_ai.models import Model
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from alloy_server.agent.agent import USAGE_LIMITS, agent, history_capability, model_settings
-from alloy_server.agent.dependencies import AgentDeps
 from alloy_server.config import Settings
 from alloy_server.integrations.storage.base import ObjectStore
-from alloy_server.workspaces.dependencies import Membership
-from alloy_server.workspaces.models import WorkspaceMember
+from alloy_server.modules.agent.agent import USAGE_LIMITS, agent, history_capability, model_settings
+from alloy_server.modules.agent.dependencies import AgentDeps
+from alloy_server.modules.workspaces.dependencies import Membership
+from alloy_server.modules.workspaces.models import WorkspaceMember
 
 from .evaluators import Outcome, Prompt
 from .fixture import Fixture, member_id

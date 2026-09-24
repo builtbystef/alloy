@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from alloy_server.crm.imports.loader import run_import
 from alloy_server.jobs.app import defer, task
 from alloy_server.jobs.resources import Resources
+from alloy_server.modules.crm.imports.loader import run_import
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

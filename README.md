@@ -66,24 +66,32 @@ apps/server/
 │   ├── config.py             # Settings (pydantic-settings) + get_settings
 │   ├── api/router.py         # the HTTP composition root: includes every feature router
 │   ├── shared/               # exceptions.py (AppError family + handler), middleware.py (request IDs, body limit), logs.py, telemetry.py, routing.py
-│   ├── db/                   # session.py (engine, SessionDep), base.py (Base, mixins; imports every model)
+│   ├── db/                   # session.py (engine, SessionDep), base.py (Base, mixins), models.py (imports every model)
 │   ├── integrations/         # ports and adapters: mail/, storage/, ratelimit/ (a protocol + implementations each)
-│   ├── health/               # GET /health/ (liveness); /health/{db,storage} (readiness)
-│   ├── auth/                 # accounts, cookie sessions, emailed links; CurrentUserDep
-│   ├── workspaces/           # workspaces, members, roles, invitations; the Can* dependencies
-│   ├── crm/                  # the demo: companies/, contacts/, tasks/, attachments/, imports/, dashboard/ + shared mixins, pagination, ownership
-│   ├── agent/                # the assistant: a Pydantic AI agent over the CRM
+│   ├── modules/              # the features, one package each
+│   │   ├── health/           # GET /health/ (liveness); /health/{db,storage} (readiness)
+│   │   ├── auth/             # accounts, cookie sessions, emailed links; CurrentUserDep
+│   │   ├── workspaces/       # workspaces, members, roles, invitations; the Can* dependencies
+│   │   ├── crm/              # the demo: companies/, contacts/, tasks/, attachments/, imports/, dashboard/ + shared mixins, pagination, ownership
+│   │   └── agent/            # the assistant: a Pydantic AI agent over the CRM
 │   └── jobs/                 # Procrastinate app, task decorator, worker; tasks: emails, purge, imports, stalled
 └── tests/                    # mirrors the package; one rolled-back transaction per test
 ```
 
-Each feature package has only the files it needs: `router.py` (paths, status
-codes, dependencies, `commit`), `schemas.py` (Pydantic), `models.py`
-(SQLAlchemy), `service.py` (the work: takes a session and parsed input, owns
-the queries, raises `AppError`s rather than `HTTPException`s), and `dependencies.py`
-for dependencies other packages use. There is no repository layer: the
-session is the unit of work. The assistant's tools and the worker's jobs call
-the same service functions the routes do.
+A modular monolith without machinery. Each module under `modules/` has only
+the files it needs: `router.py` (paths, status codes, dependencies, `commit`),
+`schemas.py` (Pydantic), `models.py` (SQLAlchemy), `service.py` (the work:
+takes a session and parsed input, owns the queries, raises `AppError`s rather
+than `HTTPException`s), and `dependencies.py` for dependencies other modules
+use. There is no repository layer: the session is the unit of work. The
+assistant's tools and the worker's jobs call the same service functions the
+routes do.
+
+Two rules keep the modules apart. A module imports `config`, `db`, `shared`,
+`integrations`, and other modules only through their `service`, `models`, and
+`dependencies`. Nothing outside `modules/` imports a module except the two
+lists that wire them in, `api/router.py` and `db/models.py`, and the jobs
+that run for them.
 
 Settings come from `ALLOY_*` environment variables or a local `.env`; tests
 override `get_settings`. Operation IDs are `{tag}-{function}`, and

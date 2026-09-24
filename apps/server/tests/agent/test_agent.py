@@ -21,19 +21,19 @@ from pydantic_ai.usage import RunUsage
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from alloy_server.agent import tools
-from alloy_server.agent.agent import HISTORY_TURNS, trim_history
-from alloy_server.agent.dependencies import AgentDeps
-from alloy_server.agent.models import AgentMessage, ChatUpload
-from alloy_server.agent.router import AGENT_MESSAGE_PER_USER, get_agent_model
 from alloy_server.config import Settings
-from alloy_server.crm.attachments.models import Attachment
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.ratelimit import Limiter, MemoryRateLimitStore
 from alloy_server.jobs.purge import PurgeReport, purge
 from alloy_server.main import app
-from alloy_server.workspaces.dependencies import Membership
-from alloy_server.workspaces.models import WorkspaceMember
+from alloy_server.modules.agent import tools
+from alloy_server.modules.agent.agent import HISTORY_TURNS, trim_history
+from alloy_server.modules.agent.dependencies import AgentDeps
+from alloy_server.modules.agent.models import AgentMessage, ChatUpload
+from alloy_server.modules.agent.router import AGENT_MESSAGE_PER_USER, get_agent_model
+from alloy_server.modules.crm.attachments.models import Attachment
+from alloy_server.modules.workspaces.dependencies import Membership
+from alloy_server.modules.workspaces.models import WorkspaceMember
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable

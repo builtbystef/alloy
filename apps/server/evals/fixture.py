@@ -5,13 +5,13 @@ from datetime import timedelta
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from alloy_server.auth.models import User
-from alloy_server.crm.companies.models import Company
-from alloy_server.crm.contacts.models import Activity, ActivityType, Contact
-from alloy_server.crm.tasks.models import Task
 from alloy_server.db.base import utcnow
-from alloy_server.workspaces.models import Workspace, WorkspaceMember
-from alloy_server.workspaces.service import create_workspace
+from alloy_server.modules.auth.models import User
+from alloy_server.modules.crm.companies.models import Company
+from alloy_server.modules.crm.contacts.models import Activity, ActivityType, Contact
+from alloy_server.modules.crm.tasks.models import Task
+from alloy_server.modules.workspaces.models import Workspace, WorkspaceMember
+from alloy_server.modules.workspaces.service import create_workspace
 
 
 @dataclass

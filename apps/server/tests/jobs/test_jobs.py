@@ -9,7 +9,6 @@ from procrastinate.schema import SchemaManager
 from sqlalchemy import text
 
 from alloy_server.config import Settings
-from alloy_server.crm.imports.models import Import, ImportStatus
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.mail import Email
 from alloy_server.jobs import TASK_MODULES, conninfo, create_app
@@ -18,6 +17,7 @@ from alloy_server.jobs.emails import queue_email, send_email
 from alloy_server.jobs.imports import run_import_job
 from alloy_server.jobs.purge import PurgeReport, purge, purge_expired
 from alloy_server.jobs.stalled import retry_stalled
+from alloy_server.modules.crm.imports.models import Import, ImportStatus
 
 if TYPE_CHECKING:
     from collections.abc import Callable

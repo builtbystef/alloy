@@ -10,9 +10,9 @@ from typing import Any
 from pydantic_evals import Dataset
 from pydantic_evals.evaluators import Evaluator, LLMJudge
 
-from alloy_server.agent.agent import build_model
 from alloy_server.db.session import create_database_state
 from alloy_server.integrations.storage.memory import MemoryObjectStore
+from alloy_server.modules.agent.agent import build_model
 
 from .cases import cases
 from .db import migrate, use_eval_database

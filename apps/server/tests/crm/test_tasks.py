@@ -107,7 +107,7 @@ def test_today_depends_on_the_timezone(alice: Actor, monkeypatch: pytest.MonkeyP
     # yesterday twelve hours west of it. Before noon UTC that would not hold, and the
     # task would count as today in both zones.
     now = datetime(2026, 9, 12, 15, 0, tzinfo=UTC)
-    monkeypatch.setattr("alloy_server.crm.dates.utcnow", lambda: now)
+    monkeypatch.setattr("alloy_server.modules.crm.dates.utcnow", lambda: now)
     start_of_today = now.replace(hour=0, minute=0)
     alice.post(
         "/tasks/", json={"title": "Early", "due_at": iso(start_of_today + timedelta(minutes=1))}
