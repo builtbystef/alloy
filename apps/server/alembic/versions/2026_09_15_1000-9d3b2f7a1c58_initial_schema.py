@@ -99,9 +99,9 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_workspaces")),
     )
-    # agent_conversations belongs to agent.
+    # assistant_conversations belongs to assistant.
     op.create_table(
-        "agent_conversations",
+        "assistant_conversations",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("workspace_id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Uuid(), nullable=False),
@@ -111,23 +111,26 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
-            name=op.f("fk_agent_conversations_user_id_users"),
+            name=op.f("fk_assistant_conversations_user_id_users"),
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["workspace_id"],
             ["workspaces.id"],
-            name=op.f("fk_agent_conversations_workspace_id_workspaces"),
+            name=op.f("fk_assistant_conversations_workspace_id_workspaces"),
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_agent_conversations")),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_assistant_conversations")),
     )
     op.create_index(
-        op.f("ix_agent_conversations_user_id"), "agent_conversations", ["user_id"], unique=False
+        op.f("ix_assistant_conversations_user_id"),
+        "assistant_conversations",
+        ["user_id"],
+        unique=False,
     )
     op.create_index(
-        op.f("ix_agent_conversations_workspace_id"),
-        "agent_conversations",
+        op.f("ix_assistant_conversations_workspace_id"),
+        "assistant_conversations",
         ["workspace_id"],
         unique=False,
     )
@@ -334,9 +337,9 @@ def upgrade() -> None:
         ["workspace_id"],
         unique=False,
     )
-    # agent_messages belongs to agent.
+    # assistant_messages belongs to assistant.
     op.create_table(
-        "agent_messages",
+        "assistant_messages",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("conversation_id", sa.Uuid(), nullable=False),
         sa.Column("position", sa.Integer(), nullable=False),
@@ -344,18 +347,18 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
             ["conversation_id"],
-            ["agent_conversations.id"],
-            name=op.f("fk_agent_messages_conversation_id_agent_conversations"),
+            ["assistant_conversations.id"],
+            name=op.f("fk_assistant_messages_conversation_id_assistant_conversations"),
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_agent_messages")),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_assistant_messages")),
         sa.UniqueConstraint(
-            "conversation_id", "position", name=op.f("uq_agent_messages_conversation_id")
+            "conversation_id", "position", name=op.f("uq_assistant_messages_conversation_id")
         ),
     )
     op.create_index(
-        op.f("ix_agent_messages_conversation_id"),
-        "agent_messages",
+        op.f("ix_assistant_messages_conversation_id"),
+        "assistant_messages",
         ["conversation_id"],
         unique=False,
     )
@@ -556,7 +559,7 @@ def upgrade() -> None:
     op.create_index(op.f("ix_tasks_contact_id"), "tasks", ["contact_id"], unique=False)
     op.create_index(op.f("ix_tasks_due_at"), "tasks", ["due_at"], unique=False)
     op.create_index(op.f("ix_tasks_workspace_id"), "tasks", ["workspace_id"], unique=False)
-    # chat_uploads belongs to agent.
+    # chat_uploads belongs to assistant.
     op.create_table(
         "chat_uploads",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -578,8 +581,8 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["conversation_id"],
-            ["agent_conversations.id"],
-            name=op.f("fk_chat_uploads_conversation_id_agent_conversations"),
+            ["assistant_conversations.id"],
+            name=op.f("fk_chat_uploads_conversation_id_assistant_conversations"),
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
@@ -652,8 +655,8 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_contacts_workspace_id"), table_name="contacts")
     op.drop_index(op.f("ix_contacts_company_id"), table_name="contacts")
     op.drop_table("contacts")
-    op.drop_index(op.f("ix_agent_messages_conversation_id"), table_name="agent_messages")
-    op.drop_table("agent_messages")
+    op.drop_index(op.f("ix_assistant_messages_conversation_id"), table_name="assistant_messages")
+    op.drop_table("assistant_messages")
     op.drop_index(op.f("ix_workspace_members_workspace_id"), table_name="workspace_members")
     op.drop_index(op.f("ix_workspace_members_user_id"), table_name="workspace_members")
     op.drop_table("workspace_members")
@@ -666,8 +669,10 @@ def downgrade() -> None:
     op.drop_table("imports")
     op.drop_index(op.f("ix_companies_workspace_id"), table_name="companies")
     op.drop_table("companies")
-    op.drop_index(op.f("ix_agent_conversations_workspace_id"), table_name="agent_conversations")
-    op.drop_index(op.f("ix_agent_conversations_user_id"), table_name="agent_conversations")
-    op.drop_table("agent_conversations")
+    op.drop_index(
+        op.f("ix_assistant_conversations_workspace_id"), table_name="assistant_conversations"
+    )
+    op.drop_index(op.f("ix_assistant_conversations_user_id"), table_name="assistant_conversations")
+    op.drop_table("assistant_conversations")
     op.drop_table("workspaces")
     op.drop_table("users")

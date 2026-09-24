@@ -10,7 +10,7 @@ from pydantic_ai.messages import (
 from sqlalchemy import func, select
 
 from alloy_server.db.base import utcnow
-from alloy_server.modules.agent.models import AgentConversation, AgentMessage
+from alloy_server.modules.assistant.models import AssistantConversation, AssistantMessage
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -21,9 +21,9 @@ if TYPE_CHECKING:
 async def load_history(session: AsyncSession, conversation_id: Any) -> list[ModelMessage]:  # noqa: ANN401
     bodies = list(
         await session.scalars(
-            select(AgentMessage.body)
-            .where(AgentMessage.conversation_id == conversation_id)
-            .order_by(AgentMessage.position)
+            select(AssistantMessage.body)
+            .where(AssistantMessage.conversation_id == conversation_id)
+            .order_by(AssistantMessage.position)
         )
     )
     return ModelMessagesTypeAdapter.validate_python(bodies) if bodies else []
@@ -58,14 +58,14 @@ def without_binary(message: ModelMessage) -> ModelMessage:
 
 
 async def append_messages(
-    session: AsyncSession, conversation: AgentConversation, messages: Sequence[ModelMessage]
+    session: AsyncSession, conversation: AssistantConversation, messages: Sequence[ModelMessage]
 ) -> None:
     """Store `messages` after the conversation's last position. Flushed, not committed."""
     if not messages:
         return
     last = await session.scalar(
-        select(func.max(AgentMessage.position)).where(
-            AgentMessage.conversation_id == conversation.id
+        select(func.max(AssistantMessage.position)).where(
+            AssistantMessage.conversation_id == conversation.id
         )
     )
     position = (last if last is not None else -1) + 1
@@ -75,7 +75,7 @@ async def append_messages(
     now = utcnow()
     for offset, body in enumerate(bodies):
         session.add(
-            AgentMessage(
+            AssistantMessage(
                 conversation_id=conversation.id,
                 position=position + offset,
                 body=body,
@@ -87,15 +87,15 @@ async def append_messages(
 
 
 async def truncate_after_last_prompt(
-    session: AsyncSession, conversation: AgentConversation
+    session: AsyncSession, conversation: AssistantConversation
 ) -> ModelRequest | None:
     """For a retry: drop everything from the last user prompt on, and return that
     prompt so the run can be repeated. None when there is no prompt to repeat."""
     rows = list(
         await session.scalars(
-            select(AgentMessage)
-            .where(AgentMessage.conversation_id == conversation.id)
-            .order_by(AgentMessage.position)
+            select(AssistantMessage)
+            .where(AssistantMessage.conversation_id == conversation.id)
+            .order_by(AssistantMessage.position)
         )
     )
     messages = ModelMessagesTypeAdapter.validate_python([r.body for r in rows]) if rows else []

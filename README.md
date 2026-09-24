@@ -73,7 +73,7 @@ apps/server/
 │   │   ├── auth/             # accounts, cookie sessions, emailed links; CurrentUserDep
 │   │   ├── workspaces/       # workspaces, members, roles, invitations; the Can* dependencies
 │   │   ├── crm/              # the demo: companies/, contacts/, tasks/, attachments/, imports/, dashboard/ + shared mixins, pagination, ownership
-│   │   └── agent/            # the assistant: a Pydantic AI agent over the CRM
+│   │   └── assistant/        # the assistant: a Pydantic AI agent (agent.py) over the CRM
 │   └── jobs/                 # Procrastinate app, task decorator, worker; tasks: emails, purge, imports, stalled
 └── tests/                    # mirrors the package; one rolled-back transaction per test
 ```
@@ -169,7 +169,7 @@ the routes that use them.
 | token endpoints (`verify-email`, `reset-password`, ...) | address         | 10 per minute |
 | `POST /invites/{token}/accept`                          | user            | 10 per minute |
 | `POST .../invites`, `.../invites/{id}/resend`           | user            | 20 per hour   |
-| `POST .../agent/conversations/{id}/messages`            | user            | 60 per hour   |
+| `POST .../assistant/conversations/{id}/messages`        | user            | 60 per hour   |
 
 The client address is `request.client`, which Uvicorn fills from
 `X-Forwarded-For` for peers in `FORWARDED_ALLOW_IPS`; the web app's proxy
@@ -272,13 +272,13 @@ simply redelivered.
 
 ### Assistant
 
-`agent/` is one [Pydantic AI](https://pydantic.dev/docs/ai/) agent with
+`modules/assistant/` is one [Pydantic AI](https://pydantic.dev/docs/ai/) agent with
 typed tools that call the same service functions the routes do, so it can
 do nothing the UI cannot. `ALLOY_OPENAI_API_KEY` turns it on (otherwise the
 endpoints answer 503); `ALLOY_AGENT_MODEL` and `ALLOY_AGENT_REASONING_EFFORT`
 tune it.
 
-- The server owns the transcript (`agent_messages`); the browser posts only
+- The server owns the transcript (`assistant_messages`); the browser posts only
   its newest message and reads the reply as an AI SDK data stream.
 - Reads always run. A single write runs at once. A delete, or a call with
   more than one item, pauses for approval: the browser shows what is about
@@ -289,7 +289,7 @@ tune it.
   upload into a normal attachment without copying bytes. Unattached uploads
   are purged after `ALLOY_CHAT_UPLOAD_TTL`.
 - Every tool checks the membership's permission and filters by workspace;
-  `UsageLimits` bound each run. `tests/agent/` drives the endpoint with a
+  `UsageLimits` bound each run. `tests/assistant/` drives the endpoint with a
   scripted `FunctionModel`; `evals/` runs real prompts against the live
   model on demand (`uv run python -m evals.run`).
 

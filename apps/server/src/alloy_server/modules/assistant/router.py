@@ -26,22 +26,22 @@ from alloy_server.config import SettingsDep
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import Limit, LimiterDep
 from alloy_server.integrations.storage import ObjectStoreDep
-from alloy_server.modules.agent import service, uploads
-from alloy_server.modules.agent.agent import (
+from alloy_server.modules.assistant import service, uploads
+from alloy_server.modules.assistant.agent import (
     USAGE_LIMITS,
     agent,
     build_model,
     history_capability,
     model_settings,
 )
-from alloy_server.modules.agent.dependencies import AgentDeps
-from alloy_server.modules.agent.history import (
+from alloy_server.modules.assistant.dependencies import AgentDeps
+from alloy_server.modules.assistant.history import (
     append_messages,
     load_history,
     truncate_after_last_prompt,
 )
-from alloy_server.modules.agent.models import AgentConversation, ChatUpload
-from alloy_server.modules.agent.schemas import (
+from alloy_server.modules.assistant.models import AssistantConversation, ChatUpload
+from alloy_server.modules.assistant.schemas import (
     ChatMessageRequest,
     ConversationDetailResponse,
     ConversationResponse,
@@ -60,11 +60,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/workspaces/{workspace_id}/agent", tags=["agent"])
+router = APIRouter(prefix="/workspaces/{workspace_id}/assistant", tags=["assistant"])
 router.include_router(uploads.router)
 
 # Each message to the assistant is a model run; this bounds what one user can spend.
-AGENT_MESSAGE_PER_USER = Limit("agent-message:user", 60, timedelta(hours=1))
+ASSISTANT_MESSAGE_PER_USER = Limit("assistant-message:user", 60, timedelta(hours=1))
 
 SDK_VERSION = 7
 TITLE_LENGTH = 80
@@ -93,7 +93,7 @@ def get_agent_model(settings: SettingsDep) -> Model:
 AgentModelDep = Annotated["Model", Depends(get_agent_model)]
 
 
-def read_conversation(conversation: AgentConversation) -> ConversationResponse:
+def read_conversation(conversation: AssistantConversation) -> ConversationResponse:
     return ConversationResponse.model_validate(conversation)
 
 
@@ -179,7 +179,10 @@ def _title_from(text: str) -> str | None:
 
 
 async def _uploads_for(
-    session: AsyncSession, membership: Membership, conversation: AgentConversation, ids: list[Any]
+    session: AsyncSession,
+    membership: Membership,
+    conversation: AssistantConversation,
+    ids: list[Any],
 ) -> list[ChatUpload]:
     """The uploads named in a message's metadata: this user's, in this conversation,
     and complete. Anything else is a 400, not silently dropped."""
@@ -221,7 +224,7 @@ async def _file_content(
 
 
 async def _build_prompt(
-    deps: AgentDeps, conversation: AgentConversation, message: UIMessage
+    deps: AgentDeps, conversation: AssistantConversation, message: UIMessage
 ) -> ModelRequest:
     """The user's turn: their text, the files they sent (readable ones as content,
     the rest by name), and a line listing every file with its upload id."""
@@ -234,7 +237,9 @@ async def _build_prompt(
     )
     content: list[UserContent] = [text] if text else []
     for upload in upload_rows:
-        binary = await _file_content(deps.store, upload, deps.settings.agent_file_read_max_bytes)
+        binary = await _file_content(
+            deps.store, upload, deps.settings.assistant_file_read_max_bytes
+        )
         if binary is not None:
             content.append(binary)
     if upload_rows:
@@ -283,7 +288,7 @@ class ConversationAdapter(VercelAIAdapter[AgentDeps, Any]):
 
 
 async def _prepare_turn(
-    deps: AgentDeps, conversation: AgentConversation, adapter: ConversationAdapter
+    deps: AgentDeps, conversation: AssistantConversation, adapter: ConversationAdapter
 ) -> ModelRequest | None:
     """The user's new turn as a request, or None when the request only answers an
     approval. A retry repeats the last stored user turn."""
@@ -330,7 +335,7 @@ async def send_message(  # noqa: PLR0913, PLR0917
     repeats the last user turn. 503 when no model is configured, 429 past the
     per-user limit.
     """
-    await limiter.hit(AGENT_MESSAGE_PER_USER, str(membership.user.id))
+    await limiter.hit(ASSISTANT_MESSAGE_PER_USER, str(membership.user.id))
     conversation = await service.get_conversation(session, membership, conversation_id)
     body.id = body.id or str(conversation.id)
     try:

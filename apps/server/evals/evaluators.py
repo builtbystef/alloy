@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 from pydantic_evals.evaluators import Evaluator, EvaluatorContext
 
-from alloy_server.modules.agent.tools import WRITE_TOOL_NAMES
+from alloy_server.modules.assistant.tools import WRITE_TOOL_NAMES
 
 
 class Prompt(BaseModel):

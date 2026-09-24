@@ -5,7 +5,11 @@ from sqlalchemy import exists, select
 
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
-from alloy_server.modules.agent.models import AgentConversation, AgentMessage, ChatUpload
+from alloy_server.modules.assistant.models import (
+    AssistantConversation,
+    AssistantMessage,
+    ChatUpload,
+)
 from alloy_server.shared.exceptions import ConflictError, NotFoundError
 
 if TYPE_CHECKING:
@@ -15,7 +19,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.modules.agent.schemas import ChatUploadCreate
+    from alloy_server.modules.assistant.schemas import ChatUploadCreate
     from alloy_server.modules.crm.attachments.service import AttachmentStorage
     from alloy_server.modules.workspaces.dependencies import Membership
 
@@ -23,44 +27,46 @@ if TYPE_CHECKING:
 # --- Conversations -----------------------------------------------------------------
 
 
-def conversations_query(membership: Membership) -> Select[tuple[AgentConversation]]:
+def conversations_query(membership: Membership) -> Select[tuple[AssistantConversation]]:
     return (
-        select(AgentConversation)
-        .where(AgentConversation.workspace_id == membership.workspace.id)
-        .where(AgentConversation.user_id == membership.user.id)
-        .order_by(AgentConversation.updated_at.desc(), AgentConversation.id.desc())
+        select(AssistantConversation)
+        .where(AssistantConversation.workspace_id == membership.workspace.id)
+        .where(AssistantConversation.user_id == membership.user.id)
+        .order_by(AssistantConversation.updated_at.desc(), AssistantConversation.id.desc())
     )
 
 
 async def get_conversation(
     session: AsyncSession, membership: Membership, conversation_id: UUID
-) -> AgentConversation:
+) -> AssistantConversation:
     conversation = await session.scalar(
-        select(AgentConversation)
-        .where(AgentConversation.id == conversation_id)
-        .where(AgentConversation.workspace_id == membership.workspace.id)
-        .where(AgentConversation.user_id == membership.user.id)
+        select(AssistantConversation)
+        .where(AssistantConversation.id == conversation_id)
+        .where(AssistantConversation.workspace_id == membership.workspace.id)
+        .where(AssistantConversation.user_id == membership.user.id)
     )
     if conversation is None:
         raise NotFoundError("Conversation not found")
     return conversation
 
 
-async def create_conversation(session: AsyncSession, membership: Membership) -> AgentConversation:
+async def create_conversation(
+    session: AsyncSession, membership: Membership
+) -> AssistantConversation:
     """A new, empty conversation. An existing one with no messages is returned
     instead, so "New chat" pressed twice does not pile up empty rows. Commits."""
-    has_messages = exists().where(AgentMessage.conversation_id == AgentConversation.id)
+    has_messages = exists().where(AssistantMessage.conversation_id == AssistantConversation.id)
     empty = await session.scalar(
-        select(AgentConversation)
-        .where(AgentConversation.workspace_id == membership.workspace.id)
-        .where(AgentConversation.user_id == membership.user.id)
+        select(AssistantConversation)
+        .where(AssistantConversation.workspace_id == membership.workspace.id)
+        .where(AssistantConversation.user_id == membership.user.id)
         .where(~has_messages)
-        .order_by(AgentConversation.created_at.desc())
+        .order_by(AssistantConversation.created_at.desc())
         .limit(1)
     )
     if empty is not None:
         return empty
-    conversation = AgentConversation(
+    conversation = AssistantConversation(
         workspace_id=membership.workspace.id, user_id=membership.user.id
     )
     session.add(conversation)
@@ -69,7 +75,7 @@ async def create_conversation(session: AsyncSession, membership: Membership) -> 
 
 
 async def delete_conversation(
-    session: AsyncSession, store: ObjectStore, conversation: AgentConversation
+    session: AsyncSession, store: ObjectStore, conversation: AssistantConversation
 ) -> None:
     """Removes the transcript and the chat's files that were never attached to a
     record. Attachments made from the chat stay on their records. Commits."""
@@ -98,7 +104,7 @@ async def get_upload(session: AsyncSession, membership: Membership, upload_id: U
 
 
 async def purge_unattached(
-    session: AsyncSession, store: ObjectStore, conversation: AgentConversation
+    session: AsyncSession, store: ObjectStore, conversation: AssistantConversation
 ) -> None:
     """Remove the conversation's uploads that never became attachments, rows and
     objects. Attached ones stay: the attachment owns the object now. Commits."""
@@ -120,7 +126,7 @@ async def start_upload(
     session: AsyncSession,
     storage: AttachmentStorage,
     membership: Membership,
-    conversation: AgentConversation,
+    conversation: AssistantConversation,
     body: ChatUploadCreate,
 ) -> ChatUpload:
     """Commits. The caller hands out the upload URL."""

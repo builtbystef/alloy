@@ -6,7 +6,7 @@ import { contentTypeOf } from "@/lib/api/upload";
 
 export async function createConversation(ws: string): Promise<ConversationResponse> {
   return unwrap(
-    await browserApi.POST("/workspaces/{workspace_id}/agent/conversations", {
+    await browserApi.POST("/workspaces/{workspace_id}/assistant/conversations", {
       params: { path: { workspace_id: ws } },
     }),
   );
@@ -15,9 +15,12 @@ export async function createConversation(ws: string): Promise<ConversationRespon
 /** The transcript and any files sent in it go with it. */
 export async function deleteConversation(ws: string, id: string): Promise<void> {
   unwrap(
-    await browserApi.DELETE("/workspaces/{workspace_id}/agent/conversations/{conversation_id}", {
-      params: { path: { workspace_id: ws, conversation_id: id } },
-    }),
+    await browserApi.DELETE(
+      "/workspaces/{workspace_id}/assistant/conversations/{conversation_id}",
+      {
+        params: { path: { workspace_id: ws, conversation_id: id } },
+      },
+    ),
   );
 }
 
@@ -32,7 +35,7 @@ export async function startChatUpload(
 ): Promise<ChatUploadTicket> {
   return unwrap(
     await browserApi.POST(
-      "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/uploads",
+      "/workspaces/{workspace_id}/assistant/conversations/{conversation_id}/uploads",
       {
         params: { path: { workspace_id: ws, conversation_id: conversationId } },
         body: { filename: file.name, content_type: contentTypeOf(file), size: file.size },
@@ -46,7 +49,7 @@ export async function completeChatUpload(
   uploadId: string,
 ): Promise<ChatUploadResponse> {
   return unwrap(
-    await browserApi.POST("/workspaces/{workspace_id}/agent/uploads/{upload_id}/complete", {
+    await browserApi.POST("/workspaces/{workspace_id}/assistant/uploads/{upload_id}/complete", {
       params: { path: { workspace_id: ws, upload_id: uploadId } },
     }),
   );
@@ -54,7 +57,7 @@ export async function completeChatUpload(
 
 /** Best effort: the purge job catches anything this misses. */
 export async function discardChatUpload(ws: string, uploadId: string): Promise<void> {
-  await browserApi.DELETE("/workspaces/{workspace_id}/agent/uploads/{upload_id}", {
+  await browserApi.DELETE("/workspaces/{workspace_id}/assistant/uploads/{upload_id}", {
     params: { path: { workspace_id: ws, upload_id: uploadId } },
   });
 }

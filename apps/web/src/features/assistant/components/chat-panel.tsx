@@ -73,7 +73,7 @@ export function ChatPanel({
   const { onFilesAdded, onFileRemoved } = useChatUploads(conversationId);
 
   const transport = new DefaultChatTransport<ChatMessage>({
-    api: `/api/workspaces/${workspaceId}/agent/conversations/${conversationId}/messages`,
+    api: `/api/workspaces/${workspaceId}/assistant/conversations/${conversationId}/messages`,
     prepareSendMessagesRequest: ({ id, messages, trigger, messageId }) => ({
       body: { id, trigger, messageId, messages: messages.slice(-1), tz: timeZone },
     }),

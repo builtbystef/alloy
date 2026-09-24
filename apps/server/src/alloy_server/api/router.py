@@ -3,7 +3,7 @@ generated from. Keep it stable."""
 
 from fastapi import APIRouter
 
-from alloy_server.modules.agent.router import router as agent_router
+from alloy_server.modules.assistant.router import router as assistant_router
 from alloy_server.modules.auth.router import router as auth_router
 from alloy_server.modules.crm.router import router as crm_router
 from alloy_server.modules.health.router import router as health_router
@@ -16,4 +16,4 @@ router.include_router(auth_router)
 router.include_router(workspaces_router)
 router.include_router(invites_router)
 router.include_router(crm_router)
-router.include_router(agent_router)
+router.include_router(assistant_router)

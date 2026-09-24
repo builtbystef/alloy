@@ -1030,7 +1030,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/uploads": {
+    "/workspaces/{workspace_id}/assistant/conversations/{conversation_id}/uploads": {
         parameters: {
             query?: never;
             header?: never;
@@ -1044,14 +1044,14 @@ export interface paths {
          * @description Start a chat upload: the row is created and an upload URL returned. Same size
          *     limit as attachments; 413 above it.
          */
-        post: operations["agent-create_upload"];
+        post: operations["assistant-create_upload"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace_id}/agent/uploads/{upload_id}/complete": {
+    "/workspaces/{workspace_id}/assistant/uploads/{upload_id}/complete": {
         parameters: {
             query?: never;
             header?: never;
@@ -1065,14 +1065,14 @@ export interface paths {
          * @description Called after the `PUT`. 409 when the object is not in the store yet; 413, and
          *     the object removed, when it is bigger than allowed. Repeating it is harmless.
          */
-        post: operations["agent-complete_upload"];
+        post: operations["assistant-complete_upload"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace_id}/agent/uploads/{upload_id}": {
+    "/workspaces/{workspace_id}/assistant/uploads/{upload_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1087,13 +1087,13 @@ export interface paths {
          * @description Discard a chat upload the user removed before sending: the row and the
          *     object. 409 once it has become an attachment, which owns the object then.
          */
-        delete: operations["agent-delete_upload"];
+        delete: operations["assistant-delete_upload"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace_id}/agent/conversations": {
+    "/workspaces/{workspace_id}/assistant/conversations": {
         parameters: {
             query?: never;
             header?: never;
@@ -1104,21 +1104,21 @@ export interface paths {
          * List Conversations
          * @description The caller's conversations in this workspace, most recently active first.
          */
-        get: operations["agent-list_conversations"];
+        get: operations["assistant-list_conversations"];
         put?: never;
         /**
          * Create Conversation
          * @description A new, empty conversation. An existing one with no messages is returned
          *     instead, so "New chat" pressed twice does not pile up empty rows.
          */
-        post: operations["agent-create_conversation"];
+        post: operations["assistant-create_conversation"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}": {
+    "/workspaces/{workspace_id}/assistant/conversations/{conversation_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1130,7 +1130,7 @@ export interface paths {
          * @description The conversation with its transcript as `UIMessage`s. A tool call still
          *     waiting for approval comes back in the `approval-requested` state.
          */
-        get: operations["agent-get_conversation"];
+        get: operations["assistant-get_conversation"];
         put?: never;
         post?: never;
         /**
@@ -1138,13 +1138,13 @@ export interface paths {
          * @description Removes the transcript and the chat's files that were never attached to a
          *     record. Attachments made from the chat stay on their records.
          */
-        delete: operations["agent-delete_conversation"];
+        delete: operations["assistant-delete_conversation"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/messages": {
+    "/workspaces/{workspace_id}/assistant/conversations/{conversation_id}/messages": {
         parameters: {
             query?: never;
             header?: never;
@@ -1165,7 +1165,7 @@ export interface paths {
          *     repeats the last user turn. 503 when no model is configured, 429 past the
          *     per-user limit.
          */
-        post: operations["agent-send_message"];
+        post: operations["assistant-send_message"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4315,7 +4315,7 @@ export interface operations {
             };
         };
     };
-    "agent-create_upload": {
+    "assistant-create_upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -4351,7 +4351,7 @@ export interface operations {
             };
         };
     };
-    "agent-complete_upload": {
+    "assistant-complete_upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -4383,7 +4383,7 @@ export interface operations {
             };
         };
     };
-    "agent-delete_upload": {
+    "assistant-delete_upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -4413,7 +4413,7 @@ export interface operations {
             };
         };
     };
-    "agent-list_conversations": {
+    "assistant-list_conversations": {
         parameters: {
             query?: never;
             header?: never;
@@ -4444,7 +4444,7 @@ export interface operations {
             };
         };
     };
-    "agent-create_conversation": {
+    "assistant-create_conversation": {
         parameters: {
             query?: never;
             header?: never;
@@ -4475,7 +4475,7 @@ export interface operations {
             };
         };
     };
-    "agent-get_conversation": {
+    "assistant-get_conversation": {
         parameters: {
             query?: never;
             header?: never;
@@ -4507,7 +4507,7 @@ export interface operations {
             };
         };
     };
-    "agent-delete_conversation": {
+    "assistant-delete_conversation": {
         parameters: {
             query?: never;
             header?: never;
@@ -4537,7 +4537,7 @@ export interface operations {
             };
         };
     };
-    "agent-send_message": {
+    "assistant-send_message": {
         parameters: {
             query?: never;
             header?: never;

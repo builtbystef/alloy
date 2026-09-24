@@ -16,7 +16,7 @@ export function conversationListQuery(api: ApiClient, ws: string) {
     queryKey: conversationKeys.list(ws),
     queryFn: async () =>
       unwrap(
-        await api.GET("/workspaces/{workspace_id}/agent/conversations", {
+        await api.GET("/workspaces/{workspace_id}/assistant/conversations", {
           params: { path: { workspace_id: ws } },
         }),
       ),
@@ -29,7 +29,7 @@ export function conversationQuery(api: ApiClient, ws: string, id: string) {
     queryKey: conversationKeys.detail(ws, id),
     queryFn: async () =>
       unwrap(
-        await api.GET("/workspaces/{workspace_id}/agent/conversations/{conversation_id}", {
+        await api.GET("/workspaces/{workspace_id}/assistant/conversations/{conversation_id}", {
           params: { path: { workspace_id: ws, conversation_id: id } },
         }),
       ),

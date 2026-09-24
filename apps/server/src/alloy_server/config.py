@@ -77,13 +77,13 @@ class Settings(BaseSettings):
     import_timeout: timedelta = timedelta(hours=1)
 
     # --- Assistant ---
-    # The OpenAI key behind the assistant. None: the agent endpoints answer 503.
+    # The OpenAI key behind the assistant. None: the assistant endpoints answer 503.
     openai_api_key: SecretStr | None = None
     # Addressed through the Responses API.
     agent_model: str = "gpt-5.6-luna"
     agent_reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
     # Images and PDFs in the chat are shown to the model up to this size; bigger files by name only.
-    agent_file_read_max_bytes: int = Field(4 * 1024 * 1024, ge=1)
+    assistant_file_read_max_bytes: int = Field(4 * 1024 * 1024, ge=1)
     # A file dropped into the chat but never attached to a record is removed after this.
     chat_upload_ttl: timedelta = timedelta(days=1)
 

@@ -9,8 +9,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from alloy_server.db.base import utcnow
-from alloy_server.modules.agent.dependencies import AgentDeps, ApprovalPreviewEvent
-from alloy_server.modules.agent.models import ChatUpload
+from alloy_server.modules.assistant.dependencies import AgentDeps, ApprovalPreviewEvent
+from alloy_server.modules.assistant.models import ChatUpload
 from alloy_server.modules.crm.attachments import service as attachment_service
 from alloy_server.modules.crm.attachments.models import Attachment
 from alloy_server.modules.crm.companies import service as company_service

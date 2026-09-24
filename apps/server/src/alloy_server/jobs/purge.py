@@ -15,7 +15,7 @@ from alloy_server.integrations.storage import ObjectStore
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
 from alloy_server.jobs.app import app, task
 from alloy_server.jobs.resources import Resources
-from alloy_server.modules.agent.models import ChatUpload
+from alloy_server.modules.assistant.models import ChatUpload
 from alloy_server.modules.auth.models import User, UserSession
 from alloy_server.modules.crm.attachments.models import Attachment
 from alloy_server.modules.crm.imports.models import Import, ImportStatus

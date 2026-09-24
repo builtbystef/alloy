@@ -11,11 +11,11 @@ if TYPE_CHECKING:
     from alloy_server.modules.crm.attachments.models import Attachment
 
 
-class AgentConversation(UUIDPrimaryKey, Timestamps, Base):
+class AssistantConversation(UUIDPrimaryKey, Timestamps, Base):
     """One chat between a user and the assistant, inside one workspace. The server
     owns the transcript: `messages` is what the model sees, in order."""
 
-    __tablename__ = "agent_conversations"
+    __tablename__ = "assistant_conversations"
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
@@ -26,29 +26,29 @@ class AgentConversation(UUIDPrimaryKey, Timestamps, Base):
     # Null until the first message, which names the conversation.
     title: Mapped[str | None] = mapped_column(String(120))
 
-    messages: Mapped[list["AgentMessage"]] = relationship(
+    messages: Mapped[list["AssistantMessage"]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        order_by="AgentMessage.position",
+        order_by="AssistantMessage.position",
     )
 
 
-class AgentMessage(UUIDPrimaryKey, Base):
+class AssistantMessage(UUIDPrimaryKey, Base):
     """One Pydantic AI `ModelMessage` (a request or a response), serialized with
     `ModelMessagesTypeAdapter`, at `position` in its conversation."""
 
-    __tablename__ = "agent_messages"
+    __tablename__ = "assistant_messages"
     __table_args__ = (UniqueConstraint("conversation_id", "position"),)
 
     conversation_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("agent_conversations.id", ondelete="CASCADE"), index=True
+        ForeignKey("assistant_conversations.id", ondelete="CASCADE"), index=True
     )
     position: Mapped[int]
     body: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    conversation: Mapped[AgentConversation] = relationship(back_populates="messages")
+    conversation: Mapped[AssistantConversation] = relationship(back_populates="messages")
 
 
 class ChatUpload(UUIDPrimaryKey, Base):
@@ -68,7 +68,7 @@ class ChatUpload(UUIDPrimaryKey, Base):
     )
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     conversation_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("agent_conversations.id", ondelete="CASCADE"), index=True
+        ForeignKey("assistant_conversations.id", ondelete="CASCADE"), index=True
     )
     filename: Mapped[str] = mapped_column(String(255))
     content_type: Mapped[str] = mapped_column(String(255))

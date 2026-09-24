@@ -26,11 +26,11 @@ from alloy_server.db.base import utcnow
 from alloy_server.integrations.ratelimit import Limiter, MemoryRateLimitStore
 from alloy_server.jobs.purge import PurgeReport, purge
 from alloy_server.main import app
-from alloy_server.modules.agent import tools
-from alloy_server.modules.agent.agent import HISTORY_TURNS, trim_history
-from alloy_server.modules.agent.dependencies import AgentDeps
-from alloy_server.modules.agent.models import AgentMessage, ChatUpload
-from alloy_server.modules.agent.router import AGENT_MESSAGE_PER_USER, get_agent_model
+from alloy_server.modules.assistant import tools
+from alloy_server.modules.assistant.agent import HISTORY_TURNS, trim_history
+from alloy_server.modules.assistant.dependencies import AgentDeps
+from alloy_server.modules.assistant.models import AssistantMessage, ChatUpload
+from alloy_server.modules.assistant.router import ASSISTANT_MESSAGE_PER_USER, get_agent_model
 from alloy_server.modules.crm.attachments.models import Attachment
 from alloy_server.modules.workspaces.dependencies import Membership
 from alloy_server.modules.workspaces.models import WorkspaceMember
@@ -156,12 +156,12 @@ class Chat:
 
     def __init__(self, actor: Actor) -> None:
         self.actor = actor
-        created = actor.post("/agent/conversations")
+        created = actor.post("/assistant/conversations")
         assert created.status_code == 201, created.text
         self.id = created.json()["id"]
 
     def path(self, suffix: str = "") -> str:
-        return f"/agent/conversations/{self.id}{suffix}"
+        return f"/assistant/conversations/{self.id}{suffix}"
 
     def send(self, text: str, **metadata: Any) -> list[dict[str, Any]]:
         return self.post([user_message(text, **metadata)])
@@ -186,7 +186,7 @@ class Chat:
 
 def test_conversations_belong_to_one_user_in_one_workspace(alice: Actor, bob: Actor, join: Join):
     chat = Chat(alice)
-    assert [c["id"] for c in alice.get("/agent/conversations").json()] == [chat.id]
+    assert [c["id"] for c in alice.get("/assistant/conversations").json()] == [chat.id]
     assert chat.detail() == {
         "id": chat.id,
         "title": None,
@@ -196,10 +196,10 @@ def test_conversations_belong_to_one_user_in_one_workspace(alice: Actor, bob: Ac
     }
     # Another user in the same workspace does not see it; nor does another workspace.
     carol = join(alice, "carol@example.com", "member")
-    assert carol.get("/agent/conversations").json() == []
+    assert carol.get("/assistant/conversations").json() == []
     assert carol.get(chat.path()).status_code == 404
-    assert bob.get(f"/agent/conversations/{chat.id}").status_code == 404
-    assert bob.delete(f"/agent/conversations/{chat.id}").status_code == 404
+    assert bob.get(f"/assistant/conversations/{chat.id}").status_code == 404
+    assert bob.delete(f"/assistant/conversations/{chat.id}").status_code == 404
     assert alice.delete(chat.path()).status_code == 204
     assert alice.get(chat.path()).status_code == 404
 
@@ -232,11 +232,11 @@ def test_unconfigured_assistant_answers_503(alice: Actor):
 def test_messages_are_rate_limited_per_user(alice: Actor, rate_limits: MemoryRateLimitStore):
     chat = Chat(alice)
     me = alice.client.get("/auth/me", headers=alice.headers).json()
-    key = Limiter.key(AGENT_MESSAGE_PER_USER, me["id"])
+    key = Limiter.key(ASSISTANT_MESSAGE_PER_USER, me["id"])
 
     async def fill() -> None:
-        for _ in range(AGENT_MESSAGE_PER_USER.limit):
-            await rate_limits.hit(key, AGENT_MESSAGE_PER_USER.window)
+        for _ in range(ASSISTANT_MESSAGE_PER_USER.limit):
+            await rate_limits.hit(key, ASSISTANT_MESSAGE_PER_USER.window)
 
     asyncio.run(fill())
     response = alice.post(
@@ -279,7 +279,7 @@ def test_a_read_tool_answers_from_the_workspace(alice: Actor, script: Script):
     assert [m["role"] for m in detail["messages"]] == ["user", "assistant"]
     tool_part = next(p for p in detail["messages"][1]["parts"] if p["type"].startswith("tool-"))
     assert tool_part["state"] == "output-available"
-    assert [c["title"] for c in alice.get("/agent/conversations").json()] == ["Who is Grace?"]
+    assert [c["title"] for c in alice.get("/assistant/conversations").json()] == ["Who is Grace?"]
 
 
 def test_a_single_create_runs_at_once_and_is_marked(alice: Actor, script: Script):
@@ -480,7 +480,7 @@ def chat_upload(chat: Chat, store: MemoryObjectStore, body: dict, data: bytes) -
     key = store.key_of(ticket["upload_url"])
     assert key == f"workspaces/{chat.actor.workspace}/chat-uploads/{ticket['upload']['id']}"
     store.objects[key] = (data, body["content_type"])
-    completed = chat.actor.post(f"/agent/uploads/{ticket['upload']['id']}/complete")
+    completed = chat.actor.post(f"/assistant/uploads/{ticket['upload']['id']}/complete")
     assert completed.status_code == 200, completed.text
     return completed.json()
 
@@ -558,13 +558,13 @@ def test_uploads_belong_to_their_user_and_conversation(
     assert "No file with upload id" in error["errorText"]
     assert alice.get(f"/companies/{acme['id']}/attachments").json()["items"] == []
     # Nor can Alice complete Carol's upload.
-    assert alice.post(f"/agent/uploads/{theirs['id']}/complete").status_code == 404
+    assert alice.post(f"/assistant/uploads/{theirs['id']}/complete").status_code == 404
 
 
 def test_an_incomplete_upload_is_refused(alice: Actor):
     chat = Chat(alice)
     ticket = alice.post(chat.path("/uploads"), json=PDF).json()
-    assert alice.post(f"/agent/uploads/{ticket['upload']['id']}/complete").status_code == 409
+    assert alice.post(f"/assistant/uploads/{ticket['upload']['id']}/complete").status_code == 409
     response = alice.post(
         chat.path("/messages"),
         json={"id": chat.id, "messages": [user_message("hi", upload_ids=[ticket["upload"]["id"]])]},
@@ -579,7 +579,7 @@ def test_upload_size_limit(alice: Actor, object_store: MemoryObjectStore):
     ticket = alice.post(chat.path("/uploads"), json={**PDF, "size": 5}).json()
     key = object_store.key_of(ticket["upload_url"])
     object_store.objects[key] = (b"0123456789ab", "application/pdf")
-    assert alice.post(f"/agent/uploads/{ticket['upload']['id']}/complete").status_code == 413
+    assert alice.post(f"/assistant/uploads/{ticket['upload']['id']}/complete").status_code == 413
     assert key not in object_store.objects
 
 
@@ -598,13 +598,13 @@ def test_removing_a_file_before_sending_deletes_its_upload(
     uploaded = chat_upload(chat, object_store, PDF, b"hello world")
     # Someone else cannot delete it.
     carol = join(alice, "carol@example.com", "member")
-    assert carol.delete(f"/agent/uploads/{uploaded['id']}").status_code == 404
-    assert alice.delete(f"/agent/uploads/{uploaded['id']}").status_code == 204
+    assert carol.delete(f"/assistant/uploads/{uploaded['id']}").status_code == 404
+    assert alice.delete(f"/assistant/uploads/{uploaded['id']}").status_code == 204
     assert object_store.objects == {}
-    assert alice.delete(f"/agent/uploads/{uploaded['id']}").status_code == 404
+    assert alice.delete(f"/assistant/uploads/{uploaded['id']}").status_code == 404
     # Deleting only the row; an in-flight upload that was never completed also goes.
     ticket = alice.post(chat.path("/uploads"), json=PDF).json()
-    assert alice.delete(f"/agent/uploads/{ticket['upload']['id']}").status_code == 204
+    assert alice.delete(f"/assistant/uploads/{ticket['upload']['id']}").status_code == 204
 
     # Once attached, the attachment owns the object and the upload cannot be deleted.
     acme = alice.post("/companies/", json={"name": "Acme"}).json()
@@ -614,7 +614,7 @@ def test_removing_a_file_before_sending_deletes_its_upload(
         "Done.",
     ]
     chat.send("Attach this", upload_ids=[attached["id"]])
-    assert alice.delete(f"/agent/uploads/{attached['id']}").status_code == 409
+    assert alice.delete(f"/assistant/uploads/{attached['id']}").status_code == 409
     assert len(object_store.objects) == 1
 
 
@@ -812,7 +812,7 @@ def test_the_chat_upload_rows_are_gone_with_their_workspace(
     assert object_store.objects == {}
 
 
-def test_agent_messages_are_stored_in_order(alice: Actor, db: Database, script: Script):
+def test_assistant_messages_are_stored_in_order(alice: Actor, db: Database, script: Script):
     script.turns += ["One.", "Two."]
     chat = Chat(alice)
     chat.send("first")
@@ -821,9 +821,9 @@ def test_agent_messages_are_stored_in_order(alice: Actor, db: Database, script: 
     async def positions() -> list[int]:
         async with db.session() as session:
             rows = await session.scalars(
-                select(AgentMessage.position)
-                .where(AgentMessage.conversation_id == UUID(chat.id))
-                .order_by(AgentMessage.position)
+                select(AssistantMessage.position)
+                .where(AssistantMessage.conversation_id == UUID(chat.id))
+                .order_by(AssistantMessage.position)
             )
             return list(rows)
 

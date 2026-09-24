@@ -30,14 +30,14 @@ async function OpenLatest({ params }: { params: Params }): Promise<never> {
   await requireWorkspace(workspaceId);
   const api = await getSessionApi();
   const conversations = unwrap(
-    await api.GET("/workspaces/{workspace_id}/agent/conversations", {
+    await api.GET("/workspaces/{workspace_id}/assistant/conversations", {
       params: { path: { workspace_id: workspaceId } },
     }),
   );
   const target =
     conversations[0] ??
     unwrap(
-      await api.POST("/workspaces/{workspace_id}/agent/conversations", {
+      await api.POST("/workspaces/{workspace_id}/assistant/conversations", {
         params: { path: { workspace_id: workspaceId } },
       }),
     );

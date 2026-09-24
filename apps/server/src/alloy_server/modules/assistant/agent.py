@@ -9,8 +9,8 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 
 from alloy_server.db.base import utcnow
-from alloy_server.modules.agent.dependencies import AgentDeps
-from alloy_server.modules.agent.tools import permitted_toolset
+from alloy_server.modules.assistant.dependencies import AgentDeps
+from alloy_server.modules.assistant.tools import permitted_toolset
 from alloy_server.modules.workspaces.permissions import Permission
 
 if TYPE_CHECKING:

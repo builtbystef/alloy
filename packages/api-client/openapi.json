@@ -3642,15 +3642,15 @@
         }
       }
     },
-    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/uploads": {
+    "/workspaces/{workspace_id}/assistant/conversations/{conversation_id}/uploads": {
       "post": {
         "tags": [
-          "agent",
-          "agent"
+          "assistant",
+          "assistant"
         ],
         "summary": "Create Upload",
         "description": "Start a chat upload: the row is created and an upload URL returned. Same size\nlimit as attachments; 413 above it.",
-        "operationId": "agent-create_upload",
+        "operationId": "assistant-create_upload",
         "security": [
           {
             "APIKeyCookie": []
@@ -3712,15 +3712,15 @@
         }
       }
     },
-    "/workspaces/{workspace_id}/agent/uploads/{upload_id}/complete": {
+    "/workspaces/{workspace_id}/assistant/uploads/{upload_id}/complete": {
       "post": {
         "tags": [
-          "agent",
-          "agent"
+          "assistant",
+          "assistant"
         ],
         "summary": "Complete Upload",
         "description": "Called after the `PUT`. 409 when the object is not in the store yet; 413, and\nthe object removed, when it is bigger than allowed. Repeating it is harmless.",
-        "operationId": "agent-complete_upload",
+        "operationId": "assistant-complete_upload",
         "security": [
           {
             "APIKeyCookie": []
@@ -3772,15 +3772,15 @@
         }
       }
     },
-    "/workspaces/{workspace_id}/agent/uploads/{upload_id}": {
+    "/workspaces/{workspace_id}/assistant/uploads/{upload_id}": {
       "delete": {
         "tags": [
-          "agent",
-          "agent"
+          "assistant",
+          "assistant"
         ],
         "summary": "Delete Upload",
         "description": "Discard a chat upload the user removed before sending: the row and the\nobject. 409 once it has become an attachment, which owns the object then.",
-        "operationId": "agent-delete_upload",
+        "operationId": "assistant-delete_upload",
         "security": [
           {
             "APIKeyCookie": []
@@ -3825,14 +3825,14 @@
         }
       }
     },
-    "/workspaces/{workspace_id}/agent/conversations": {
+    "/workspaces/{workspace_id}/assistant/conversations": {
       "get": {
         "tags": [
-          "agent"
+          "assistant"
         ],
         "summary": "List Conversations",
         "description": "The caller's conversations in this workspace, most recently active first.",
-        "operationId": "agent-list_conversations",
+        "operationId": "assistant-list_conversations",
         "security": [
           {
             "APIKeyCookie": []
@@ -3860,7 +3860,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ConversationResponse"
                   },
-                  "title": "Response Agent-List Conversations"
+                  "title": "Response Assistant-List Conversations"
                 }
               }
             }
@@ -3879,11 +3879,11 @@
       },
       "post": {
         "tags": [
-          "agent"
+          "assistant"
         ],
         "summary": "Create Conversation",
         "description": "A new, empty conversation. An existing one with no messages is returned\ninstead, so \"New chat\" pressed twice does not pile up empty rows.",
-        "operationId": "agent-create_conversation",
+        "operationId": "assistant-create_conversation",
         "security": [
           {
             "APIKeyCookie": []
@@ -3925,14 +3925,14 @@
         }
       }
     },
-    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}": {
+    "/workspaces/{workspace_id}/assistant/conversations/{conversation_id}": {
       "get": {
         "tags": [
-          "agent"
+          "assistant"
         ],
         "summary": "Get Conversation",
         "description": "The conversation with its transcript as `UIMessage`s. A tool call still\nwaiting for approval comes back in the `approval-requested` state.",
-        "operationId": "agent-get_conversation",
+        "operationId": "assistant-get_conversation",
         "security": [
           {
             "APIKeyCookie": []
@@ -3985,11 +3985,11 @@
       },
       "delete": {
         "tags": [
-          "agent"
+          "assistant"
         ],
         "summary": "Delete Conversation",
         "description": "Removes the transcript and the chat's files that were never attached to a\nrecord. Attachments made from the chat stay on their records.",
-        "operationId": "agent-delete_conversation",
+        "operationId": "assistant-delete_conversation",
         "security": [
           {
             "APIKeyCookie": []
@@ -4034,14 +4034,14 @@
         }
       }
     },
-    "/workspaces/{workspace_id}/agent/conversations/{conversation_id}/messages": {
+    "/workspaces/{workspace_id}/assistant/conversations/{conversation_id}/messages": {
       "post": {
         "tags": [
-          "agent"
+          "assistant"
         ],
         "summary": "Send Message",
         "description": "Send a message, retry the last reply, or answer an approval request, and\nstream the assistant's reply as server-sent events (the Vercel AI data-stream\nprotocol; `useChat` reads it).\n\nThe body is what `useChat` sends. Only its last message is used: a `user`\nmessage is the new turn (files go as `upload_ids` in its `metadata`), an\n`assistant` message carries approval responses. `trigger: regenerate-message`\nrepeats the last user turn. 503 when no model is configured, 429 past the\nper-user limit.",
-        "operationId": "agent-send_message",
+        "operationId": "assistant-send_message",
         "security": [
           {
             "APIKeyCookie": []
