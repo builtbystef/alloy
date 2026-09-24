@@ -1,20 +1,18 @@
-from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from pydantic_ai import Agent, DeferredToolRequests, RunContext
 from pydantic_ai.capabilities import ProcessHistory
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
-from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
-from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 
 from alloy_server.db.base import utcnow
+from alloy_server.integrations.ai import model_settings
 from alloy_server.modules.assistant.dependencies import AgentDeps
 from alloy_server.modules.assistant.tools import permitted_toolset
 from alloy_server.modules.workspaces.permissions import Permission
 
 if TYPE_CHECKING:
-    from pydantic_ai.models import Model
+    from pydantic_ai.settings import ModelSettings
 
     from alloy_server.config import Settings
 
@@ -102,21 +100,6 @@ history_capability = ProcessHistory(trim_history)
 USAGE_LIMITS = UsageLimits(request_limit=20, tool_calls_limit=40, total_tokens_limit=600_000)
 
 
-@lru_cache(maxsize=4)
-def _model_for(api_key: str, model_name: str) -> Model:
-    return OpenAIResponsesModel(model_name, provider=OpenAIProvider(api_key=api_key))
-
-
-def build_model(settings: Settings) -> Model | None:
-    if settings.openai_api_key is None:
-        return None
-    return _model_for(settings.openai_api_key.get_secret_value(), settings.agent_model)
-
-
-def model_settings(settings: Settings, deps: AgentDeps) -> OpenAIResponsesModelSettings:
-    """The per-workspace cache key lets the provider serve the instruction and tool
-    prefix from its cache."""
-    return OpenAIResponsesModelSettings(
-        openai_reasoning_effort=settings.agent_reasoning_effort,
-        openai_prompt_cache_key=f"alloy:{deps.workspace_id}",
-    )
+def run_settings(settings: Settings, deps: AgentDeps) -> ModelSettings:
+    """Cached per workspace: every chat in it shares the instruction and tool prefix."""
+    return model_settings(settings, cache_key=f"alloy:{deps.workspace_id}")

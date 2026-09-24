@@ -3,11 +3,11 @@ from collections.abc import AsyncIterator
 from dataclasses import KW_ONLY, dataclass
 from datetime import timedelta
 from functools import cached_property
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from pydantic_ai.messages import (
@@ -30,11 +30,10 @@ from alloy_server.modules.assistant import service, uploads
 from alloy_server.modules.assistant.agent import (
     USAGE_LIMITS,
     agent,
-    build_model,
     history_capability,
-    model_settings,
+    run_settings,
 )
-from alloy_server.modules.assistant.dependencies import AgentDeps
+from alloy_server.modules.assistant.dependencies import AgentDeps, ModelDep
 from alloy_server.modules.assistant.history import (
     append_messages,
     load_history,
@@ -50,7 +49,6 @@ from alloy_server.modules.workspaces.dependencies import CanReadCrm
 from alloy_server.shared.logs import request_id
 
 if TYPE_CHECKING:
-    from pydantic_ai.models import Model
     from pydantic_ai.run import AgentRunResult
     from pydantic_ai.ui.vercel_ai.response_types import BaseChunk
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,21 +74,6 @@ READABLE_TYPES = frozenset(
 
 def bad_request(detail: str) -> HTTPException:
     return HTTPException(status.HTTP_400_BAD_REQUEST, detail)
-
-
-def get_agent_model(settings: SettingsDep) -> Model:
-    """The configured model; 503 when no key is set. Tests override it with a
-    scripted model."""
-    model = build_model(settings)
-    if model is None:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            "The assistant is not configured: set ALLOY_OPENAI_API_KEY",
-        )
-    return model
-
-
-AgentModelDep = Annotated["Model", Depends(get_agent_model)]
 
 
 def read_conversation(conversation: AssistantConversation) -> ConversationResponse:
@@ -323,7 +306,7 @@ async def send_message(  # noqa: PLR0913, PLR0917
     settings: SettingsDep,
     limiter: LimiterDep,
     membership: CanReadCrm,
-    model: AgentModelDep,
+    model: ModelDep,
 ) -> Response:
     """Send a message, retry the last reply, or answer an approval request, and
     stream the assistant's reply as server-sent events (the Vercel AI data-stream
@@ -388,7 +371,7 @@ async def send_message(  # noqa: PLR0913, PLR0917
         conversation_id=str(conversation.id),
         model=model,
         deps=deps,
-        model_settings=model_settings(settings, deps),
+        model_settings=run_settings(settings, deps),
         usage_limits=USAGE_LIMITS,
         capabilities=[history_capability],
         on_complete=on_complete,

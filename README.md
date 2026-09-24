@@ -67,7 +67,7 @@ apps/server/
 │   ├── api/router.py         # the HTTP composition root: includes every feature router
 │   ├── shared/               # exceptions.py (AppError family + handler), middleware.py (request IDs, body limit), logs.py, telemetry.py, routing.py
 │   ├── db/                   # session.py (engine, SessionDep), base.py (Base, mixins), models.py (imports every model)
-│   ├── integrations/         # ports and adapters: mail/, storage/, ratelimit/ (a protocol + implementations each)
+│   ├── integrations/         # ports and adapters: mail/, storage/, ratelimit/, ai/ (a protocol + implementations each)
 │   ├── modules/              # the features, one package each
 │   │   ├── health/           # GET /health/ (liveness); /health/{db,storage} (readiness)
 │   │   ├── auth/             # accounts, cookie sessions, emailed links; CurrentUserDep
@@ -275,8 +275,9 @@ simply redelivered.
 `modules/assistant/` is one [Pydantic AI](https://pydantic.dev/docs/ai/) agent with
 typed tools that call the same service functions the routes do, so it can
 do nothing the UI cannot. `ALLOY_OPENAI_API_KEY` turns it on (otherwise the
-endpoints answer 503); `ALLOY_AGENT_MODEL` and `ALLOY_AGENT_REASONING_EFFORT`
-tune it.
+endpoints answer 503); `ALLOY_AI_MODEL` and `ALLOY_AI_REASONING_EFFORT`
+tune it. `integrations/ai/` owns the provider wiring (the OpenAI Responses
+API today); the module owns the instructions, tools, and limits.
 
 - The server owns the transcript (`assistant_messages`); the browser posts only
   its newest message and reads the reply as an AI SDK data stream.

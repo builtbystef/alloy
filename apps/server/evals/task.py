@@ -12,7 +12,7 @@ from alloy_server.modules.assistant.agent import (
     USAGE_LIMITS,
     agent,
     history_capability,
-    model_settings,
+    run_settings,
 )
 from alloy_server.modules.assistant.dependencies import AgentDeps
 from alloy_server.modules.workspaces.dependencies import Membership
@@ -48,7 +48,7 @@ class AgentTask:
                 prompt.text,
                 deps=deps,
                 model=self.model,
-                model_settings=model_settings(self.settings, deps),
+                model_settings=run_settings(self.settings, deps),
                 usage_limits=USAGE_LIMITS,
                 capabilities=[history_capability],
             )

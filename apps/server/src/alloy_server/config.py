@@ -1,11 +1,12 @@
 from datetime import timedelta
 from functools import lru_cache
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import Depends
 from pydantic import Field, HttpUrl, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from alloy_server.integrations.ai import AIProvider, ReasoningEffort
 from alloy_server.integrations.mail import MailProvider
 from alloy_server.integrations.storage import StorageProvider
 from alloy_server.shared.logs import LogFormat
@@ -76,12 +77,15 @@ class Settings(BaseSettings):
     # An import still queued or running after this is marked failed by the purge job.
     import_timeout: timedelta = timedelta(hours=1)
 
-    # --- Assistant ---
-    # The OpenAI key behind the assistant. None: the assistant endpoints answer 503.
+    # --- AI ---
+    # "openai" addresses the model through the Responses API.
+    ai_provider: AIProvider = "openai"
+    # The key behind the assistant. None: the assistant endpoints answer 503.
     openai_api_key: SecretStr | None = None
-    # Addressed through the Responses API.
-    agent_model: str = "gpt-5.6-luna"
-    agent_reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
+    ai_model: str = "gpt-5.6-luna"
+    ai_reasoning_effort: ReasoningEffort = "low"
+
+    # --- Assistant ---
     # Images and PDFs in the chat are shown to the model up to this size; bigger files by name only.
     assistant_file_read_max_bytes: int = Field(4 * 1024 * 1024, ge=1)
     # A file dropped into the chat but never attached to a record is removed after this.

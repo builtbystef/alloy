@@ -28,9 +28,9 @@ from alloy_server.jobs.purge import PurgeReport, purge
 from alloy_server.main import app
 from alloy_server.modules.assistant import tools
 from alloy_server.modules.assistant.agent import HISTORY_TURNS, trim_history
-from alloy_server.modules.assistant.dependencies import AgentDeps
+from alloy_server.modules.assistant.dependencies import AgentDeps, get_model
 from alloy_server.modules.assistant.models import AssistantMessage, ChatUpload
-from alloy_server.modules.assistant.router import ASSISTANT_MESSAGE_PER_USER, get_agent_model
+from alloy_server.modules.assistant.router import ASSISTANT_MESSAGE_PER_USER
 from alloy_server.modules.crm.attachments.models import Attachment
 from alloy_server.modules.workspaces.dependencies import Membership
 from alloy_server.modules.workspaces.models import WorkspaceMember
@@ -88,7 +88,7 @@ def script() -> Script:
 
 @pytest.fixture(autouse=True)
 def scripted_model(script: Script) -> None:
-    app.dependency_overrides[get_agent_model] = script.model
+    app.dependency_overrides[get_model] = script.model
 
 
 def events(text: str) -> list[dict[str, Any]]:
@@ -220,7 +220,7 @@ def test_viewers_can_chat(alice: Actor, join: Join, script: Script):
 
 
 def test_unconfigured_assistant_answers_503(alice: Actor):
-    app.dependency_overrides.pop(get_agent_model)
+    app.dependency_overrides.pop(get_model)
     chat = Chat(alice)
     response = alice.post(
         chat.path("/messages"), json={"id": chat.id, "messages": [user_message("hi")]}
