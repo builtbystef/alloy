@@ -33,7 +33,7 @@
           "health"
         ],
         "summary": "Read Health Db",
-        "description": "Readiness: the database, which also holds the job queue, answers.",
+        "description": "Readiness: the database answers.",
         "operationId": "health-read_health_db",
         "responses": {
           "200": {

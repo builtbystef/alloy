@@ -28,7 +28,7 @@ export interface paths {
         };
         /**
          * Read Health Db
-         * @description Readiness: the database, which also holds the job queue, answers.
+         * @description Readiness: the database answers.
          */
         get: operations["health-read_health_db"];
         put?: never;
