@@ -7,7 +7,7 @@ license = "MIT"
 authors = [{ name = "builtbystef" }]
 dependencies = [
   "aiobotocore>=3.9,<4",
-  "alembic>=1.19.1,<1.20",
+  "alembic>=1.19.1,<1.21",
   # 0.x: minor bumps can break, so pin the minor. Starlette is left to FastAPI.
   "fastapi[standard-no-fastapi-cloud-cli]>=0.141.1,<0.142",
   "logfire[fastapi,sqlalchemy]>=4.41,<6",
