@@ -606,6 +606,37 @@ def upgrade() -> None:
     op.create_index(
         op.f("ix_chat_uploads_workspace_id"), "chat_uploads", ["workspace_id"], unique=False
     )
+    # model_calls belongs to integrations/ai.
+    op.create_table(
+        "model_calls",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("workspace_id", sa.Uuid(), nullable=False),
+        sa.Column("user_id", sa.Uuid(), nullable=False),
+        sa.Column("source", sa.String(length=32), nullable=False),
+        sa.Column("model", sa.String(length=100), nullable=False),
+        sa.Column("input_tokens", sa.Integer(), nullable=False),
+        sa.Column("output_tokens", sa.Integer(), nullable=False),
+        sa.Column("cache_read_tokens", sa.Integer(), nullable=False),
+        sa.Column("cache_write_tokens", sa.Integer(), nullable=False),
+        sa.Column("request_id", sa.String(length=64), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_model_calls_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name=op.f("fk_model_calls_workspace_id_workspaces"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_model_calls")),
+    )
+    op.create_index(
+        op.f("ix_model_calls_workspace_id"), "model_calls", ["workspace_id"], unique=False
+    )
 
     # --- Job queue (Procrastinate) -----------------------------------------------
     # Straight to the driver, which reads `%` as a placeholder even with no
@@ -638,6 +669,8 @@ def downgrade() -> None:
         op.execute(f"DROP TYPE {type_}")
 
     # --- App tables --------------------------------------------------------------
+    op.drop_index(op.f("ix_model_calls_workspace_id"), table_name="model_calls")
+    op.drop_table("model_calls")
     op.drop_index(op.f("ix_chat_uploads_workspace_id"), table_name="chat_uploads")
     op.drop_index(op.f("ix_chat_uploads_conversation_id"), table_name="chat_uploads")
     op.drop_table("chat_uploads")

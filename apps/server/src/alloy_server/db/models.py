@@ -4,6 +4,7 @@ Imported by the package init; separate from db/base.py to avoid circular imports
 """
 
 from alloy_server.db.base import Base
+from alloy_server.integrations.ai import models as _ai_models  # noqa: F401
 from alloy_server.integrations.ratelimit import models as _ratelimit_models  # noqa: F401
 from alloy_server.modules.assistant import models as _assistant_models  # noqa: F401
 from alloy_server.modules.auth import models as _auth_models  # noqa: F401

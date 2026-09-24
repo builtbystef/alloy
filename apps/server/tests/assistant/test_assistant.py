@@ -23,6 +23,7 @@ from sqlalchemy.orm import selectinload
 
 from alloy_server.config import Settings
 from alloy_server.db.base import utcnow
+from alloy_server.integrations.ai.models import ModelCall
 from alloy_server.integrations.ratelimit import Limiter, MemoryRateLimitStore
 from alloy_server.jobs.purge import PurgeReport, purge
 from alloy_server.main import app
@@ -836,6 +837,30 @@ def test_assistant_messages_are_stored_in_order(alice: Actor, db: Database, scri
     ]
     # The second run saw the first exchange.
     assert len(script.prompts[1]) == 3
+
+
+def test_every_model_request_is_recorded_as_a_model_call(
+    alice: Actor, db: Database, script: Script
+):
+    alice.post("/contacts/", json={"name": "Grace Hopper", "email": "grace@example.com"})
+    # A tool call and the answer after it: two requests to the model in one turn.
+    script.turns += [("search_contacts", {"q": "grace"}), "Found her."]
+    chat = Chat(alice)
+    chat.send("Who is Grace?")
+
+    async def calls() -> list[ModelCall]:
+        async with db.session() as session:
+            rows = await session.scalars(select(ModelCall).order_by(ModelCall.created_at))
+            return list(rows)
+
+    rows = db.run(calls)
+    assert len(rows) == 2
+    assert {row.source for row in rows} == {"assistant"}
+    assert {str(row.workspace_id) for row in rows} == {alice.workspace}
+    assert {row.model for row in rows} == {"function::stream"}
+    assert len({row.request_id for row in rows}) == 1
+    # The scripted model estimates its usage, so the counts are there but not exact.
+    assert all(row.input_tokens > 0 and row.output_tokens > 0 for row in rows)
 
 
 def test_attachment_rows_from_chat_are_normal_attachments(

@@ -290,7 +290,9 @@ API today); the module owns the instructions, tools, and limits.
   upload into a normal attachment without copying bytes. Unattached uploads
   are purged after `ALLOY_CHAT_UPLOAD_TTL`.
 - Every tool checks the membership's permission and filters by workspace;
-  `UsageLimits` bound each run. `tests/assistant/` drives the endpoint with a
+  `UsageLimits` bound each run. Each model request is recorded in
+  `model_calls` (workspace, user, model, tokens, request ID) for quotas and
+  reporting. `tests/assistant/` drives the endpoint with a
   scripted `FunctionModel`; `evals/` runs real prompts against the live
   model on demand (`uv run python -m evals.run`).
 

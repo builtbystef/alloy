@@ -24,6 +24,7 @@ from sqlalchemy import select
 
 from alloy_server.config import SettingsDep
 from alloy_server.db.session import SessionDep
+from alloy_server.integrations.ai.usage import record_model_calls
 from alloy_server.integrations.ratelimit import Limit, LimiterDep
 from alloy_server.integrations.storage import ObjectStoreDep
 from alloy_server.modules.assistant import service, uploads
@@ -362,6 +363,14 @@ async def send_message(  # noqa: PLR0913, PLR0917
                     }
                     break
         await append_messages(session, conversation, new_messages)
+        record_model_calls(
+            session,
+            new_messages,
+            workspace_id=deps.workspace_id,
+            user_id=membership.user.id,
+            source="assistant",
+            request_id=deps.request_id,
+        )
         await session.commit()
         return
         yield  # pragma: no cover - makes this an async generator
