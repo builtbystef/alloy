@@ -75,7 +75,9 @@ apps/server/
 │   │   ├── crm/              # the demo: companies/, contacts/, tasks/, attachments/, imports/, dashboard/ + shared mixins, pagination, ownership
 │   │   └── assistant/        # the assistant: a Pydantic AI agent (agent.py) over the CRM
 │   └── jobs/                 # Procrastinate app, task decorator, worker; tasks: emails, purge, imports, stalled
-└── tests/                    # mirrors the package; one rolled-back transaction per test
+└── tests/
+    ├── unit/                 # no PostgreSQL, no object storage: `uv run pytest apps/server/tests/unit` runs anywhere
+    └── integration/          # the app over a real database; one rolled-back transaction per test
 ```
 
 A modular monolith without machinery. Each module under `modules/` has only
@@ -209,7 +211,7 @@ so only the worker holds the mailer. `ALLOY_MAIL_PROVIDER` picks the implementat
 `upload_url`, and `download_url`. `S3ObjectStore` (aiobotocore) is the only
 implementation because every candidate speaks S3: RustFS locally, then AWS
 S3, R2, or any compatible service. `MemoryObjectStore` is the test double,
-and `tests/integrations/test_storage.py` runs the same contract against both.
+and `tests/integration/integrations/test_storage.py` runs the same contract against both.
 
 ```sh
 ALLOY_STORAGE_ENDPOINT_URL=null          # AWS itself; a URL for anything S3-compatible
@@ -292,8 +294,8 @@ API today); the module owns the instructions, tools, and limits.
 - Every tool checks the membership's permission and filters by workspace;
   `UsageLimits` bound each run. Each model request is recorded in
   `model_calls` (workspace, user, model, tokens, request ID) for quotas and
-  reporting. `tests/assistant/` drives the endpoint with a
-  scripted `FunctionModel`; `evals/` runs real prompts against the live
+  reporting. `tests/integration/modules/assistant/` drives the endpoint with
+  a scripted `FunctionModel`; `evals/` runs real prompts against the live
   model on demand (`uv run python -m evals.run`).
 
 ### Tiny CRM (demo)

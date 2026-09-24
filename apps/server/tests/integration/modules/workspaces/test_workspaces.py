@@ -4,7 +4,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor
+    from tests.integration.conftest import Actor
 
     Join = Callable[[Actor, str, str], Actor]
     NewLogin = Callable[[str], dict[str, str]]

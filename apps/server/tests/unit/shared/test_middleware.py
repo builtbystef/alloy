@@ -87,24 +87,7 @@ def test_each_request_gets_an_access_log_line(
     assert all(r.getMessage().endswith("ms") for r in lines)
 
 
-def test_health_checks_are_not_in_the_access_log(
-    client: TestClient, caplog: pytest.LogCaptureFixture
-):
-    with caplog.at_level(logging.INFO, logger="alloy_server.access"):
-        client.get("/health/")
-        client.get("/")
-    assert [r.getMessage()[:6] for r in caplog.records if r.name == "alloy_server.access"] == [
-        "GET / "
-    ]
-
-
 def test_log_lines_outside_a_request_read_dash(caplog: pytest.LogCaptureFixture):
     caplog.handler.addFilter(RequestIdFilter())
     log.warning("no request here")
     assert getattr(caplog.records[-1], "request_id", None) == "-"
-
-
-def test_real_app_answers_with_a_request_id(client: TestClient):
-    response = client.get("/health/")
-    assert response.status_code == 200
-    assert len(response.headers["x-request-id"]) == 16

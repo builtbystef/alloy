@@ -7,7 +7,7 @@ from alloy_server.integrations.storage.memory import MemoryObjectStore
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor
+    from tests.integration.conftest import Actor
 
 PDF = {"filename": "contract.pdf", "content_type": "application/pdf", "size": 11}
 

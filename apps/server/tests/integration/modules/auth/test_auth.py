@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor, Outbox
+    from tests.integration.conftest import Actor, Outbox
 
     Join = Callable[[Actor, str, str], Actor]
 

@@ -16,9 +16,9 @@ from alloy_server.main import app
 if TYPE_CHECKING:
     from sqlalchemy.engine import Connection
     from sqlalchemy.ext.asyncio import AsyncEngine
-    from tests.conftest import Database
+    from tests.integration.conftest import Database
 
-API_ROOT = Path(__file__).resolve().parents[2]
+API_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_health_db_without_override_uses_lifespan_engine():

@@ -8,7 +8,7 @@ from alloy_server.integrations.storage.memory import MemoryObjectStore
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor
+    from tests.integration.conftest import Actor
 
 
 @pytest.fixture

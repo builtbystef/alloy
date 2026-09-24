@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor, Database, InlineConnector, Outbox
+    from tests.integration.conftest import Actor, Database, InlineConnector, Outbox
 
     from alloy_server.integrations.storage.memory import MemoryObjectStore
 

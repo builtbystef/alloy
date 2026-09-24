@@ -1,4 +1,5 @@
-import json
+"""Request IDs carry from the request that queued a job into the job itself."""
+
 import logging
 from typing import TYPE_CHECKING
 
@@ -6,49 +7,13 @@ import pytest
 
 from alloy_server.jobs.app import defer, task
 from alloy_server.jobs.resources import Resources
-from alloy_server.shared.logs import JsonFormatter, RequestIdFilter, TextFormatter, request_id
+from alloy_server.shared.logs import RequestIdFilter, request_id
 
 if TYPE_CHECKING:
-    from types import TracebackType
-
     from fastapi.testclient import TestClient
-    from tests.conftest import Database
-
-    ExcInfo = tuple[type[BaseException], BaseException, TracebackType | None]
+    from tests.integration.conftest import Database
 
 log = logging.getLogger("alloy_server.tests")
-
-
-def record(message: str, exc_info: ExcInfo | None = None) -> logging.LogRecord:
-    rec = logging.LogRecord("alloy_server.tests", logging.INFO, __file__, 1, message, (), exc_info)
-    RequestIdFilter().filter(rec)
-    return rec
-
-
-def test_text_lines_carry_a_utc_timestamp_and_the_request_id():
-    token = request_id.set("report-1")
-    try:
-        line = TextFormatter().format(record("hello"))
-    finally:
-        request_id.reset(token)
-    timestamp, rest = line.split(" ", 1)
-    assert timestamp.endswith("Z")
-    assert "T" in timestamp
-    assert rest == "INFO [alloy_server.tests] [report-1] hello"
-
-
-def test_json_lines_are_one_object_each():
-    exc = ValueError("nope")
-    rec = record("it broke", exc_info=(type(exc), exc, None))
-    line = json.loads(JsonFormatter().format(rec))
-    assert line["level"] == "INFO"
-    assert line["logger"] == "alloy_server.tests"
-    assert line["request_id"] == "-"
-    assert line["message"] == "it broke"
-    assert line["time"].endswith("Z")
-    assert "ValueError: nope" in line["exception"]
-    assert "\n" not in JsonFormatter().format(record("one\nline"))
-
 
 seen: list[str] = []
 

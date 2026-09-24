@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor
+    from tests.integration.conftest import Actor
 
 ACME = {"name": "Acme", "website": "https://acme.example", "industry": "Manufacturing"}
 

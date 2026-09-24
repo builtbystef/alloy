@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor, Outbox
+    from tests.integration.conftest import Actor, Outbox
 
     NewLogin = Callable[[str], dict[str, str]]
     NewActor = Callable[[str], Actor]

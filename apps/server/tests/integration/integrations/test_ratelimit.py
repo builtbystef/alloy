@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from fastapi.testclient import TestClient
-    from tests.conftest import Actor, Database, Outbox
+    from tests.integration.conftest import Actor, Database, Outbox
 
 TWO_PER_MINUTE = Limit("test", 2, timedelta(minutes=1))
 CREDENTIALS = {"email": "ada@example.com", "password": "correct horse battery", "name": "Ada"}
