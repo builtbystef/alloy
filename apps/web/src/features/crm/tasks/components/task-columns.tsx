@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaskRead } from "@alloy/api-client";
+import type { TaskResponse } from "@alloy/api-client";
 import { CheckIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, UndoIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 import type { useTaskMutations } from "@/features/crm/tasks/hooks/use-task-mutations";
 
-const column = createDataTableColumnHelper<TaskRead>();
+const column = createDataTableColumnHelper<TaskResponse>();
 
 /** The list shows the names only; everything else is on the task's page. */
 export function taskColumns({

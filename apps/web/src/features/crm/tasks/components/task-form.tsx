@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaskCreate, TaskRead } from "@alloy/api-client";
+import type { TaskCreate, TaskResponse } from "@alloy/api-client";
 import { revalidateLogic } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -40,7 +40,7 @@ export function TaskForm({
   timeZone,
 }: {
   /** Editing this task; omit to create. */
-  task?: TaskRead;
+  task?: TaskResponse;
   /** The pre-selected link when creating from a contact or company page. */
   defaults?: TaskLink;
   timeZone: string;

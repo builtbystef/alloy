@@ -1,6 +1,6 @@
 "use client";
 
-import type { MemberRead, WorkspaceRole } from "@alloy/api-client";
+import type { MemberResponse, WorkspaceRole } from "@alloy/api-client";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -39,10 +39,10 @@ export function MembersTable({
   const workspace = useWorkspace();
   const canManage = useCan("members:manage");
   const { data: members } = useSuspenseQuery(memberListQuery(browserApi, workspace.id));
-  const [removing, setRemoving] = useState<MemberRead | null>(null);
+  const [removing, setRemoving] = useState<MemberResponse | null>(null);
 
   const changeRole = useMutation({
-    mutationFn: async ({ member, role }: { member: MemberRead; role: WorkspaceRole }) =>
+    mutationFn: async ({ member, role }: { member: MemberResponse; role: WorkspaceRole }) =>
       changeMemberRole(workspace.id, member.id, role),
     onSuccess: async (saved) => {
       toast.success(`${saved.email} is now ${roleLabels[saved.role].toLowerCase()}`);
@@ -52,7 +52,7 @@ export function MembersTable({
   });
 
   const remove = useMutation({
-    mutationFn: async (member: MemberRead) => removeMember(workspace.id, member.id),
+    mutationFn: async (member: MemberResponse) => removeMember(workspace.id, member.id),
     onSuccess: async () => {
       toast.success("Member removed");
       setRemoving(null);

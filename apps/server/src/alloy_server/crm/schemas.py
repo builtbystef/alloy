@@ -43,10 +43,10 @@ def reject_null(value: object) -> object:
 NotNull = AfterValidator(reject_null)
 
 
-class ReadModel(BaseModel):
+class ResponseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserRef(ReadModel):
+class UserRef(ResponseModel):
     id: UUID
     email: str

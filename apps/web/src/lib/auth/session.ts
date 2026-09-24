@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { ApiClient, UserRead } from "@alloy/api-client";
+import type { ApiClient, UserResponse } from "@alloy/api-client";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -21,7 +21,7 @@ export async function getSessionApi(): Promise<ApiClient> {
 }
 
 /** Deduplicated per request, so the layout and the page share one call. */
-export const getCurrentUser = cache(async (): Promise<UserRead | null> => {
+export const getCurrentUser = cache(async (): Promise<UserResponse | null> => {
   const api = await getSessionApi();
   const result = await api.GET("/auth/me");
   if (result.data) return result.data;
@@ -34,7 +34,7 @@ export const getCurrentUser = cache(async (): Promise<UserRead | null> => {
  * goes through `/logout`, which clears it; `/login` alone would bounce back
  * here for as long as the cookie is present.
  */
-export async function requireUser(): Promise<UserRead> {
+export async function requireUser(): Promise<UserResponse> {
   const user = await getCurrentUser();
   if (user === null) redirect("/logout");
   if (user.email_verified_at === null) redirect("/verify-email");

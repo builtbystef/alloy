@@ -1,4 +1,4 @@
-import type { ContactRead, Dashboard as DashboardData } from "@alloy/api-client";
+import type { ContactResponse, DashboardResponse as DashboardData } from "@alloy/api-client";
 import { AlertTriangleIcon, CalendarClockIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -109,7 +109,7 @@ function ContactList({
 }: {
   title: string;
   description: string;
-  contacts: ContactRead[];
+  contacts: ContactResponse[];
   timeZone: string;
   paths: WorkspacePaths;
   empty: string;

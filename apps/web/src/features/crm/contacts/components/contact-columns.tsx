@@ -1,6 +1,6 @@
 "use client";
 
-import type { ContactRead } from "@alloy/api-client";
+import type { ContactResponse } from "@alloy/api-client";
 import { MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 
@@ -16,7 +16,7 @@ import {
 import { formatRelativeDays } from "@/lib/formatting/dates";
 import type { WorkspacePaths } from "@/lib/routes";
 
-const column = createDataTableColumnHelper<ContactRead>();
+const column = createDataTableColumnHelper<ContactResponse>();
 
 export function contactColumns({
   timeZone,
@@ -27,7 +27,7 @@ export function contactColumns({
   timeZone: string;
   paths: WorkspacePaths;
   /** Null hides the row actions (read-only roles). */
-  onDelete: ((contact: ContactRead) => void) | null;
+  onDelete: ((contact: ContactResponse) => void) | null;
   showCompany?: boolean;
 }) {
   const companyColumn = column.accessor((row) => row.company?.name ?? "", {

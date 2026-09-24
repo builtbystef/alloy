@@ -1,6 +1,6 @@
 "use client";
 
-import type { ImportRead } from "@alloy/api-client";
+import type { ImportResponse } from "@alloy/api-client";
 import { Loader2Icon } from "lucide-react";
 
 import { createDataTableColumnHelper } from "@/components/shared/data-table";
@@ -11,7 +11,7 @@ import { formatDateTime, formatRelativeDays } from "@/lib/formatting/dates";
 import { importKindLabels } from "@/features/crm/imports/labels";
 import { isImportActive } from "@/features/crm/imports/queries";
 
-const column = createDataTableColumnHelper<ImportRead>();
+const column = createDataTableColumnHelper<ImportResponse>();
 
 /** Sorting is off: the API already orders newest first, and the list is short. */
 export function importColumns({
@@ -19,7 +19,7 @@ export function importColumns({
   onSelect,
 }: {
   timeZone: string;
-  onSelect: (record: ImportRead) => void;
+  onSelect: (record: ImportResponse) => void;
 }) {
   return column.columns([
     column.accessor("filename", {
@@ -84,7 +84,7 @@ export function importColumns({
   ]);
 }
 
-function Result({ record }: { record: ImportRead }) {
+function Result({ record }: { record: ImportResponse }) {
   if (record.status === "failed") {
     return <span className="text-destructive">{record.error}</span>;
   }

@@ -1,4 +1,4 @@
-import type { ApiClient, ImportRead } from "@alloy/api-client";
+import type { ApiClient, ImportResponse } from "@alloy/api-client";
 import { queryOptions } from "@tanstack/react-query";
 
 import { unwrap } from "@/lib/api/errors";
@@ -12,7 +12,7 @@ export const importKeys = {
 };
 
 /** Still moving: the list polls while any import is in one of these states. */
-export function isImportActive(record: ImportRead): boolean {
+export function isImportActive(record: ImportResponse): boolean {
   return record.status === "queued" || record.status === "running";
 }
 

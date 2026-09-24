@@ -1,6 +1,6 @@
 "use client";
 
-import type { WorkspaceRead } from "@alloy/api-client";
+import type { WorkspaceResponse } from "@alloy/api-client";
 import { CheckIcon, ChevronsUpDownIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -18,7 +18,7 @@ import { SidebarMenuButton, useSidebar } from "@/components/ui/sidebar";
 import { roleLabels } from "@/features/workspaces/roles";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 
-export function WorkspaceSwitcher({ workspaces }: { workspaces: WorkspaceRead[] }) {
+export function WorkspaceSwitcher({ workspaces }: { workspaces: WorkspaceResponse[] }) {
   const current = useWorkspace();
   const { isMobile } = useSidebar();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { WorkspaceRead } from "@alloy/api-client";
+import type { WorkspaceResponse } from "@alloy/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,7 +14,7 @@ import { ApiError, errorMessage } from "@/lib/api/errors";
 import { WORKSPACE_COOKIE } from "@/features/workspaces/cookie";
 
 /** Leave or delete the workspace. Both send the user back to `/` to pick another. */
-export function DangerZone({ workspace }: { workspace: WorkspaceRead }) {
+export function DangerZone({ workspace }: { workspace: WorkspaceResponse }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState<"leave" | "delete" | null>(null);

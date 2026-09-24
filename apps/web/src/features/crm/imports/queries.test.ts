@@ -1,11 +1,11 @@
-import type { ImportRead } from "@alloy/api-client";
+import type { ImportResponse } from "@alloy/api-client";
 import { createApiClient } from "@alloy/api-client";
 import { expect, test, vi } from "vite-plus/test";
 
 import { importKeys, importListQuery, isImportActive } from "./queries";
 
-function record(status: ImportRead["status"]): ImportRead {
-  return { status } as ImportRead;
+function record(status: ImportResponse["status"]): ImportResponse {
+  return { status } as ImportResponse;
 }
 
 test("an import is active while queued or running", () => {
@@ -23,7 +23,7 @@ test("the list polls only while something is running", () => {
   expect(importKeys.lists("ws1")).toEqual(["imports", "ws1", "list"]);
   const interval = options.refetchInterval;
   if (typeof interval !== "function") throw new Error("expected a function");
-  const query = (items: ImportRead[] | undefined) =>
+  const query = (items: ImportResponse[] | undefined) =>
     ({
       state: { data: items ? { items, total: items.length, limit: 50, offset: 0 } : undefined },
     }) as never;

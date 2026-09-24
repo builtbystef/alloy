@@ -30,7 +30,7 @@ class PageOf[T](BaseModel):
 
     @classmethod
     def model_parametrized_name(cls, params: tuple[type, ...]) -> str:
-        """`PageOf[ContactRead]` is `ContactPage` in the OpenAPI schema."""
+        """`PageOf[ContactResponse]` is `ContactPage` in the OpenAPI schema."""
         return f"{params[0].__name__.removesuffix('Read')}Page"
 
 

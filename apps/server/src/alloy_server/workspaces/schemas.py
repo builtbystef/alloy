@@ -12,7 +12,7 @@ WorkspaceName = Annotated[
 ]
 
 
-class ReadModel(BaseModel):
+class ResponseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -24,7 +24,7 @@ class WorkspaceUpdate(BaseModel):
     name: WorkspaceName
 
 
-class WorkspaceRead(ReadModel):
+class WorkspaceResponse(ResponseModel):
     """A workspace as seen by one member: their role and what it allows come along."""
 
     id: UUID
@@ -36,7 +36,7 @@ class WorkspaceRead(ReadModel):
     permissions: list[Permission]
 
 
-class MemberRead(ReadModel):
+class MemberResponse(ResponseModel):
     id: UUID
     user_id: UUID
     email: str
@@ -53,7 +53,7 @@ class InviteCreate(BaseModel):
     role: WorkspaceRole = WorkspaceRole.MEMBER
 
 
-class InviteRead(ReadModel):
+class InviteResponse(ResponseModel):
     """As the workspace's admins see it: pending, or declined by the invitee."""
 
     id: UUID
@@ -75,7 +75,7 @@ class InvitePreview(BaseModel):
     expires_at: datetime
 
 
-class PendingInviteRead(InvitePreview):
+class PendingInviteResponse(InvitePreview):
     """One of the caller's own, by id: the token is not stored, so this is how the
     app accepts or declines one without the link."""
 

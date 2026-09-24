@@ -1,6 +1,6 @@
 "use client";
 
-import type { ImportRead } from "@alloy/api-client";
+import type { ImportResponse } from "@alloy/api-client";
 
 import { ImportStatusBadge } from "@/features/crm/imports/components/import-status-badge";
 import {
@@ -23,7 +23,7 @@ export function ImportDetailsDialog({
   timeZone,
   onOpenChange,
 }: {
-  record: ImportRead | null;
+  record: ImportResponse | null;
   timeZone: string;
   onOpenChange: (open: boolean) => void;
 }) {

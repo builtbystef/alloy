@@ -5,22 +5,22 @@ import type {
   PasswordChange,
   ProfileUpdate,
   Signup,
-  UserRead,
+  UserResponse,
 } from "@alloy/api-client";
 
 import { browserApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/errors";
 
-export async function login(credentials: Credentials): Promise<UserRead> {
+export async function login(credentials: Credentials): Promise<UserResponse> {
   return unwrap(await browserApi.POST("/auth/login", { body: credentials }));
 }
 
 /** Also creates the account's first workspace. */
-export async function signup(body: Signup): Promise<UserRead> {
+export async function signup(body: Signup): Promise<UserResponse> {
   return unwrap(await browserApi.POST("/auth/signup", { body }));
 }
 
-export async function updateProfile(body: ProfileUpdate): Promise<UserRead> {
+export async function updateProfile(body: ProfileUpdate): Promise<UserResponse> {
   return unwrap(await browserApi.PATCH("/auth/me", { body }));
 }
 
@@ -33,7 +33,7 @@ export async function logoutAll(): Promise<void> {
   unwrap(await browserApi.POST("/auth/logout-all"));
 }
 
-export async function verifyEmail(token: string): Promise<UserRead> {
+export async function verifyEmail(token: string): Promise<UserResponse> {
   return unwrap(await browserApi.POST("/auth/verify-email", { body: { token } }));
 }
 
@@ -45,7 +45,7 @@ export async function forgotPassword(email: string): Promise<void> {
   unwrap(await browserApi.POST("/auth/forgot-password", { body: { email } }));
 }
 
-export async function resetPassword(token: string, newPassword: string): Promise<UserRead> {
+export async function resetPassword(token: string, newPassword: string): Promise<UserResponse> {
   return unwrap(
     await browserApi.POST("/auth/reset-password", { body: { token, new_password: newPassword } }),
   );
@@ -63,7 +63,7 @@ export async function cancelEmailChange(): Promise<void> {
   unwrap(await browserApi.DELETE("/auth/change-email"));
 }
 
-export async function confirmEmailChange(token: string): Promise<UserRead> {
+export async function confirmEmailChange(token: string): Promise<UserResponse> {
   return unwrap(await browserApi.POST("/auth/confirm-email", { body: { token } }));
 }
 

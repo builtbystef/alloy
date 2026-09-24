@@ -1,6 +1,6 @@
 "use client";
 
-import type { AttachmentRead } from "@alloy/api-client";
+import type { AttachmentResponse } from "@alloy/api-client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
   DownloadIcon,
@@ -148,7 +148,7 @@ function AttachmentRow({
   href,
   onDelete,
 }: {
-  attachment: AttachmentRead;
+  attachment: AttachmentResponse;
   timeZone: string;
   href: string;
   onDelete: (() => void) | null;

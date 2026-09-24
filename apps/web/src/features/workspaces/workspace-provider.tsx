@@ -1,6 +1,6 @@
 "use client";
 
-import type { Permission, WorkspaceRead } from "@alloy/api-client";
+import type { Permission, WorkspaceResponse } from "@alloy/api-client";
 import { createContext, Suspense, use, type ReactNode } from "react";
 
 import { workspacePaths, type WorkspacePaths } from "@/lib/routes";
@@ -10,19 +10,19 @@ import { workspacePaths, type WorkspacePaths } from "@/lib/routes";
  * from `requireWorkspace()` without awaiting it, so the static shell stays
  * static; each consumer suspends on its own, inside the page's <Suspense>.
  */
-const WorkspaceContext = createContext<Promise<WorkspaceRead> | null>(null);
+const WorkspaceContext = createContext<Promise<WorkspaceResponse> | null>(null);
 
 export function WorkspaceProvider({
   workspace,
   children,
 }: {
-  workspace: Promise<WorkspaceRead>;
+  workspace: Promise<WorkspaceResponse>;
   children: ReactNode;
 }) {
   return <WorkspaceContext value={workspace}>{children}</WorkspaceContext>;
 }
 
-export function useWorkspace(): WorkspaceRead & { paths: WorkspacePaths } {
+export function useWorkspace(): WorkspaceResponse & { paths: WorkspacePaths } {
   const promise = use(WorkspaceContext);
   if (promise === null) throw new Error("useWorkspace() needs a <WorkspaceProvider> above it.");
   const workspace = use(promise);

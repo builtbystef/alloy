@@ -33,7 +33,11 @@ from alloy_server.agent.agent import (
 from alloy_server.agent.deps import AgentDeps
 from alloy_server.agent.history import append_messages, load_history, truncate_after_last_prompt
 from alloy_server.agent.models import AgentConversation, ChatUpload
-from alloy_server.agent.schemas import ChatMessageRequest, ConversationDetail, ConversationRead
+from alloy_server.agent.schemas import (
+    ChatMessageRequest,
+    ConversationDetailResponse,
+    ConversationResponse,
+)
 from alloy_server.config import SettingsDep
 from alloy_server.core.logs import request_id
 from alloy_server.db.session import SessionDep
@@ -85,19 +89,21 @@ def get_agent_model(settings: SettingsDep) -> Model:
 AgentModelDep = Annotated["Model", Depends(get_agent_model)]
 
 
-def read_conversation(conversation: AgentConversation) -> ConversationRead:
-    return ConversationRead.model_validate(conversation)
+def read_conversation(conversation: AgentConversation) -> ConversationResponse:
+    return ConversationResponse.model_validate(conversation)
 
 
 @router.get("/conversations")
-async def list_conversations(session: SessionDep, membership: CanReadCrm) -> list[ConversationRead]:
+async def list_conversations(
+    session: SessionDep, membership: CanReadCrm
+) -> list[ConversationResponse]:
     """The caller's conversations in this workspace, most recently active first."""
     rows = await session.scalars(service.conversations_query(membership))
     return [read_conversation(c) for c in rows]
 
 
 @router.post("/conversations", status_code=status.HTTP_201_CREATED)
-async def create_conversation(session: SessionDep, membership: CanReadCrm) -> ConversationRead:
+async def create_conversation(session: SessionDep, membership: CanReadCrm) -> ConversationResponse:
     """A new, empty conversation. An existing one with no messages is returned
     instead, so "New chat" pressed twice does not pile up empty rows."""
     return read_conversation(await service.create_conversation(session, membership))
@@ -106,7 +112,7 @@ async def create_conversation(session: SessionDep, membership: CanReadCrm) -> Co
 @router.get("/conversations/{conversation_id}")
 async def get_conversation(
     conversation_id: UUID, session: SessionDep, membership: CanReadCrm
-) -> ConversationDetail:
+) -> ConversationDetailResponse:
     """The conversation with its transcript as `UIMessage`s. A tool call still
     waiting for approval comes back in the `approval-requested` state."""
     conversation = await service.get_conversation(session, membership, conversation_id)
@@ -114,7 +120,7 @@ async def get_conversation(
     messages = _merge_assistant_turns(
         VercelAIAdapter.dump_messages(history, sdk_version=SDK_VERSION)
     )
-    return ConversationDetail(
+    return ConversationDetailResponse(
         **read_conversation(conversation).model_dump(),
         messages=[m.model_dump(by_alias=True, exclude_none=True) for m in messages],
     )

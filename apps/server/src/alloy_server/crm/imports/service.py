@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from alloy_server.core.exceptions import ConflictError, PayloadTooLargeError
 from alloy_server.crm.imports.models import Import, ImportStatus
-from alloy_server.crm.imports.schemas import ImportRead, ImportUpload
+from alloy_server.crm.imports.schemas import ImportResponse, ImportUpload
 from alloy_server.crm.ownership import fetch_owned
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.storage.cleanup import storage_prefix
@@ -73,7 +73,7 @@ async def start_upload(
     await session.commit()
     await session.refresh(record, ["requested_by"])
     return ImportUpload(
-        import_=ImportRead.model_validate(record),
+        import_=ImportResponse.model_validate(record),
         upload_url=await store.upload_url(
             record.key, CSV_CONTENT_TYPE, record.size, settings.storage_url_ttl
         ),

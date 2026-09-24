@@ -1,6 +1,6 @@
 "use client";
 
-import type { WorkspaceRead, WorkspaceUpdate } from "@alloy/api-client";
+import type { WorkspaceResponse, WorkspaceUpdate } from "@alloy/api-client";
 import { revalidateLogic } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -14,7 +14,7 @@ import { errorMessage } from "@/lib/api/errors";
 import { invalidateWorkspaces } from "@/features/workspaces/queries";
 import { workspaceSchema, type WorkspaceInput } from "@/features/workspaces/schemas";
 
-export function WorkspaceNameForm({ workspace }: { workspace: WorkspaceRead }) {
+export function WorkspaceNameForm({ workspace }: { workspace: WorkspaceResponse }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);

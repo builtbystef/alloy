@@ -95,7 +95,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -137,7 +137,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -199,7 +199,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -356,7 +356,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -456,7 +456,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -527,7 +527,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -562,7 +562,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -600,7 +600,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/WorkspaceRead"
+                    "$ref": "#/components/schemas/WorkspaceResponse"
                   },
                   "type": "array",
                   "title": "Response Workspaces-List Workspaces"
@@ -638,7 +638,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRead"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             }
@@ -691,7 +691,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRead"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             }
@@ -747,7 +747,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRead"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             }
@@ -836,7 +836,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRead"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             }
@@ -929,7 +929,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MemberRead"
+                    "$ref": "#/components/schemas/MemberResponse"
                   },
                   "title": "Response Workspaces-List Members"
                 }
@@ -1000,7 +1000,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MemberRead"
+                  "$ref": "#/components/schemas/MemberResponse"
                 }
               }
             }
@@ -1101,7 +1101,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/InviteRead"
+                    "$ref": "#/components/schemas/InviteResponse"
                   },
                   "title": "Response Workspaces-List Invites"
                 }
@@ -1160,7 +1160,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InviteRead"
+                  "$ref": "#/components/schemas/InviteResponse"
                 }
               }
             }
@@ -1219,7 +1219,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InviteRead"
+                  "$ref": "#/components/schemas/InviteResponse"
                 }
               }
             }
@@ -1304,7 +1304,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/PendingInviteRead"
+                    "$ref": "#/components/schemas/PendingInviteResponse"
                   },
                   "type": "array",
                   "title": "Response Invites-List Pending Invites"
@@ -1351,7 +1351,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRead"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             }
@@ -1484,7 +1484,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceRead"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             }
@@ -1592,7 +1592,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageOf_CompanyRead_"
+                  "$ref": "#/components/schemas/PageOf_CompanyResponse_"
                 }
               }
             }
@@ -1648,7 +1648,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompanyRead"
+                  "$ref": "#/components/schemas/CompanyResponse"
                 }
               }
             }
@@ -1706,7 +1706,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompanyRead"
+                  "$ref": "#/components/schemas/CompanyResponse"
                 }
               }
             }
@@ -1772,7 +1772,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompanyRead"
+                  "$ref": "#/components/schemas/CompanyResponse"
                 }
               }
             }
@@ -1904,7 +1904,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageOf_ContactRead_"
+                  "$ref": "#/components/schemas/PageOf_ContactResponse_"
                 }
               }
             }
@@ -2045,7 +2045,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageOf_ContactRead_"
+                  "$ref": "#/components/schemas/PageOf_ContactResponse_"
                 }
               }
             }
@@ -2101,7 +2101,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContactRead"
+                  "$ref": "#/components/schemas/ContactResponse"
                 }
               }
             }
@@ -2159,7 +2159,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContactRead"
+                  "$ref": "#/components/schemas/ContactResponse"
                 }
               }
             }
@@ -2225,7 +2225,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContactRead"
+                  "$ref": "#/components/schemas/ContactResponse"
                 }
               }
             }
@@ -2357,7 +2357,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageOf_ActivityRead_"
+                  "$ref": "#/components/schemas/PageOf_ActivityResponse_"
                 }
               }
             }
@@ -2424,7 +2424,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ActivityRead"
+                  "$ref": "#/components/schemas/ActivityResponse"
                 }
               }
             }
@@ -2594,7 +2594,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageOf_TaskRead_"
+                  "$ref": "#/components/schemas/PageOf_TaskResponse_"
                 }
               }
             }
@@ -2650,7 +2650,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskRead"
+                  "$ref": "#/components/schemas/TaskResponse"
                 }
               }
             }
@@ -2708,7 +2708,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskRead"
+                  "$ref": "#/components/schemas/TaskResponse"
                 }
               }
             }
@@ -2775,7 +2775,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskRead"
+                  "$ref": "#/components/schemas/TaskResponse"
                 }
               }
             }
@@ -2912,7 +2912,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Dashboard"
+                  "$ref": "#/components/schemas/DashboardResponse"
                 }
               }
             }
@@ -2994,7 +2994,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageOf_AttachmentRead_"
+                  "$ref": "#/components/schemas/PageOf_AttachmentResponse_"
                 }
               }
             }
@@ -3143,7 +3143,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageOf_AttachmentRead_"
+                  "$ref": "#/components/schemas/PageOf_AttachmentResponse_"
                 }
               }
             }
@@ -3269,7 +3269,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AttachmentRead"
+                  "$ref": "#/components/schemas/AttachmentResponse"
                 }
               }
             }
@@ -3450,7 +3450,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageOf_ImportRead_"
+                  "$ref": "#/components/schemas/PageOf_ImportResponse_"
                 }
               }
             }
@@ -3565,7 +3565,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ImportRead"
+                  "$ref": "#/components/schemas/ImportResponse"
                 }
               }
             }
@@ -3624,7 +3624,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ImportRead"
+                  "$ref": "#/components/schemas/ImportResponse"
                 }
               }
             }
@@ -3754,7 +3754,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatUploadRead"
+                  "$ref": "#/components/schemas/ChatUploadResponse"
                 }
               }
             }
@@ -3858,7 +3858,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConversationRead"
+                    "$ref": "#/components/schemas/ConversationResponse"
                   },
                   "title": "Response Agent-List Conversations"
                 }
@@ -3907,7 +3907,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConversationRead"
+                  "$ref": "#/components/schemas/ConversationResponse"
                 }
               }
             }
@@ -3966,7 +3966,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConversationDetail"
+                  "$ref": "#/components/schemas/ConversationDetailResponse"
                 }
               }
             }
@@ -4165,7 +4165,7 @@
         ],
         "title": "ActivityCreate"
       },
-      "ActivityRead": {
+      "ActivityResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -4229,7 +4229,7 @@
           "source",
           "created_at"
         ],
-        "title": "ActivityRead"
+        "title": "ActivityResponse"
       },
       "ActivityType": {
         "type": "string",
@@ -4274,7 +4274,7 @@
         "title": "AttachmentCreate",
         "description": "What the client knows before uploading. `size` is checked against the limit\nhere and again against the stored object on completion."
       },
-      "AttachmentRead": {
+      "AttachmentResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -4357,12 +4357,12 @@
           "uploaded_at",
           "created_at"
         ],
-        "title": "AttachmentRead"
+        "title": "AttachmentResponse"
       },
       "AttachmentUpload": {
         "properties": {
           "attachment": {
-            "$ref": "#/components/schemas/AttachmentRead"
+            "$ref": "#/components/schemas/AttachmentResponse"
           },
           "upload_url": {
             "type": "string",
@@ -4471,7 +4471,7 @@
         "title": "ChatUploadCreate",
         "description": "What the browser knows before uploading a file into the chat."
       },
-      "ChatUploadRead": {
+      "ChatUploadResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -4536,12 +4536,12 @@
           "attachment_id",
           "created_at"
         ],
-        "title": "ChatUploadRead"
+        "title": "ChatUploadResponse"
       },
       "ChatUploadTicket": {
         "properties": {
           "upload": {
-            "$ref": "#/components/schemas/ChatUploadRead"
+            "$ref": "#/components/schemas/ChatUploadResponse"
           },
           "upload_url": {
             "type": "string",
@@ -4613,7 +4613,26 @@
         ],
         "title": "CompanyCreate"
       },
-      "CompanyRead": {
+      "CompanyRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "CompanyRef"
+      },
+      "CompanyResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -4701,26 +4720,7 @@
           "created_at",
           "updated_at"
         ],
-        "title": "CompanyRead"
-      },
-      "CompanyRef": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name"
-        ],
-        "title": "CompanyRef"
+        "title": "CompanyResponse"
       },
       "CompanySort": {
         "type": "string",
@@ -4865,7 +4865,26 @@
         ],
         "title": "ContactCreate"
       },
-      "ContactRead": {
+      "ContactRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ContactRef"
+      },
+      "ContactResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -4981,26 +5000,7 @@
           "created_at",
           "updated_at"
         ],
-        "title": "ContactRead"
-      },
-      "ContactRef": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name"
-        ],
-        "title": "ContactRef"
+        "title": "ContactResponse"
       },
       "ContactSort": {
         "type": "string",
@@ -5110,7 +5110,7 @@
         "type": "object",
         "title": "ContactUpdate"
       },
-      "ConversationDetail": {
+      "ConversationDetailResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -5157,9 +5157,9 @@
           "updated_at",
           "messages"
         ],
-        "title": "ConversationDetail"
+        "title": "ConversationDetailResponse"
       },
-      "ConversationRead": {
+      "ConversationResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -5196,7 +5196,7 @@
           "created_at",
           "updated_at"
         ],
-        "title": "ConversationRead"
+        "title": "ConversationResponse"
       },
       "Credentials": {
         "properties": {
@@ -5219,7 +5219,7 @@
         ],
         "title": "Credentials"
       },
-      "Dashboard": {
+      "DashboardResponse": {
         "properties": {
           "total_contacts": {
             "type": "integer",
@@ -5235,14 +5235,14 @@
           },
           "recently_contacted": {
             "items": {
-              "$ref": "#/components/schemas/ContactRead"
+              "$ref": "#/components/schemas/ContactResponse"
             },
             "type": "array",
             "title": "Recently Contacted"
           },
           "not_recently_contacted": {
             "items": {
-              "$ref": "#/components/schemas/ContactRead"
+              "$ref": "#/components/schemas/ContactResponse"
             },
             "type": "array",
             "title": "Not Recently Contacted"
@@ -5256,7 +5256,7 @@
           "recently_contacted",
           "not_recently_contacted"
         ],
-        "title": "Dashboard"
+        "title": "DashboardResponse"
       },
       "DueFilter": {
         "type": "string",
@@ -5379,7 +5379,7 @@
         ],
         "title": "ImportKind"
       },
-      "ImportRead": {
+      "ImportResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -5493,7 +5493,7 @@
           "error",
           "created_at"
         ],
-        "title": "ImportRead"
+        "title": "ImportResponse"
       },
       "ImportStatus": {
         "type": "string",
@@ -5510,7 +5510,7 @@
       "ImportUpload": {
         "properties": {
           "import": {
-            "$ref": "#/components/schemas/ImportRead"
+            "$ref": "#/components/schemas/ImportResponse"
           },
           "upload_url": {
             "type": "string",
@@ -5590,7 +5590,7 @@
         "title": "InvitePreview",
         "description": "What the invitation page shows before the invitee logs in or signs up."
       },
-      "InviteRead": {
+      "InviteResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -5648,10 +5648,10 @@
           "expires_at",
           "declined_at"
         ],
-        "title": "InviteRead",
+        "title": "InviteResponse",
         "description": "As the workspace's admins see it: pending, or declined by the invitee."
       },
-      "MemberRead": {
+      "MemberResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -5684,7 +5684,7 @@
           "role",
           "created_at"
         ],
-        "title": "MemberRead"
+        "title": "MemberResponse"
       },
       "MemberUpdate": {
         "properties": {
@@ -5698,11 +5698,11 @@
         ],
         "title": "MemberUpdate"
       },
-      "PageOf_ActivityRead_": {
+      "PageOf_ActivityResponse_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ActivityRead"
+              "$ref": "#/components/schemas/ActivityResponse"
             },
             "type": "array",
             "title": "Items"
@@ -5728,13 +5728,13 @@
           "limit",
           "offset"
         ],
-        "title": "ActivityPage"
+        "title": "ActivityResponsePage"
       },
-      "PageOf_AttachmentRead_": {
+      "PageOf_AttachmentResponse_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/AttachmentRead"
+              "$ref": "#/components/schemas/AttachmentResponse"
             },
             "type": "array",
             "title": "Items"
@@ -5760,13 +5760,13 @@
           "limit",
           "offset"
         ],
-        "title": "AttachmentPage"
+        "title": "AttachmentResponsePage"
       },
-      "PageOf_CompanyRead_": {
+      "PageOf_CompanyResponse_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/CompanyRead"
+              "$ref": "#/components/schemas/CompanyResponse"
             },
             "type": "array",
             "title": "Items"
@@ -5792,13 +5792,13 @@
           "limit",
           "offset"
         ],
-        "title": "CompanyPage"
+        "title": "CompanyResponsePage"
       },
-      "PageOf_ContactRead_": {
+      "PageOf_ContactResponse_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ContactRead"
+              "$ref": "#/components/schemas/ContactResponse"
             },
             "type": "array",
             "title": "Items"
@@ -5824,13 +5824,13 @@
           "limit",
           "offset"
         ],
-        "title": "ContactPage"
+        "title": "ContactResponsePage"
       },
-      "PageOf_ImportRead_": {
+      "PageOf_ImportResponse_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ImportRead"
+              "$ref": "#/components/schemas/ImportResponse"
             },
             "type": "array",
             "title": "Items"
@@ -5856,13 +5856,13 @@
           "limit",
           "offset"
         ],
-        "title": "ImportPage"
+        "title": "ImportResponsePage"
       },
-      "PageOf_TaskRead_": {
+      "PageOf_TaskResponse_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/TaskRead"
+              "$ref": "#/components/schemas/TaskResponse"
             },
             "type": "array",
             "title": "Items"
@@ -5888,7 +5888,7 @@
           "limit",
           "offset"
         ],
-        "title": "TaskPage"
+        "title": "TaskResponsePage"
       },
       "PasswordChange": {
         "properties": {
@@ -5947,7 +5947,7 @@
         ],
         "title": "PasswordResetRequest"
       },
-      "PendingInviteRead": {
+      "PendingInviteResponse": {
         "properties": {
           "workspace_name": {
             "type": "string",
@@ -5991,7 +5991,7 @@
           "expires_at",
           "id"
         ],
-        "title": "PendingInviteRead",
+        "title": "PendingInviteResponse",
         "description": "One of the caller's own, by id: the token is not stored, so this is how the\napp accepts or declines one without the link."
       },
       "Permission": {
@@ -6167,7 +6167,7 @@
         ],
         "title": "TaskCreate"
       },
-      "TaskRead": {
+      "TaskResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -6271,7 +6271,7 @@
           "created_at",
           "updated_at"
         ],
-        "title": "TaskRead"
+        "title": "TaskResponse"
       },
       "TaskSort": {
         "type": "string",
@@ -6371,7 +6371,26 @@
         "title": "TaskUpdate",
         "description": "Setting `contact_id` unlinks the company and vice versa: the link moves."
       },
-      "UserRead": {
+      "UserRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email"
+        ],
+        "title": "UserRef"
+      },
+      "UserResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -6424,26 +6443,7 @@
           "pending_email",
           "created_at"
         ],
-        "title": "UserRead"
-      },
-      "UserRef": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "email": {
-            "type": "string",
-            "title": "Email"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "email"
-        ],
-        "title": "UserRef"
+        "title": "UserResponse"
       },
       "ValidationError": {
         "properties": {
@@ -6500,7 +6500,7 @@
         ],
         "title": "WorkspaceCreate"
       },
-      "WorkspaceRead": {
+      "WorkspaceResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -6554,7 +6554,7 @@
           "role",
           "permissions"
         ],
-        "title": "WorkspaceRead",
+        "title": "WorkspaceResponse",
         "description": "A workspace as seen by one member: their role and what it allows come along."
       },
       "WorkspaceRole": {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ContactCreate, ContactRead } from "@alloy/api-client";
+import type { ContactCreate, ContactResponse } from "@alloy/api-client";
 import { revalidateLogic } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -42,7 +42,7 @@ export function ContactForm({
   timeZone,
 }: {
   /** Editing this contact; omit to create. */
-  contact?: ContactRead;
+  contact?: ContactResponse;
   defaultCompanyId?: string;
   timeZone: string;
 }) {

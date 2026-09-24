@@ -1,6 +1,6 @@
 "use client";
 
-import type { CompanyCreate, CompanyRead } from "@alloy/api-client";
+import type { CompanyCreate, CompanyResponse } from "@alloy/api-client";
 import { revalidateLogic } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -23,7 +23,7 @@ import { invalidateCrm } from "@/features/crm/queries";
 import { companySchema, type CompanyInput } from "@/features/crm/companies/schemas";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 
-export function CompanyForm({ company }: { company?: CompanyRead }) {
+export function CompanyForm({ company }: { company?: CompanyResponse }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);

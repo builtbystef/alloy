@@ -1,6 +1,6 @@
 "use client";
 
-import type { DueFilter, TaskRead, TaskStatus } from "@alloy/api-client";
+import type { DueFilter, TaskResponse, TaskStatus } from "@alloy/api-client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -81,7 +81,7 @@ export function TasksTable({
           {tasks.total} {tasks.total === 1 ? "task" : "tasks"}
         </span>
       </div>
-      <DataTable<TaskRead>
+      <DataTable<TaskResponse>
         columns={taskColumns({ paths, actions: canWrite ? actions : null })}
         data={tasks.items}
         total={tasks.total}

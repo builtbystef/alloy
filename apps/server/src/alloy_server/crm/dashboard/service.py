@@ -5,8 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from alloy_server.crm.contacts.models import Contact
-from alloy_server.crm.contacts.schemas import ContactRead
-from alloy_server.crm.dashboard.schemas import Dashboard
+from alloy_server.crm.contacts.schemas import ContactResponse
+from alloy_server.crm.dashboard.schemas import DashboardResponse
 from alloy_server.crm.dates import DueFilter, due_clause
 from alloy_server.crm.tasks.models import Task, TaskStatus
 from alloy_server.db.base import utcnow
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 async def read_dashboard(
     session: AsyncSession, membership: Membership, options: DashboardOptions
-) -> Dashboard:
+) -> DashboardResponse:
     own_contacts = select(Contact).where(Contact.workspace_id == membership.workspace.id)
     open_tasks = select(func.count(Task.id)).where(
         Task.workspace_id == membership.workspace.id, Task.status == TaskStatus.OPEN
@@ -46,10 +46,10 @@ async def read_dashboard(
         .order_by(Contact.last_contacted_at.desc().nulls_last(), Contact.id)
         .limit(options.limit)
     )
-    return Dashboard(
+    return DashboardResponse(
         total_contacts=total_contacts or 0,
         tasks_due_today=tasks_due_today or 0,
         overdue_tasks=overdue_tasks or 0,
-        recently_contacted=[ContactRead.model_validate(c) for c in recently_contacted],
-        not_recently_contacted=[ContactRead.model_validate(c) for c in not_recently_contacted],
+        recently_contacted=[ContactResponse.model_validate(c) for c in recently_contacted],
+        not_recently_contacted=[ContactResponse.model_validate(c) for c in not_recently_contacted],
     )

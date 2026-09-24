@@ -18,11 +18,11 @@ from alloy_server.workspaces.deps import (
 )
 from alloy_server.workspaces.schemas import (
     InviteCreate,
-    InviteRead,
-    MemberRead,
+    InviteResponse,
+    MemberResponse,
     MemberUpdate,
     WorkspaceCreate,
-    WorkspaceRead,
+    WorkspaceResponse,
     WorkspaceUpdate,
 )
 
@@ -35,7 +35,7 @@ INVITE_SEND_PER_USER = Limit("invite-send:user", 20, timedelta(hours=1))
 
 
 @router.get("/")
-async def list_workspaces(session: SessionDep, user: VerifiedUserDep) -> list[WorkspaceRead]:
+async def list_workspaces(session: SessionDep, user: VerifiedUserDep) -> list[WorkspaceResponse]:
     """Every workspace the caller belongs to, oldest first."""
     members = await session.scalars(service.workspaces_query(user))
     return [service.workspace_read(m.workspace, m.role) for m in members]
@@ -44,7 +44,7 @@ async def list_workspaces(session: SessionDep, user: VerifiedUserDep) -> list[Wo
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_workspace(
     body: WorkspaceCreate, session: SessionDep, user: VerifiedUserDep
-) -> WorkspaceRead:
+) -> WorkspaceResponse:
     """The caller becomes its owner. Starts in onboarding; see `/onboarding/complete`."""
     member = service.create_workspace(session, body.name, user)
     await session.commit()
@@ -52,21 +52,23 @@ async def create_workspace(
 
 
 @scoped.get("")
-async def read_workspace(membership: CurrentMembership) -> WorkspaceRead:
+async def read_workspace(membership: CurrentMembership) -> WorkspaceResponse:
     return service.membership_read(membership)
 
 
 @scoped.patch("")
 async def update_workspace(
     body: WorkspaceUpdate, membership: CanManageWorkspace, session: SessionDep
-) -> WorkspaceRead:
+) -> WorkspaceResponse:
     membership.workspace.name = body.name
     await session.commit()
     return service.membership_read(membership)
 
 
 @scoped.post("/onboarding/complete")
-async def complete_onboarding(membership: CanManageWorkspace, session: SessionDep) -> WorkspaceRead:
+async def complete_onboarding(
+    membership: CanManageWorkspace, session: SessionDep
+) -> WorkspaceResponse:
     """Sets `onboarded_at`. Idempotent."""
     await service.complete_onboarding(session, membership.workspace)
     return service.membership_read(membership)
@@ -91,7 +93,7 @@ async def leave_workspace(membership: CurrentMembership, session: SessionDep) ->
 
 
 @scoped.get("/members")
-async def list_members(membership: CanReadMembers, session: SessionDep) -> list[MemberRead]:
+async def list_members(membership: CanReadMembers, session: SessionDep) -> list[MemberResponse]:
     """Longest-standing first."""
     members = await session.scalars(service.members_query(membership))
     return [service.member_read(m) for m in members]
@@ -100,7 +102,7 @@ async def list_members(membership: CanReadMembers, session: SessionDep) -> list[
 @scoped.patch("/members/{member_id}")
 async def update_member(
     member_id: UUID, body: MemberUpdate, membership: CanManageMembers, session: SessionDep
-) -> MemberRead:
+) -> MemberResponse:
     """Change a role. The caller must outrank both the current and the new role (owners
     outrank everyone), and the last owner cannot be demoted."""
     member = await service.get_member(session, membership, member_id)
@@ -119,7 +121,7 @@ async def remove_member(
 
 
 @scoped.get("/invites")
-async def list_invites(membership: CanManageMembers, session: SessionDep) -> list[InviteRead]:
+async def list_invites(membership: CanManageMembers, session: SessionDep) -> list[InviteResponse]:
     """Pending and declined (`declined_at` set); not accepted, revoked, or expired."""
     invites = await session.scalars(service.invites_query(membership))
     return [service.invite_read(i) for i in invites]
@@ -132,7 +134,7 @@ async def create_invite(
     session: SessionDep,
     settings: SettingsDep,
     limiter: LimiterDep,
-) -> InviteRead:
+) -> InviteResponse:
     """Email a link that grants `role`. One pending invitation per address; 409 if the
     address is already a member or already invited."""
     await limiter.hit(INVITE_SEND_PER_USER, str(membership.user.id))
@@ -149,7 +151,7 @@ async def resend_invite(
     session: SessionDep,
     settings: SettingsDep,
     limiter: LimiterDep,
-) -> InviteRead:
+) -> InviteResponse:
     """Email the invitation again with a fresh link; the previous one stops working
     and the expiry starts over. Counts against the same limit as sending one."""
     invite = await service.get_pending_invite(session, membership, invite_id)

@@ -9,7 +9,7 @@ from alloy_server.crm.companies.schemas import CompanyRef
 from alloy_server.crm.contacts.models import ActivityType, ContactStatus
 from alloy_server.crm.models import RowSource
 from alloy_server.crm.pagination import Page, SortOrder
-from alloy_server.crm.schemas import Name, Notes, NotNull, Phone, ReadModel, Short, UserRef
+from alloy_server.crm.schemas import Name, Notes, NotNull, Phone, ResponseModel, Short, UserRef
 
 
 class ContactCreate(BaseModel):
@@ -32,12 +32,12 @@ class ContactUpdate(BaseModel):
     last_contacted_at: AwareDatetime | None = None
 
 
-class ContactRef(ReadModel):
+class ContactRef(ResponseModel):
     id: UUID
     name: str
 
 
-class ContactRead(ContactRef):
+class ContactResponse(ContactRef):
     email: str | None
     phone: str | None
     job_title: str | None
@@ -57,7 +57,7 @@ class ActivityCreate(BaseModel):
     notes: Notes | None = None
 
 
-class ActivityRead(ReadModel):
+class ActivityResponse(ResponseModel):
     id: UUID
     contact_id: UUID
     type: ActivityType

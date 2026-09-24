@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from alloy_server.crm.schemas import ContentType, Filename, ReadModel, UserRef
+from alloy_server.crm.schemas import ContentType, Filename, ResponseModel, UserRef
 
 
 class AttachmentCreate(BaseModel):
@@ -15,7 +15,7 @@ class AttachmentCreate(BaseModel):
     size: int = Field(ge=1, description="Bytes.")
 
 
-class AttachmentRead(ReadModel):
+class AttachmentResponse(ResponseModel):
     id: UUID
     contact_id: UUID | None
     company_id: UUID | None
@@ -32,6 +32,6 @@ class AttachmentUpload(BaseModel):
     and `size` given at creation (the URL accepts nothing else), then
     `POST .../attachments/{id}/complete`."""
 
-    attachment: AttachmentRead
+    attachment: AttachmentResponse
     upload_url: str
     expires_at: datetime

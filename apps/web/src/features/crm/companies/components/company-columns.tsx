@@ -1,6 +1,6 @@
 "use client";
 
-import type { CompanyRead } from "@alloy/api-client";
+import type { CompanyResponse } from "@alloy/api-client";
 import { ExternalLinkIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 
@@ -15,7 +15,7 @@ import {
 import { formatDate } from "@/lib/formatting/dates";
 import type { WorkspacePaths } from "@/lib/routes";
 
-const column = createDataTableColumnHelper<CompanyRead>();
+const column = createDataTableColumnHelper<CompanyResponse>();
 
 /** "acme.test" for "https://acme.test/path". */
 export function websiteLabel(url: string): string {
@@ -34,7 +34,7 @@ export function companyColumns({
   timeZone: string;
   paths: WorkspacePaths;
   /** Null hides the row actions (read-only roles). */
-  onDelete: ((company: CompanyRead) => void) | null;
+  onDelete: ((company: CompanyResponse) => void) | null;
 }) {
   const actionsColumn = column.display({
     id: "actions",

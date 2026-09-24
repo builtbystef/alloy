@@ -1,4 +1,4 @@
-import type { ImportKind, ImportRead } from "@alloy/api-client";
+import type { ImportKind, ImportResponse } from "@alloy/api-client";
 
 import { browserApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/errors";
@@ -17,7 +17,7 @@ export async function uploadImport(
   kind: ImportKind,
   file: File,
   onProgress: (fraction: number) => void,
-): Promise<ImportRead> {
+): Promise<ImportResponse> {
   const ticket = unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/imports/", {
       params: { path: { workspace_id: ws } },

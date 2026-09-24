@@ -1,4 +1,4 @@
-import type { TaskRead } from "@alloy/api-client";
+import type { TaskResponse } from "@alloy/api-client";
 
 import type { EntityOption } from "@/components/shared/entity-combobox";
 
@@ -41,7 +41,7 @@ export function splitLinkKey(key: LinkKey): [LinkKind, string] {
 }
 
 /** The picker option for a task's link, from the record the edit form holds. */
-export function taskLinkOption(task: TaskRead): EntityOption | null {
+export function taskLinkOption(task: TaskResponse): EntityOption | null {
   // `company` is set for a contact task too (it is the contact's), so contact first.
   if (task.contact) return { id: `contact:${task.contact.id}`, name: task.contact.name };
   if (task.company) return { id: `company:${task.company.id}`, name: task.company.name };

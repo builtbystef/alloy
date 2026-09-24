@@ -1,6 +1,6 @@
 "use client";
 
-import type { ImportRead } from "@alloy/api-client";
+import type { ImportResponse } from "@alloy/api-client";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ import { useWorkspace } from "@/features/workspaces/workspace-provider";
 import { importColumns } from "./import-columns";
 import { ImportDetailsDialog } from "./import-details-dialog";
 
-function outcome(record: ImportRead): string {
+function outcome(record: ImportResponse): string {
   const what = importKindLabels[record.kind].toLowerCase();
   if (record.status === "failed") return `${record.filename} failed: ${record.error}`;
   const parts = [`${record.created_count} ${what} created`];
@@ -34,11 +34,11 @@ export function ImportsTable({ timeZone }: { timeZone: string }) {
   const { id: workspaceId } = useWorkspace();
   const [page, setPage] = useState(1);
   const { data: imports } = useSuspenseQuery(importListQuery(browserApi, workspaceId, page));
-  const [selected, setSelected] = useState<ImportRead | null>(null);
+  const [selected, setSelected] = useState<ImportResponse | null>(null);
   const watched = useRef(new Set<string>());
 
   useEffect(() => {
-    const finished: ImportRead[] = [];
+    const finished: ImportResponse[] = [];
     for (const record of imports.items) {
       if (isImportActive(record)) watched.current.add(record.id);
       else if (watched.current.delete(record.id)) finished.push(record);
@@ -52,7 +52,7 @@ export function ImportsTable({ timeZone }: { timeZone: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <DataTable<ImportRead>
+      <DataTable<ImportResponse>
         columns={importColumns({ timeZone, onSelect: setSelected })}
         data={imports.items}
         total={imports.total}

@@ -18,7 +18,7 @@ from alloy_server.auth.schemas import (
     PasswordResetRequest,
     ProfileUpdate,
     Signup,
-    UserRead,
+    UserResponse,
 )
 from alloy_server.config import SettingsDep
 from alloy_server.core.exceptions import ConflictError
@@ -45,10 +45,10 @@ CHANGE_EMAIL_PER_USER = Limit("change-email:user", 3, timedelta(hours=1))
 
 async def log_in(
     session: AsyncSession, settings: Settings, user: User, response: Response
-) -> UserRead:
+) -> UserResponse:
     token = await service.start_session(session, settings, user)
     set_session_cookie(response, token, settings.session_ttl)
-    return UserRead.model_validate(user)
+    return UserResponse.model_validate(user)
 
 
 @router.post(
@@ -61,7 +61,7 @@ async def signup(
     session: SessionDep,
     settings: SettingsDep,
     response: Response,
-) -> UserRead:
+) -> UserResponse:
     """Create an account, log in, and email a verification link. Until it is
     followed, the account can only use `/auth/*`. No workspace: onboarding creates
     one, or an invitation is accepted.
@@ -79,12 +79,12 @@ async def signup(
 @router.post("/verify-email", dependencies=[Depends(per_ip(TOKEN_PER_IP))])
 async def verify_email(
     body: EmailVerification, session: SessionDep, settings: SettingsDep
-) -> UserRead:
+) -> UserResponse:
     """Follow the emailed link. No login needed: the link may be opened anywhere.
 
     404 for an unknown or already used token; 410 for an expired one.
     """
-    return UserRead.model_validate(await service.verify_email(session, settings, body.token))
+    return UserResponse.model_validate(await service.verify_email(session, settings, body.token))
 
 
 @router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
@@ -106,7 +106,7 @@ async def login(
     settings: SettingsDep,
     limiter: LimiterDep,
     response: Response,
-) -> UserRead:
+) -> UserResponse:
     """The email counter counts failures only, and a success clears it. Both limits
     run before the password hash, which is slow by design."""
     email = credentials.email.lower()
@@ -177,7 +177,7 @@ async def forgot_password(
 @router.post("/reset-password", dependencies=[Depends(per_ip(TOKEN_PER_IP))])
 async def reset_password(
     body: PasswordReset, session: SessionDep, settings: SettingsDep, response: Response
-) -> UserRead:
+) -> UserResponse:
     """Follow the emailed link: set the password and log in here.
 
     Every existing session is revoked, since whoever asked may have lost control of
@@ -224,14 +224,14 @@ async def cancel_email_change(principal: CurrentPrincipal, session: SessionDep) 
 @router.post("/confirm-email", dependencies=[Depends(per_ip(TOKEN_PER_IP))])
 async def confirm_email(
     body: EmailChangeConfirmation, session: SessionDep, settings: SettingsDep
-) -> UserRead:
+) -> UserResponse:
     """Follow the link sent to the new address. No login needed: it may be opened
     anywhere. Reaching the new inbox proves it, so the account counts as
     verified. 404 for an unknown or used token; 410 for an expired one; 409 if
     the address was registered meanwhile.
     """
     user = await service.confirm_email_change(session, settings, body.token)
-    return UserRead.model_validate(user)
+    return UserResponse.model_validate(user)
 
 
 @router.post("/delete-account", status_code=status.HTTP_204_NO_CONTENT)
@@ -254,13 +254,13 @@ async def delete_account(
 
 
 @router.get("/me")
-async def read_me(user: CurrentUserDep) -> UserRead:
-    return UserRead.model_validate(user)
+async def read_me(user: CurrentUserDep) -> UserResponse:
+    return UserResponse.model_validate(user)
 
 
 @router.patch("/me")
-async def update_me(body: ProfileUpdate, user: CurrentUserDep, session: SessionDep) -> UserRead:
+async def update_me(body: ProfileUpdate, user: CurrentUserDep, session: SessionDep) -> UserResponse:
     """Change what the user is called. The email has its own flow: `/change-email`."""
     user.name = body.name
     await session.commit()
-    return UserRead.model_validate(user)
+    return UserResponse.model_validate(user)

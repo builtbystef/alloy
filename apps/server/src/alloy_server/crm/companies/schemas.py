@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from alloy_server.crm.models import RowSource
 from alloy_server.crm.pagination import Page, SortOrder
-from alloy_server.crm.schemas import Industry, Name, Notes, NotNull, ReadModel, UserRef, Website
+from alloy_server.crm.schemas import Industry, Name, Notes, NotNull, ResponseModel, UserRef, Website
 
 
 class CompanyCreate(BaseModel):
@@ -24,12 +24,12 @@ class CompanyUpdate(BaseModel):
     notes: Notes | None = None
 
 
-class CompanyRef(ReadModel):
+class CompanyRef(ResponseModel):
     id: UUID
     name: str
 
 
-class CompanyRead(CompanyRef):
+class CompanyResponse(CompanyRef):
     website: str | None
     industry: str | None
     notes: str | None

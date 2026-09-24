@@ -1,6 +1,6 @@
 "use client";
 
-import type { ContactRead, ContactStatus } from "@alloy/api-client";
+import type { ContactResponse, ContactStatus } from "@alloy/api-client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
@@ -81,7 +81,7 @@ export function ContactsTable({
           {contacts.total} {contacts.total === 1 ? "contact" : "contacts"}
         </span>
       </div>
-      <DataTable<ContactRead>
+      <DataTable<ContactResponse>
         columns={contactColumns({ timeZone, paths, onDelete: canWrite ? confirmDelete : null })}
         data={contacts.items}
         total={contacts.total}

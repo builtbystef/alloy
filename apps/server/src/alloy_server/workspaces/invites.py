@@ -7,7 +7,7 @@ from alloy_server.auth.deps import CurrentUserDep, VerifiedUserDep
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import TOKEN_PER_IP, Limit, LimiterDep, per_ip
 from alloy_server.workspaces import service
-from alloy_server.workspaces.schemas import InvitePreview, PendingInviteRead, WorkspaceRead
+from alloy_server.workspaces.schemas import InvitePreview, PendingInviteResponse, WorkspaceResponse
 
 router = APIRouter(prefix="/invites", tags=["invites"])
 
@@ -23,7 +23,7 @@ INVITE_ACCEPT_PER_USER = Limit("invite-accept:user", 10, timedelta(minutes=1))
 @router.get("/pending")
 async def list_pending_invites(
     session: SessionDep, user: VerifiedUserDep
-) -> list[PendingInviteRead]:
+) -> list[PendingInviteResponse]:
     """Oldest first."""
     invites = await session.scalars(service.pending_invites_for(user.email))
     return [service.pending_invite_read(i) for i in invites]
@@ -32,7 +32,7 @@ async def list_pending_invites(
 @router.post("/pending/{invite_id}/accept")
 async def accept_pending_invite(
     invite_id: UUID, session: SessionDep, user: VerifiedUserDep, limiter: LimiterDep
-) -> WorkspaceRead:
+) -> WorkspaceResponse:
     """404 unless pending and addressed to the caller."""
     await limiter.hit(INVITE_ACCEPT_PER_USER, str(user.id))
     invite = await service.get_pending_invite_for(session, user, invite_id)
@@ -70,7 +70,7 @@ async def read_invite(token: str, session: SessionDep) -> InvitePreview:
 @router.post("/{token}/accept")
 async def accept_invite(
     token: str, session: SessionDep, user: CurrentUserDep, limiter: LimiterDep
-) -> WorkspaceRead:
+) -> WorkspaceResponse:
     """Take the seat. The logged-in account's email must be the invited one.
 
     The token reached the invitee's inbox, so accepting also proves the account

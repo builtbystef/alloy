@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConversationRead } from "@alloy/api-client";
+import type { ConversationResponse } from "@alloy/api-client";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Trash2Icon } from "lucide-react";
 import Link from "next/link";
@@ -27,7 +27,7 @@ export function ConversationList({ timeZone }: { timeZone: string }) {
   const { id: workspaceId, paths } = useWorkspace();
   const { conversationId } = useParams<{ conversationId?: string }>();
   const { data: conversations } = useSuspenseQuery(conversationListQuery(browserApi, workspaceId));
-  const [target, setTarget] = useState<ConversationRead | null>(null);
+  const [target, setTarget] = useState<ConversationResponse | null>(null);
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteConversation(workspaceId, id),

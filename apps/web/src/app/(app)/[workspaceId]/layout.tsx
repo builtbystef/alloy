@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import type { WorkspaceRead } from "@alloy/api-client";
+import type { WorkspaceResponse } from "@alloy/api-client";
 import { Suspense, type ReactNode } from "react";
 
 import { RememberWorkspace } from "@/features/workspaces/components/remember-workspace";
@@ -53,7 +53,7 @@ export default function WorkspaceLayout({
   );
 }
 
-async function OnboardingGate({ workspace }: { workspace: Promise<WorkspaceRead> }) {
+async function OnboardingGate({ workspace }: { workspace: Promise<WorkspaceResponse> }) {
   const current = await workspace;
   if (current.onboarded_at === null && current.permissions.includes("workspace:manage")) {
     redirect(workspacePaths(current.id).onboarding);

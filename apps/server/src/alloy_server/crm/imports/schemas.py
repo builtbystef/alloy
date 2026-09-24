@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from alloy_server.crm.imports.models import ImportKind, ImportStatus
-from alloy_server.crm.schemas import Filename, ReadModel, UserRef
+from alloy_server.crm.schemas import Filename, ResponseModel, UserRef
 
 
 class ImportCreate(BaseModel):
@@ -20,7 +20,7 @@ class RowError(BaseModel):
     message: str
 
 
-class ImportRead(ReadModel):
+class ImportResponse(ResponseModel):
     id: UUID
     kind: ImportKind
     status: ImportStatus
@@ -42,7 +42,7 @@ class ImportUpload(BaseModel):
     """Step one of an import: `PUT` the CSV to `upload_url` as `text/csv` with the
     `size` given at creation, then `POST .../imports/{id}/start`."""
 
-    import_: ImportRead = Field(alias="import")
+    import_: ImportResponse = Field(alias="import")
     upload_url: str
     expires_at: datetime
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaskRead, TaskStatus } from "@alloy/api-client";
+import type { TaskResponse, TaskStatus } from "@alloy/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -17,17 +17,17 @@ import { useWorkspace } from "@/features/workspaces/workspace-provider";
  * confirming. Creating and editing are pages. Render `dialog` once near the list.
  */
 export function useTaskMutations({ onDeleted }: { onDeleted?: () => void } = {}): {
-  setStatus: (task: TaskRead, status: TaskStatus) => void;
+  setStatus: (task: TaskResponse, status: TaskStatus) => void;
   pendingStatusId: string | null;
-  confirmDelete: (task: TaskRead) => void;
+  confirmDelete: (task: TaskResponse) => void;
   dialog: ReactNode;
 } {
   const queryClient = useQueryClient();
   const { id: workspaceId } = useWorkspace();
-  const [deleting, setDeleting] = useState<TaskRead | null>(null);
+  const [deleting, setDeleting] = useState<TaskResponse | null>(null);
 
   const status = useMutation({
-    mutationFn: async ({ task, status }: { task: TaskRead; status: TaskStatus }) =>
+    mutationFn: async ({ task, status }: { task: TaskResponse; status: TaskStatus }) =>
       updateTask(workspaceId, task.id, { status }),
     onSuccess: async (saved) => {
       if (saved.status === "done") toast.success("Task completed");

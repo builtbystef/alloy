@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from alloy_server.core.exceptions import ConflictError, PayloadTooLargeError
 from alloy_server.crm.attachments.models import Attachment
-from alloy_server.crm.attachments.schemas import AttachmentRead, AttachmentUpload
+from alloy_server.crm.attachments.schemas import AttachmentResponse, AttachmentUpload
 from alloy_server.crm.companies.models import Company
 from alloy_server.crm.contacts.models import Contact
 from alloy_server.crm.ownership import fetch_owned, not_found
@@ -102,7 +102,7 @@ async def start_upload(
     await session.commit()
     await session.refresh(attachment, ["uploaded_by"])
     return AttachmentUpload(
-        attachment=AttachmentRead.model_validate(attachment),
+        attachment=AttachmentResponse.model_validate(attachment),
         upload_url=await storage.upload_url(attachment),
         expires_at=utcnow() + storage.settings.storage_url_ttl,
     )

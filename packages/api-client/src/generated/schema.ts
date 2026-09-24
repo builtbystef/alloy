@@ -1204,8 +1204,8 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
-        /** ActivityRead */
-        ActivityRead: {
+        /** ActivityResponse */
+        ActivityResponse: {
             /**
              * Id
              * Format: uuid
@@ -1250,8 +1250,8 @@ export interface components {
              */
             size: number;
         };
-        /** AttachmentRead */
-        AttachmentRead: {
+        /** AttachmentResponse */
+        AttachmentResponse: {
             /**
              * Id
              * Format: uuid
@@ -1283,7 +1283,7 @@ export interface components {
          *     `POST .../attachments/{id}/complete`.
          */
         AttachmentUpload: {
-            attachment: components["schemas"]["AttachmentRead"];
+            attachment: components["schemas"]["AttachmentResponse"];
             /** Upload Url */
             upload_url: string;
             /**
@@ -1332,8 +1332,8 @@ export interface components {
              */
             size: number;
         };
-        /** ChatUploadRead */
-        ChatUploadRead: {
+        /** ChatUploadResponse */
+        ChatUploadResponse: {
             /**
              * Id
              * Format: uuid
@@ -1366,7 +1366,7 @@ export interface components {
          *     `Content-Type` and `size` given at creation, then `POST .../uploads/{id}/complete`.
          */
         ChatUploadTicket: {
-            upload: components["schemas"]["ChatUploadRead"];
+            upload: components["schemas"]["ChatUploadResponse"];
             /** Upload Url */
             upload_url: string;
             /**
@@ -1386,8 +1386,18 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
-        /** CompanyRead */
-        CompanyRead: {
+        /** CompanyRef */
+        CompanyRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** CompanyResponse */
+        CompanyResponse: {
             /**
              * Id
              * Format: uuid
@@ -1414,16 +1424,6 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
-        };
-        /** CompanyRef */
-        CompanyRef: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Name */
-            name: string;
         };
         /**
          * CompanySort
@@ -1458,8 +1458,18 @@ export interface components {
             /** Last Contacted At */
             last_contacted_at?: string | null;
         };
-        /** ContactRead */
-        ContactRead: {
+        /** ContactRef */
+        ContactRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** ContactResponse */
+        ContactResponse: {
             /**
              * Id
              * Format: uuid
@@ -1491,16 +1501,6 @@ export interface components {
              */
             updated_at: string;
         };
-        /** ContactRef */
-        ContactRef: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Name */
-            name: string;
-        };
         /**
          * ContactSort
          * @enum {string}
@@ -1527,8 +1527,8 @@ export interface components {
             /** Last Contacted At */
             last_contacted_at?: string | null;
         };
-        /** ConversationDetail */
-        ConversationDetail: {
+        /** ConversationDetailResponse */
+        ConversationDetailResponse: {
             /**
              * Id
              * Format: uuid
@@ -1557,8 +1557,8 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
-        /** ConversationRead */
-        ConversationRead: {
+        /** ConversationResponse */
+        ConversationResponse: {
             /**
              * Id
              * Format: uuid
@@ -1590,8 +1590,8 @@ export interface components {
             /** Password */
             password: string;
         };
-        /** Dashboard */
-        Dashboard: {
+        /** DashboardResponse */
+        DashboardResponse: {
             /** Total Contacts */
             total_contacts: number;
             /** Tasks Due Today */
@@ -1599,9 +1599,9 @@ export interface components {
             /** Overdue Tasks */
             overdue_tasks: number;
             /** Recently Contacted */
-            recently_contacted: components["schemas"]["ContactRead"][];
+            recently_contacted: components["schemas"]["ContactResponse"][];
             /** Not Recently Contacted */
-            not_recently_contacted: components["schemas"]["ContactRead"][];
+            not_recently_contacted: components["schemas"]["ContactResponse"][];
         };
         /**
          * DueFilter
@@ -1660,8 +1660,8 @@ export interface components {
          * @enum {string}
          */
         ImportKind: "contacts" | "companies";
-        /** ImportRead */
-        ImportRead: {
+        /** ImportResponse */
+        ImportResponse: {
             /**
              * Id
              * Format: uuid
@@ -1712,7 +1712,7 @@ export interface components {
          *     `size` given at creation, then `POST .../imports/{id}/start`.
          */
         ImportUpload: {
-            import: components["schemas"]["ImportRead"];
+            import: components["schemas"]["ImportResponse"];
             /** Upload Url */
             upload_url: string;
             /**
@@ -1750,10 +1750,10 @@ export interface components {
             expires_at: string;
         };
         /**
-         * InviteRead
+         * InviteResponse
          * @description As the workspace's admins see it: pending, or declined by the invitee.
          */
-        InviteRead: {
+        InviteResponse: {
             /**
              * Id
              * Format: uuid
@@ -1777,8 +1777,8 @@ export interface components {
             /** Declined At */
             declined_at: string | null;
         };
-        /** MemberRead */
-        MemberRead: {
+        /** MemberResponse */
+        MemberResponse: {
             /**
              * Id
              * Format: uuid
@@ -1802,10 +1802,10 @@ export interface components {
         MemberUpdate: {
             role: components["schemas"]["WorkspaceRole"];
         };
-        /** ActivityPage */
-        PageOf_ActivityRead_: {
+        /** ActivityResponsePage */
+        PageOf_ActivityResponse_: {
             /** Items */
-            items: components["schemas"]["ActivityRead"][];
+            items: components["schemas"]["ActivityResponse"][];
             /**
              * Total
              * @description Rows matching the filters, across every page.
@@ -1816,10 +1816,10 @@ export interface components {
             /** Offset */
             offset: number;
         };
-        /** AttachmentPage */
-        PageOf_AttachmentRead_: {
+        /** AttachmentResponsePage */
+        PageOf_AttachmentResponse_: {
             /** Items */
-            items: components["schemas"]["AttachmentRead"][];
+            items: components["schemas"]["AttachmentResponse"][];
             /**
              * Total
              * @description Rows matching the filters, across every page.
@@ -1830,10 +1830,10 @@ export interface components {
             /** Offset */
             offset: number;
         };
-        /** CompanyPage */
-        PageOf_CompanyRead_: {
+        /** CompanyResponsePage */
+        PageOf_CompanyResponse_: {
             /** Items */
-            items: components["schemas"]["CompanyRead"][];
+            items: components["schemas"]["CompanyResponse"][];
             /**
              * Total
              * @description Rows matching the filters, across every page.
@@ -1844,10 +1844,10 @@ export interface components {
             /** Offset */
             offset: number;
         };
-        /** ContactPage */
-        PageOf_ContactRead_: {
+        /** ContactResponsePage */
+        PageOf_ContactResponse_: {
             /** Items */
-            items: components["schemas"]["ContactRead"][];
+            items: components["schemas"]["ContactResponse"][];
             /**
              * Total
              * @description Rows matching the filters, across every page.
@@ -1858,10 +1858,10 @@ export interface components {
             /** Offset */
             offset: number;
         };
-        /** ImportPage */
-        PageOf_ImportRead_: {
+        /** ImportResponsePage */
+        PageOf_ImportResponse_: {
             /** Items */
-            items: components["schemas"]["ImportRead"][];
+            items: components["schemas"]["ImportResponse"][];
             /**
              * Total
              * @description Rows matching the filters, across every page.
@@ -1872,10 +1872,10 @@ export interface components {
             /** Offset */
             offset: number;
         };
-        /** TaskPage */
-        PageOf_TaskRead_: {
+        /** TaskResponsePage */
+        PageOf_TaskResponse_: {
             /** Items */
-            items: components["schemas"]["TaskRead"][];
+            items: components["schemas"]["TaskResponse"][];
             /**
              * Total
              * @description Rows matching the filters, across every page.
@@ -1912,11 +1912,11 @@ export interface components {
             email: string;
         };
         /**
-         * PendingInviteRead
+         * PendingInviteResponse
          * @description One of the caller's own, by id: the token is not stored, so this is how the
          *     app accepts or declines one without the link.
          */
-        PendingInviteRead: {
+        PendingInviteResponse: {
             /** Workspace Name */
             workspace_name: string;
             /** Email */
@@ -2002,8 +2002,8 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
-        /** TaskRead */
-        TaskRead: {
+        /** TaskResponse */
+        TaskResponse: {
             /**
              * Id
              * Format: uuid
@@ -2066,8 +2066,18 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
-        /** UserRead */
-        UserRead: {
+        /** UserRef */
+        UserRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+        };
+        /** UserResponse */
+        UserResponse: {
             /**
              * Id
              * Format: uuid
@@ -2086,16 +2096,6 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
-        };
-        /** UserRef */
-        UserRef: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Email */
-            email: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -2116,10 +2116,10 @@ export interface components {
             name: string;
         };
         /**
-         * WorkspaceRead
+         * WorkspaceResponse
          * @description A workspace as seen by one member: their role and what it allows come along.
          */
-        WorkspaceRead: {
+        WorkspaceResponse: {
             /**
              * Id
              * Format: uuid
@@ -2163,30 +2163,30 @@ export interface components {
 }
 export type AccountDeletion = components['schemas']['AccountDeletion'];
 export type ActivityCreate = components['schemas']['ActivityCreate'];
-export type ActivityRead = components['schemas']['ActivityRead'];
+export type ActivityResponse = components['schemas']['ActivityResponse'];
 export type ActivityType = components['schemas']['ActivityType'];
 export type AttachmentCreate = components['schemas']['AttachmentCreate'];
-export type AttachmentRead = components['schemas']['AttachmentRead'];
+export type AttachmentResponse = components['schemas']['AttachmentResponse'];
 export type AttachmentUpload = components['schemas']['AttachmentUpload'];
 export type ChatMessageRequest = components['schemas']['ChatMessageRequest'];
 export type ChatUploadCreate = components['schemas']['ChatUploadCreate'];
-export type ChatUploadRead = components['schemas']['ChatUploadRead'];
+export type ChatUploadResponse = components['schemas']['ChatUploadResponse'];
 export type ChatUploadTicket = components['schemas']['ChatUploadTicket'];
 export type CompanyCreate = components['schemas']['CompanyCreate'];
-export type CompanyRead = components['schemas']['CompanyRead'];
 export type CompanyRef = components['schemas']['CompanyRef'];
+export type CompanyResponse = components['schemas']['CompanyResponse'];
 export type CompanySort = components['schemas']['CompanySort'];
 export type CompanyUpdate = components['schemas']['CompanyUpdate'];
 export type ContactCreate = components['schemas']['ContactCreate'];
-export type ContactRead = components['schemas']['ContactRead'];
 export type ContactRef = components['schemas']['ContactRef'];
+export type ContactResponse = components['schemas']['ContactResponse'];
 export type ContactSort = components['schemas']['ContactSort'];
 export type ContactStatus = components['schemas']['ContactStatus'];
 export type ContactUpdate = components['schemas']['ContactUpdate'];
-export type ConversationDetail = components['schemas']['ConversationDetail'];
-export type ConversationRead = components['schemas']['ConversationRead'];
+export type ConversationDetailResponse = components['schemas']['ConversationDetailResponse'];
+export type ConversationResponse = components['schemas']['ConversationResponse'];
 export type Credentials = components['schemas']['Credentials'];
-export type Dashboard = components['schemas']['Dashboard'];
+export type DashboardResponse = components['schemas']['DashboardResponse'];
 export type DueFilter = components['schemas']['DueFilter'];
 export type EmailChangeConfirmation = components['schemas']['EmailChangeConfirmation'];
 export type EmailChangeRequest = components['schemas']['EmailChangeRequest'];
@@ -2195,24 +2195,24 @@ export type HttpValidationError = components['schemas']['HTTPValidationError'];
 export type Health = components['schemas']['Health'];
 export type ImportCreate = components['schemas']['ImportCreate'];
 export type ImportKind = components['schemas']['ImportKind'];
-export type ImportRead = components['schemas']['ImportRead'];
+export type ImportResponse = components['schemas']['ImportResponse'];
 export type ImportStatus = components['schemas']['ImportStatus'];
 export type ImportUpload = components['schemas']['ImportUpload'];
 export type InviteCreate = components['schemas']['InviteCreate'];
 export type InvitePreview = components['schemas']['InvitePreview'];
-export type InviteRead = components['schemas']['InviteRead'];
-export type MemberRead = components['schemas']['MemberRead'];
+export type InviteResponse = components['schemas']['InviteResponse'];
+export type MemberResponse = components['schemas']['MemberResponse'];
 export type MemberUpdate = components['schemas']['MemberUpdate'];
-export type PageOfActivityRead = components['schemas']['PageOf_ActivityRead_'];
-export type PageOfAttachmentRead = components['schemas']['PageOf_AttachmentRead_'];
-export type PageOfCompanyRead = components['schemas']['PageOf_CompanyRead_'];
-export type PageOfContactRead = components['schemas']['PageOf_ContactRead_'];
-export type PageOfImportRead = components['schemas']['PageOf_ImportRead_'];
-export type PageOfTaskRead = components['schemas']['PageOf_TaskRead_'];
+export type PageOfActivityResponse = components['schemas']['PageOf_ActivityResponse_'];
+export type PageOfAttachmentResponse = components['schemas']['PageOf_AttachmentResponse_'];
+export type PageOfCompanyResponse = components['schemas']['PageOf_CompanyResponse_'];
+export type PageOfContactResponse = components['schemas']['PageOf_ContactResponse_'];
+export type PageOfImportResponse = components['schemas']['PageOf_ImportResponse_'];
+export type PageOfTaskResponse = components['schemas']['PageOf_TaskResponse_'];
 export type PasswordChange = components['schemas']['PasswordChange'];
 export type PasswordReset = components['schemas']['PasswordReset'];
 export type PasswordResetRequest = components['schemas']['PasswordResetRequest'];
-export type PendingInviteRead = components['schemas']['PendingInviteRead'];
+export type PendingInviteResponse = components['schemas']['PendingInviteResponse'];
 export type Permission = components['schemas']['Permission'];
 export type ProfileUpdate = components['schemas']['ProfileUpdate'];
 export type RowError = components['schemas']['RowError'];
@@ -2220,15 +2220,15 @@ export type RowSource = components['schemas']['RowSource'];
 export type Signup = components['schemas']['Signup'];
 export type SortOrder = components['schemas']['SortOrder'];
 export type TaskCreate = components['schemas']['TaskCreate'];
-export type TaskRead = components['schemas']['TaskRead'];
+export type TaskResponse = components['schemas']['TaskResponse'];
 export type TaskSort = components['schemas']['TaskSort'];
 export type TaskStatus = components['schemas']['TaskStatus'];
 export type TaskUpdate = components['schemas']['TaskUpdate'];
-export type UserRead = components['schemas']['UserRead'];
 export type UserRef = components['schemas']['UserRef'];
+export type UserResponse = components['schemas']['UserResponse'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type WorkspaceCreate = components['schemas']['WorkspaceCreate'];
-export type WorkspaceRead = components['schemas']['WorkspaceRead'];
+export type WorkspaceResponse = components['schemas']['WorkspaceResponse'];
 export type WorkspaceRole = components['schemas']['WorkspaceRole'];
 export type WorkspaceUpdate = components['schemas']['WorkspaceUpdate'];
 export type $defs = Record<string, never>;
@@ -2312,7 +2312,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRead"];
+                    "application/json": components["schemas"]["UserResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2345,7 +2345,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRead"];
+                    "application/json": components["schemas"]["UserResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2396,7 +2396,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRead"];
+                    "application/json": components["schemas"]["UserResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2527,7 +2527,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRead"];
+                    "application/json": components["schemas"]["UserResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2609,7 +2609,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRead"];
+                    "application/json": components["schemas"]["UserResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2669,7 +2669,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRead"];
+                    "application/json": components["schemas"]["UserResponse"];
                 };
             };
         };
@@ -2693,7 +2693,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRead"];
+                    "application/json": components["schemas"]["UserResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2722,7 +2722,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WorkspaceRead"][];
+                    "application/json": components["schemas"]["WorkspaceResponse"][];
                 };
             };
         };
@@ -2746,7 +2746,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WorkspaceRead"];
+                    "application/json": components["schemas"]["WorkspaceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2777,7 +2777,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WorkspaceRead"];
+                    "application/json": components["schemas"]["WorkspaceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2841,7 +2841,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WorkspaceRead"];
+                    "application/json": components["schemas"]["WorkspaceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2872,7 +2872,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WorkspaceRead"];
+                    "application/json": components["schemas"]["WorkspaceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2932,7 +2932,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MemberRead"][];
+                    "application/json": components["schemas"]["MemberResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -2998,7 +2998,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MemberRead"];
+                    "application/json": components["schemas"]["MemberResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3029,7 +3029,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InviteRead"][];
+                    "application/json": components["schemas"]["InviteResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -3064,7 +3064,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InviteRead"];
+                    "application/json": components["schemas"]["InviteResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3096,7 +3096,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InviteRead"];
+                    "application/json": components["schemas"]["InviteResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3155,7 +3155,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PendingInviteRead"][];
+                    "application/json": components["schemas"]["PendingInviteResponse"][];
                 };
             };
         };
@@ -3177,7 +3177,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WorkspaceRead"];
+                    "application/json": components["schemas"]["WorkspaceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3268,7 +3268,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WorkspaceRead"];
+                    "application/json": components["schemas"]["WorkspaceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3306,7 +3306,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOf_CompanyRead_"];
+                    "application/json": components["schemas"]["PageOf_CompanyResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3341,7 +3341,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CompanyRead"];
+                    "application/json": components["schemas"]["CompanyResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3373,7 +3373,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CompanyRead"];
+                    "application/json": components["schemas"]["CompanyResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3439,7 +3439,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CompanyRead"];
+                    "application/json": components["schemas"]["CompanyResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3474,7 +3474,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOf_ContactRead_"];
+                    "application/json": components["schemas"]["PageOf_ContactResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3514,7 +3514,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOf_ContactRead_"];
+                    "application/json": components["schemas"]["PageOf_ContactResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3549,7 +3549,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContactRead"];
+                    "application/json": components["schemas"]["ContactResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3581,7 +3581,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContactRead"];
+                    "application/json": components["schemas"]["ContactResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3647,7 +3647,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContactRead"];
+                    "application/json": components["schemas"]["ContactResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3682,7 +3682,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOf_ActivityRead_"];
+                    "application/json": components["schemas"]["PageOf_ActivityResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3718,7 +3718,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ActivityRead"];
+                    "application/json": components["schemas"]["ActivityResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3761,7 +3761,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOf_TaskRead_"];
+                    "application/json": components["schemas"]["PageOf_TaskResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3796,7 +3796,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskRead"];
+                    "application/json": components["schemas"]["TaskResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3828,7 +3828,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskRead"];
+                    "application/json": components["schemas"]["TaskResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3894,7 +3894,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskRead"];
+                    "application/json": components["schemas"]["TaskResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3932,7 +3932,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Dashboard"];
+                    "application/json": components["schemas"]["DashboardResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3967,7 +3967,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOf_AttachmentRead_"];
+                    "application/json": components["schemas"]["PageOf_AttachmentResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -4038,7 +4038,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOf_AttachmentRead_"];
+                    "application/json": components["schemas"]["PageOf_AttachmentResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -4106,7 +4106,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttachmentRead"];
+                    "application/json": components["schemas"]["AttachmentResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4202,7 +4202,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOf_ImportRead_"];
+                    "application/json": components["schemas"]["PageOf_ImportResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -4269,7 +4269,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportRead"];
+                    "application/json": components["schemas"]["ImportResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4301,7 +4301,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportRead"];
+                    "application/json": components["schemas"]["ImportResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4369,7 +4369,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChatUploadRead"];
+                    "application/json": components["schemas"]["ChatUploadResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4430,7 +4430,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConversationRead"][];
+                    "application/json": components["schemas"]["ConversationResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -4461,7 +4461,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConversationRead"];
+                    "application/json": components["schemas"]["ConversationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4493,7 +4493,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConversationDetail"];
+                    "application/json": components["schemas"]["ConversationDetailResponse"];
                 };
             };
             /** @description Validation Error */

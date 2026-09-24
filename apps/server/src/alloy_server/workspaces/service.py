@@ -18,10 +18,10 @@ from alloy_server.workspaces.models import (
 )
 from alloy_server.workspaces.permissions import can_manage_role, permissions_for
 from alloy_server.workspaces.schemas import (
-    InviteRead,
-    MemberRead,
-    PendingInviteRead,
-    WorkspaceRead,
+    InviteResponse,
+    MemberResponse,
+    PendingInviteResponse,
+    WorkspaceResponse,
 )
 
 if TYPE_CHECKING:
@@ -41,8 +41,8 @@ WITH_INVITER = selectinload(WorkspaceInvite.invited_by)
 # --- Read models -------------------------------------------------------------------
 
 
-def workspace_read(workspace: Workspace, role: WorkspaceRole) -> WorkspaceRead:
-    return WorkspaceRead(
+def workspace_read(workspace: Workspace, role: WorkspaceRole) -> WorkspaceResponse:
+    return WorkspaceResponse(
         id=workspace.id,
         name=workspace.name,
         created_at=workspace.created_at,
@@ -53,13 +53,13 @@ def workspace_read(workspace: Workspace, role: WorkspaceRole) -> WorkspaceRead:
     )
 
 
-def membership_read(membership: Membership) -> WorkspaceRead:
+def membership_read(membership: Membership) -> WorkspaceResponse:
     return workspace_read(membership.workspace, membership.role)
 
 
-def member_read(member: WorkspaceMember) -> MemberRead:
+def member_read(member: WorkspaceMember) -> MemberResponse:
     """Needs `member.user` loaded."""
-    return MemberRead(
+    return MemberResponse(
         id=member.id,
         user_id=member.user_id,
         email=member.user.email,
@@ -68,9 +68,9 @@ def member_read(member: WorkspaceMember) -> MemberRead:
     )
 
 
-def invite_read(invite: WorkspaceInvite) -> InviteRead:
+def invite_read(invite: WorkspaceInvite) -> InviteResponse:
     """Needs `invite.invited_by` loaded."""
-    return InviteRead(
+    return InviteResponse(
         id=invite.id,
         email=invite.email,
         role=invite.role,
@@ -81,9 +81,9 @@ def invite_read(invite: WorkspaceInvite) -> InviteRead:
     )
 
 
-def pending_invite_read(invite: WorkspaceInvite) -> PendingInviteRead:
+def pending_invite_read(invite: WorkspaceInvite) -> PendingInviteResponse:
     """Needs `invite.workspace` and `invite.invited_by` loaded."""
-    return PendingInviteRead(
+    return PendingInviteResponse(
         id=invite.id,
         workspace_name=invite.workspace.name,
         email=invite.email,

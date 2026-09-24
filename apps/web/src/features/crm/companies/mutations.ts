@@ -1,9 +1,9 @@
-import type { CompanyCreate, CompanyRead, CompanyUpdate } from "@alloy/api-client";
+import type { CompanyCreate, CompanyResponse, CompanyUpdate } from "@alloy/api-client";
 
 import { browserApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/errors";
 
-export async function createCompany(ws: string, body: CompanyCreate): Promise<CompanyRead> {
+export async function createCompany(ws: string, body: CompanyCreate): Promise<CompanyResponse> {
   return unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/companies/", {
       params: { path: { workspace_id: ws } },
@@ -16,7 +16,7 @@ export async function updateCompany(
   ws: string,
   id: string,
   body: CompanyUpdate,
-): Promise<CompanyRead> {
+): Promise<CompanyResponse> {
   return unwrap(
     await browserApi.PATCH("/workspaces/{workspace_id}/companies/{company_id}", {
       params: { path: { workspace_id: ws, company_id: id } },

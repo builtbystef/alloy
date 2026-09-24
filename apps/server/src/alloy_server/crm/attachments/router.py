@@ -6,7 +6,11 @@ from fastapi.responses import RedirectResponse
 
 from alloy_server.crm.attachments import service
 from alloy_server.crm.attachments.deps import AttachmentStorageDep
-from alloy_server.crm.attachments.schemas import AttachmentCreate, AttachmentRead, AttachmentUpload
+from alloy_server.crm.attachments.schemas import (
+    AttachmentCreate,
+    AttachmentResponse,
+    AttachmentUpload,
+)
 from alloy_server.crm.companies import service as companies
 from alloy_server.crm.contacts import service as contacts
 from alloy_server.crm.pagination import Page, PageOf, paginate
@@ -19,10 +23,10 @@ router = APIRouter(tags=["attachments"])
 @router.get("/contacts/{contact_id}/attachments")
 async def list_contact_attachments(
     contact_id: UUID, session: SessionDep, membership: CanReadCrm, page: Annotated[Page, Query()]
-) -> PageOf[AttachmentRead]:
+) -> PageOf[AttachmentResponse]:
     """Newest first. Files whose upload never completed are left out."""
     contact = await contacts.get_contact(session, membership, contact_id)
-    return await paginate(session, service.attachments_query(contact), page, AttachmentRead)
+    return await paginate(session, service.attachments_query(contact), page, AttachmentResponse)
 
 
 @router.post("/contacts/{contact_id}/attachments", status_code=status.HTTP_201_CREATED)
@@ -42,10 +46,10 @@ async def create_contact_attachment(
 @router.get("/companies/{company_id}/attachments")
 async def list_company_attachments(
     company_id: UUID, session: SessionDep, membership: CanReadCrm, page: Annotated[Page, Query()]
-) -> PageOf[AttachmentRead]:
+) -> PageOf[AttachmentResponse]:
     """Newest first. Files whose upload never completed are left out."""
     company = await companies.get_company(session, membership, company_id)
-    return await paginate(session, service.attachments_query(company), page, AttachmentRead)
+    return await paginate(session, service.attachments_query(company), page, AttachmentResponse)
 
 
 @router.post("/companies/{company_id}/attachments", status_code=status.HTTP_201_CREATED)
@@ -68,11 +72,11 @@ async def complete_attachment(
     session: SessionDep,
     storage: AttachmentStorageDep,
     membership: CanWriteCrm,
-) -> AttachmentRead:
+) -> AttachmentResponse:
     """Called after the `PUT`. 409 when the object is not in the store yet; 413, and
     the object is removed, when it is bigger than allowed. Repeating it is harmless."""
     attachment = await service.complete_upload(session, storage, membership, attachment_id)
-    return AttachmentRead.model_validate(attachment)
+    return AttachmentResponse.model_validate(attachment)
 
 
 @router.get("/attachments/{attachment_id}/download", status_code=status.HTTP_307_TEMPORARY_REDIRECT)

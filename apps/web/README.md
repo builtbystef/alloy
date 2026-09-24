@@ -74,7 +74,7 @@ caller's role and permissions, streams in once. `requireWorkspace()` is
 `cache()`d, so the layout, the sidebar, and the page share one request; a
 non-member gets the segment's `not-found.tsx`.
 
-Permissions come from the API (`WorkspaceRead.permissions`). `useCan()` and
+Permissions come from the API (`WorkspaceResponse.permissions`). `useCan()` and
 `<Can permission="crm:write">` hide what the request would reject: new/edit/
 delete buttons, the task checkboxes, the invitation form, the role selects.
 The API stays the real check. Links are built with `workspacePaths(id)` from

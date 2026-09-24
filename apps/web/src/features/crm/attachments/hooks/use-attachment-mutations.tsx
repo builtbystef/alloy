@@ -1,6 +1,6 @@
 "use client";
 
-import type { AttachmentRead } from "@alloy/api-client";
+import type { AttachmentResponse } from "@alloy/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -27,13 +27,13 @@ export interface UploadProgress {
 export function useAttachmentMutations(parent: AttachmentParent): {
   upload: (files: FileList | File[]) => void;
   uploads: UploadProgress[];
-  confirmDelete: (attachment: AttachmentRead) => void;
+  confirmDelete: (attachment: AttachmentResponse) => void;
   dialog: ReactNode;
 } {
   const queryClient = useQueryClient();
   const { id: workspaceId } = useWorkspace();
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
-  const [target, setTarget] = useState<AttachmentRead | null>(null);
+  const [target, setTarget] = useState<AttachmentResponse | null>(null);
 
   const queryKey = attachmentKeys.parent(workspaceId, parent);
 

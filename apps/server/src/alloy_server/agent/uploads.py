@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, status
 
 from alloy_server.agent import service
-from alloy_server.agent.schemas import ChatUploadCreate, ChatUploadRead, ChatUploadTicket
+from alloy_server.agent.schemas import ChatUploadCreate, ChatUploadResponse, ChatUploadTicket
 from alloy_server.crm.attachments.deps import AttachmentStorageDep
 from alloy_server.db.base import utcnow
 from alloy_server.db.session import SessionDep
@@ -25,7 +25,7 @@ async def create_upload(
     conversation = await service.get_conversation(session, membership, conversation_id)
     upload = await service.start_upload(session, storage, membership, conversation, body)
     return ChatUploadTicket(
-        upload=ChatUploadRead.model_validate(upload),
+        upload=ChatUploadResponse.model_validate(upload),
         upload_url=await storage.store.upload_url(
             upload.key, upload.content_type, upload.size, storage.settings.storage_url_ttl
         ),
@@ -36,11 +36,11 @@ async def create_upload(
 @router.post("/uploads/{upload_id}/complete")
 async def complete_upload(
     upload_id: UUID, session: SessionDep, storage: AttachmentStorageDep, membership: CanReadCrm
-) -> ChatUploadRead:
+) -> ChatUploadResponse:
     """Called after the `PUT`. 409 when the object is not in the store yet; 413, and
     the object removed, when it is bigger than allowed. Repeating it is harmless."""
     upload = await service.complete_upload(session, storage, membership, upload_id)
-    return ChatUploadRead.model_validate(upload)
+    return ChatUploadResponse.model_validate(upload)
 
 
 @router.delete("/uploads/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)

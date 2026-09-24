@@ -1,9 +1,9 @@
-import type { TaskCreate, TaskRead, TaskUpdate } from "@alloy/api-client";
+import type { TaskCreate, TaskResponse, TaskUpdate } from "@alloy/api-client";
 
 import { browserApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/errors";
 
-export async function createTask(ws: string, body: TaskCreate): Promise<TaskRead> {
+export async function createTask(ws: string, body: TaskCreate): Promise<TaskResponse> {
   return unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/tasks/", {
       params: { path: { workspace_id: ws } },
@@ -13,7 +13,7 @@ export async function createTask(ws: string, body: TaskCreate): Promise<TaskRead
 }
 
 /** Marking a task done also logs an activity on its contact. */
-export async function updateTask(ws: string, id: string, body: TaskUpdate): Promise<TaskRead> {
+export async function updateTask(ws: string, id: string, body: TaskUpdate): Promise<TaskResponse> {
   return unwrap(
     await browserApi.PATCH("/workspaces/{workspace_id}/tasks/{task_id}", {
       params: { path: { workspace_id: ws, task_id: id } },

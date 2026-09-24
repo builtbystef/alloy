@@ -1,15 +1,15 @@
 import type {
   ActivityCreate,
-  ActivityRead,
+  ActivityResponse,
   ContactCreate,
-  ContactRead,
+  ContactResponse,
   ContactUpdate,
 } from "@alloy/api-client";
 
 import { browserApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/errors";
 
-export async function createContact(ws: string, body: ContactCreate): Promise<ContactRead> {
+export async function createContact(ws: string, body: ContactCreate): Promise<ContactResponse> {
   return unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/contacts/", {
       params: { path: { workspace_id: ws } },
@@ -22,7 +22,7 @@ export async function updateContact(
   ws: string,
   id: string,
   body: ContactUpdate,
-): Promise<ContactRead> {
+): Promise<ContactResponse> {
   return unwrap(
     await browserApi.PATCH("/workspaces/{workspace_id}/contacts/{contact_id}", {
       params: { path: { workspace_id: ws, contact_id: id } },
@@ -45,7 +45,7 @@ export async function logActivity(
   ws: string,
   contactId: string,
   body: ActivityCreate,
-): Promise<ActivityRead> {
+): Promise<ActivityResponse> {
   return unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/contacts/{contact_id}/activities", {
       params: { path: { workspace_id: ws, contact_id: contactId } },

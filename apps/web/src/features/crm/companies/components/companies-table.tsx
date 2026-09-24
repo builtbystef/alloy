@@ -1,6 +1,6 @@
 "use client";
 
-import type { CompanyRead } from "@alloy/api-client";
+import type { CompanyResponse } from "@alloy/api-client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
@@ -64,7 +64,7 @@ export function CompaniesTable({
           {companies.total} {companies.total === 1 ? "company" : "companies"}
         </span>
       </div>
-      <DataTable<CompanyRead>
+      <DataTable<CompanyResponse>
         columns={companyColumns({ timeZone, paths, onDelete: canWrite ? confirmDelete : null })}
         data={companies.items}
         total={companies.total}

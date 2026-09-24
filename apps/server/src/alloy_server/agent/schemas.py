@@ -7,18 +7,18 @@ from pydantic import BaseModel, ConfigDict, Field
 from alloy_server.crm.attachments.schemas import AttachmentCreate
 
 
-class ReadModel(BaseModel):
+class ResponseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ConversationRead(ReadModel):
+class ConversationResponse(ResponseModel):
     id: UUID
     title: str | None = Field(description="Null until the first message names it.")
     created_at: datetime
     updated_at: datetime
 
 
-class ConversationDetail(ConversationRead):
+class ConversationDetailResponse(ConversationResponse):
     messages: list[dict[str, Any]] = Field(
         description="The transcript as Vercel AI SDK `UIMessage`s, for `useChat`."
     )
@@ -42,7 +42,7 @@ class ChatUploadCreate(AttachmentCreate):
     """What the browser knows before uploading a file into the chat."""
 
 
-class ChatUploadRead(ReadModel):
+class ChatUploadResponse(ResponseModel):
     id: UUID
     conversation_id: UUID
     filename: str
@@ -57,6 +57,6 @@ class ChatUploadTicket(BaseModel):
     """Step one of a chat upload: `PUT` the file to `upload_url` with the
     `Content-Type` and `size` given at creation, then `POST .../uploads/{id}/complete`."""
 
-    upload: ChatUploadRead
+    upload: ChatUploadResponse
     upload_url: str
     expires_at: datetime

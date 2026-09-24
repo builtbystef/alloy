@@ -1,9 +1,9 @@
 import type {
   InviteCreate,
-  InviteRead,
-  MemberRead,
+  InviteResponse,
+  MemberResponse,
   WorkspaceCreate,
-  WorkspaceRead,
+  WorkspaceResponse,
   WorkspaceRole,
   WorkspaceUpdate,
 } from "@alloy/api-client";
@@ -11,11 +11,11 @@ import type {
 import { browserApi } from "@/lib/api/client";
 import { unwrap } from "@/lib/api/errors";
 
-export async function createWorkspace(body: WorkspaceCreate): Promise<WorkspaceRead> {
+export async function createWorkspace(body: WorkspaceCreate): Promise<WorkspaceResponse> {
   return unwrap(await browserApi.POST("/workspaces/", { body }));
 }
 
-export async function completeOnboarding(ws: string): Promise<WorkspaceRead> {
+export async function completeOnboarding(ws: string): Promise<WorkspaceResponse> {
   return unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/onboarding/complete", {
       params: { path: { workspace_id: ws } },
@@ -23,7 +23,10 @@ export async function completeOnboarding(ws: string): Promise<WorkspaceRead> {
   );
 }
 
-export async function updateWorkspace(ws: string, body: WorkspaceUpdate): Promise<WorkspaceRead> {
+export async function updateWorkspace(
+  ws: string,
+  body: WorkspaceUpdate,
+): Promise<WorkspaceResponse> {
   return unwrap(
     await browserApi.PATCH("/workspaces/{workspace_id}", {
       params: { path: { workspace_id: ws } },
@@ -53,7 +56,7 @@ export async function changeMemberRole(
   ws: string,
   memberId: string,
   role: WorkspaceRole,
-): Promise<MemberRead> {
+): Promise<MemberResponse> {
   return unwrap(
     await browserApi.PATCH("/workspaces/{workspace_id}/members/{member_id}", {
       params: { path: { workspace_id: ws, member_id: memberId } },
@@ -70,7 +73,7 @@ export async function removeMember(ws: string, memberId: string): Promise<void> 
   );
 }
 
-export async function createInvite(ws: string, body: InviteCreate): Promise<InviteRead> {
+export async function createInvite(ws: string, body: InviteCreate): Promise<InviteResponse> {
   return unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/invites", {
       params: { path: { workspace_id: ws } },
@@ -80,7 +83,7 @@ export async function createInvite(ws: string, body: InviteCreate): Promise<Invi
 }
 
 /** A fresh link; the previous one stops working. */
-export async function resendInvite(ws: string, inviteId: string): Promise<InviteRead> {
+export async function resendInvite(ws: string, inviteId: string): Promise<InviteResponse> {
   return unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/invites/{invite_id}/resend", {
       params: { path: { workspace_id: ws, invite_id: inviteId } },
@@ -97,12 +100,12 @@ export async function revokeInvite(ws: string, inviteId: string): Promise<void> 
 }
 
 /** Take the seat an emailed link offers; answers with the workspace joined. */
-export async function acceptInvite(token: string): Promise<WorkspaceRead> {
+export async function acceptInvite(token: string): Promise<WorkspaceResponse> {
   return unwrap(await browserApi.POST("/invites/{token}/accept", { params: { path: { token } } }));
 }
 
 /** Without the link: one of the caller's own. */
-export async function acceptPendingInvite(inviteId: string): Promise<WorkspaceRead> {
+export async function acceptPendingInvite(inviteId: string): Promise<WorkspaceResponse> {
   return unwrap(
     await browserApi.POST("/invites/pending/{invite_id}/accept", {
       params: { path: { invite_id: inviteId } },

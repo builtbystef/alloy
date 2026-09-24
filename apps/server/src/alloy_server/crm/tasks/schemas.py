@@ -10,7 +10,7 @@ from alloy_server.crm.contacts.schemas import ContactRef
 from alloy_server.crm.dates import UTC_ZONE, DueFilter, TimeZoneField
 from alloy_server.crm.models import RowSource
 from alloy_server.crm.pagination import Page, SortOrder
-from alloy_server.crm.schemas import Name, Notes, NotNull, ReadModel, UserRef
+from alloy_server.crm.schemas import Name, Notes, NotNull, ResponseModel, UserRef
 from alloy_server.crm.tasks.models import TaskStatus
 
 ContactLink = Annotated[UUID | None, Field(description="Links the task to a person.")]
@@ -39,7 +39,7 @@ class TaskUpdate(BaseModel):
     notes: Notes | None = None
 
 
-class TaskRead(ReadModel):
+class TaskResponse(ResponseModel):
     id: UUID
     title: str
     due_at: datetime | None

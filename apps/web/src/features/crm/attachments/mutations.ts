@@ -1,4 +1,4 @@
-import type { AttachmentRead, AttachmentUpload } from "@alloy/api-client";
+import type { AttachmentResponse, AttachmentUpload } from "@alloy/api-client";
 
 import type { AttachmentParent } from "@/features/crm/attachments/queries";
 import { browserApi } from "@/lib/api/client";
@@ -29,7 +29,7 @@ async function startUpload(
 }
 
 /** Step three: the file is in storage; the API checks and records it. */
-async function completeUpload(ws: string, attachmentId: string): Promise<AttachmentRead> {
+async function completeUpload(ws: string, attachmentId: string): Promise<AttachmentResponse> {
   return unwrap(
     await browserApi.POST("/workspaces/{workspace_id}/attachments/{attachment_id}/complete", {
       params: { path: { workspace_id: ws, attachment_id: attachmentId } },
@@ -47,7 +47,7 @@ export async function uploadAttachment(
   parent: AttachmentParent,
   file: File,
   onProgress: (fraction: number) => void,
-): Promise<AttachmentRead> {
+): Promise<AttachmentResponse> {
   const ticket = await startUpload(ws, parent, file);
   await putFile(ticket.upload_url, file, ticket.attachment.content_type, onProgress);
   onProgress(1);

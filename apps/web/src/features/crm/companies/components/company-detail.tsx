@@ -1,6 +1,6 @@
 "use client";
 
-import type { ContactRead } from "@alloy/api-client";
+import type { ContactResponse } from "@alloy/api-client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ExternalLinkIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
@@ -99,7 +99,7 @@ export function CompanyDetail({ id, timeZone }: { id: string; timeZone: string }
               )}
             </CardHeader>
             <CardContent>
-              <DataTable<ContactRead>
+              <DataTable<ContactResponse>
                 columns={contactColumns({
                   timeZone,
                   paths,
