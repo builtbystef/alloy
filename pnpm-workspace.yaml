@@ -32,7 +32,7 @@ catalog:
   # cannot see the coupling through the npm: alias, so update both by hand.
   vite: npm:@voidzero-dev/vite-plus-core@0.3.0
   vite-plus: 0.3.0
-  zod: ^4.5.4
+  zod: ^4.6.5
 overrides:
   vite: "catalog:"
 peerDependencyRules:
