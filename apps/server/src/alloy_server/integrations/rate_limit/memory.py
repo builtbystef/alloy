@@ -3,7 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from alloy_server.integrations.ratelimit.base import Hit
+from alloy_server.integrations.rate_limit.base import Hit
 
 
 @dataclass(slots=True)

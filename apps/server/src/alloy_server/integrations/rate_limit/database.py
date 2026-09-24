@@ -5,8 +5,8 @@ from sqlalchemy import case, delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from alloy_server.integrations.ratelimit.base import Hit
-from alloy_server.integrations.ratelimit.models import RateLimitWindow
+from alloy_server.integrations.rate_limit.base import Hit
+from alloy_server.integrations.rate_limit.models import RateLimitWindow
 
 
 class DatabaseRateLimitStore:

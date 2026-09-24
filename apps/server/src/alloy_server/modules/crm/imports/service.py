@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from sqlalchemy import CursorResult, Select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from alloy_server.integrations.storage.uploads import UploadStorage
+    from alloy_server.integrations.storage.uploads import UploadStore
     from alloy_server.modules.crm.imports.schemas import ImportCreate
     from alloy_server.modules.workspaces.dependencies import Membership
 
@@ -44,13 +44,13 @@ async def get_import(session: AsyncSession, membership: Membership, import_id: U
 
 async def start_upload(
     session: AsyncSession,
-    storage: UploadStorage,
+    uploads: UploadStore,
     membership: Membership,
     body: ImportCreate,
 ) -> ImportUpload:
     """Create the row and hand out the upload URL for the CSV. Commits.
     `PayloadTooLargeError` when `size` is over the limit."""
-    storage.check_size(body.size)
+    uploads.check_size(body.size)
     import_id = uuid.uuid7()
     record = Import(
         id=import_id,
@@ -66,13 +66,13 @@ async def start_upload(
     await session.refresh(record, ["requested_by"])
     return ImportUpload(
         import_=ImportResponse.model_validate(record),
-        upload_url=await storage.upload_url(record.key, CSV_CONTENT_TYPE, record.size),
-        expires_at=storage.expires_at(),
+        upload_url=await uploads.upload_url(record.key, CSV_CONTENT_TYPE, record.size),
+        expires_at=uploads.expires_at(),
     )
 
 
 async def mark_queued(
-    session: AsyncSession, storage: UploadStorage, membership: Membership, import_id: UUID
+    session: AsyncSession, uploads: UploadStore, membership: Membership, import_id: UUID
 ) -> Import:
     """Called after the `PUT`: check the file is there, move the row to `queued`,
     and queue the job with it. Commits. `ConflictError` when the file is not in
@@ -81,7 +81,7 @@ async def mark_queued(
     record = await get_import(session, membership, import_id)
     if record.status is not ImportStatus.PENDING:
         raise ConflictError("The import has already been started")
-    info = await storage.verify(record.key)
+    info = await uploads.verify(record.key)
     # One conditional UPDATE, so of two `start`s at once exactly one queues the job.
     result = await session.execute(
         update(Import)

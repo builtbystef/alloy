@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Response, status
 from alloy_server.config import SettingsDep
 from alloy_server.db.base import utcnow
 from alloy_server.db.session import SessionDep
-from alloy_server.integrations.ratelimit import TOKEN_PER_IP, Limit, LimiterDep, per_ip
+from alloy_server.integrations.rate_limit import TOKEN_PER_IP, Limit, RateLimiterDep, per_ip
 from alloy_server.modules.auth import service
 from alloy_server.modules.auth.cookies import clear_session_cookie, set_session_cookie
 from alloy_server.modules.auth.dependencies import CurrentPrincipal, CurrentUserDep, unauthorized
@@ -89,7 +89,7 @@ async def verify_email(
 
 @router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
 async def resend_verification(
-    user: CurrentUserDep, session: SessionDep, settings: SettingsDep, limiter: LimiterDep
+    user: CurrentUserDep, session: SessionDep, settings: SettingsDep, limiter: RateLimiterDep
 ) -> Response:
     """Email a new verification link; the previous one stops working."""
     if user.email_verified:
@@ -104,7 +104,7 @@ async def login(
     credentials: Credentials,
     session: SessionDep,
     settings: SettingsDep,
-    limiter: LimiterDep,
+    limiter: RateLimiterDep,
     response: Response,
 ) -> UserResponse:
     """The email counter counts failures only, and a success clears it. Both limits
@@ -158,7 +158,7 @@ async def change_password(
     dependencies=[Depends(per_ip(FORGOT_PASSWORD_PER_IP))],
 )
 async def forgot_password(
-    body: PasswordResetRequest, session: SessionDep, settings: SettingsDep, limiter: LimiterDep
+    body: PasswordResetRequest, session: SessionDep, settings: SettingsDep, limiter: RateLimiterDep
 ) -> Response:
     """Email a password reset link to the address, if an account has it.
 
@@ -195,7 +195,7 @@ async def change_email(
     principal: CurrentPrincipal,
     session: SessionDep,
     settings: SettingsDep,
-    limiter: LimiterDep,
+    limiter: RateLimiterDep,
 ) -> Response:
     """Email a confirmation link to the new address; the account moves once it is
     followed. A new request replaces the pending one.

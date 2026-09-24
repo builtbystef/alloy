@@ -7,16 +7,16 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient as BareTestClient
 
 from alloy_server.db.base import utcnow
-from alloy_server.integrations.ratelimit import (
+from alloy_server.integrations.rate_limit import (
     DatabaseRateLimitStore,
     Hit,
     Limit,
-    Limiter,
     MemoryRateLimitStore,
-    get_limiter,
+    RateLimiter,
+    get_rate_limiter,
     per_ip,
 )
-from alloy_server.integrations.ratelimit.models import RateLimitWindow
+from alloy_server.integrations.rate_limit.models import RateLimitWindow
 from alloy_server.modules.auth.router import LOGIN_PER_EMAIL, LOGIN_PER_IP
 from alloy_server.shared.exceptions import AppError, RateLimitedError, handle_app_error
 
@@ -83,11 +83,11 @@ def test_database_store_counts_within_a_window_and_forgets_after_it(db: Database
     db.run(scenario)
 
 
-# --- Limiter -------------------------------------------------------------------
+# --- RateLimiter -------------------------------------------------------------------
 
 
 def test_limiter_refuses_past_the_limit_with_retry_after():
-    limiter = Limiter(MemoryRateLimitStore(clock=lambda: 0.0))
+    limiter = RateLimiter(MemoryRateLimitStore(clock=lambda: 0.0))
 
     async def scenario() -> None:
         await limiter.hit(TWO_PER_MINUTE, "s")
@@ -102,7 +102,7 @@ def test_limiter_refuses_past_the_limit_with_retry_after():
 
 
 def test_limiter_check_does_not_count_and_reset_clears():
-    limiter = Limiter(MemoryRateLimitStore())
+    limiter = RateLimiter(MemoryRateLimitStore())
 
     async def scenario() -> None:
         for _ in range(5):
@@ -122,7 +122,7 @@ def test_per_ip_keys_on_the_client_address():
     app = FastAPI()
     app.add_exception_handler(AppError, handle_app_error)
     store = MemoryRateLimitStore()
-    app.dependency_overrides[get_limiter] = lambda: Limiter(store)
+    app.dependency_overrides[get_rate_limiter] = lambda: RateLimiter(store)
 
     @app.get("/", dependencies=[Depends(per_ip(TWO_PER_MINUTE))])
     async def read() -> dict[str, str]:
@@ -154,7 +154,7 @@ def test_login_failures_on_one_email_are_limited_and_a_success_clears_them(
     assert client.post("/auth/login", json={**wrong, "email": "x@example.com"}).status_code == 401
 
     # Stands in for the window ending.
-    key = Limiter.key(LOGIN_PER_EMAIL, CREDENTIALS["email"])
+    key = RateLimiter.key(LOGIN_PER_EMAIL, CREDENTIALS["email"])
     asyncio.run(rate_limits.reset(key))
     assert client.post("/auth/login", json=CREDENTIALS).status_code == 200
     assert asyncio.run(rate_limits.peek(key)).count == 0

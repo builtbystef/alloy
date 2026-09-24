@@ -12,7 +12,7 @@ from pydantic_ai.ui.vercel_ai.request_types import UIMessage
 
 from alloy_server.config import SettingsDep
 from alloy_server.db.session import SessionDep
-from alloy_server.integrations.ratelimit import Limit, LimiterDep
+from alloy_server.integrations.rate_limit import Limit, RateLimiterDep
 from alloy_server.integrations.storage import ObjectStoreDep
 from alloy_server.modules.assistant import service
 from alloy_server.modules.assistant.agent import (
@@ -131,7 +131,7 @@ async def send_message(  # noqa: PLR0913, PLR0917
     session: SessionDep,
     store: ObjectStoreDep,
     settings: SettingsDep,
-    limiter: LimiterDep,
+    limiter: RateLimiterDep,
     membership: CanReadCrm,
     model: ModelDep,
 ) -> Response:

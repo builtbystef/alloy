@@ -5,7 +5,7 @@ from fastapi import APIRouter, Response, status
 
 from alloy_server.config import SettingsDep
 from alloy_server.db.session import SessionDep
-from alloy_server.integrations.ratelimit import Limit, LimiterDep
+from alloy_server.integrations.rate_limit import Limit, RateLimiterDep
 from alloy_server.integrations.storage import ObjectStoreDep
 from alloy_server.modules.auth.dependencies import VerifiedUserDep
 from alloy_server.modules.workspaces import service
@@ -133,7 +133,7 @@ async def create_invite(
     membership: CanManageMembers,
     session: SessionDep,
     settings: SettingsDep,
-    limiter: LimiterDep,
+    limiter: RateLimiterDep,
 ) -> InviteResponse:
     """Email a link that grants `role`. One pending invitation per address; 409 if the
     address is already a member or already invited."""
@@ -150,7 +150,7 @@ async def resend_invite(
     membership: CanManageMembers,
     session: SessionDep,
     settings: SettingsDep,
-    limiter: LimiterDep,
+    limiter: RateLimiterDep,
 ) -> InviteResponse:
     """Email the invitation again with a fresh link; the previous one stops working
     and the expiry starts over. Counts against the same limit as sending one."""

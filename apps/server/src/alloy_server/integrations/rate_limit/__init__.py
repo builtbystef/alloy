@@ -1,6 +1,6 @@
 """Fixed-window rate limiting, counted in the database. Each feature owns its
 `Limit` constants. Routes attach `per_ip(limit)` as a dependency, or use
-`LimiterDep` when the subject is in the body or only failures should count."""
+`RateLimiterDep` when the subject is in the body or only failures should count."""
 
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
@@ -8,27 +8,27 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
-from alloy_server.integrations.ratelimit.base import (
+from alloy_server.integrations.rate_limit.base import (
     Hit,
     Limit,
-    Limiter,
-    RateLimitStoreProtocol,
+    RateLimiter,
+    RateLimitStore,
     too_many_requests,
 )
-from alloy_server.integrations.ratelimit.database import DatabaseRateLimitStore
-from alloy_server.integrations.ratelimit.memory import MemoryRateLimitStore
+from alloy_server.integrations.rate_limit.database import DatabaseRateLimitStore
+from alloy_server.integrations.rate_limit.memory import MemoryRateLimitStore
 
 # Routes that take an emailed token. Not against guessing (tokens are 32 random
 # bytes): keeps scanners off the database.
 TOKEN_PER_IP = Limit("token:ip", 10, timedelta(minutes=1))
 
 
-async def get_limiter(request: Request) -> Limiter:
-    store: RateLimitStoreProtocol = request.state.rate_limit_store
-    return Limiter(store)
+async def get_rate_limiter(request: Request) -> RateLimiter:
+    store: RateLimitStore = request.state.rate_limit_store
+    return RateLimiter(store)
 
 
-LimiterDep = Annotated[Limiter, Depends(get_limiter)]
+RateLimiterDep = Annotated[RateLimiter, Depends(get_rate_limiter)]
 
 
 def client_ip(request: Request) -> str:
@@ -40,8 +40,8 @@ def client_ip(request: Request) -> str:
 ClientIp = Annotated[str, Depends(client_ip)]
 
 
-def per_ip(limit: Limit) -> Callable[[Request, Limiter], Awaitable[None]]:
-    async def dependency(request: Request, limiter: LimiterDep) -> None:
+def per_ip(limit: Limit) -> Callable[[Request, RateLimiter], Awaitable[None]]:
+    async def dependency(request: Request, limiter: RateLimiterDep) -> None:
         await limiter.hit(limit, client_ip(request))
 
     return dependency
@@ -53,12 +53,12 @@ __all__ = [
     "DatabaseRateLimitStore",
     "Hit",
     "Limit",
-    "Limiter",
-    "LimiterDep",
     "MemoryRateLimitStore",
-    "RateLimitStoreProtocol",
+    "RateLimitStore",
+    "RateLimiter",
+    "RateLimiterDep",
     "client_ip",
-    "get_limiter",
+    "get_rate_limiter",
     "per_ip",
     "too_many_requests",
 ]

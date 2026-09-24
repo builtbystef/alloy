@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from alloy_server.config import SettingsDep, get_settings
 from alloy_server.db.session import DatabaseState, create_database_state
 from alloy_server.integrations.mail import Mailer, create_mailer
-from alloy_server.integrations.ratelimit import DatabaseRateLimitStore, RateLimitStoreProtocol
+from alloy_server.integrations.rate_limit import DatabaseRateLimitStore, RateLimitStore
 from alloy_server.integrations.storage import ObjectStore, create_object_store
 from alloy_server.jobs.app import app as jobs
 from alloy_server.modules.router import router as api_router
@@ -31,7 +31,7 @@ class AppState(DatabaseState):
 
     mailer: Mailer
     object_store: ObjectStore
-    rate_limit_store: RateLimitStoreProtocol
+    rate_limit_store: RateLimitStore
 
 
 @asynccontextmanager

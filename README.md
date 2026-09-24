@@ -66,7 +66,7 @@ apps/server/
 │   ├── config.py             # Settings (pydantic-settings) + get_settings
 │   ├── shared/               # exceptions.py (AppError family + handler), middleware.py (request IDs, body limit), logs.py, telemetry.py, routing.py
 │   ├── db/                   # session.py (engine, SessionDep), base.py (Base, mixins), models.py (imports every model)
-│   ├── integrations/         # ports and adapters: mail/, storage/, ratelimit/, ai/ (a protocol + implementations each)
+│   ├── integrations/         # ports and adapters: mail/, storage/, rate_limit/, ai/ (a protocol + implementations each)
 │   ├── modules/              # the features, one package each; router.py includes every feature router
 │   │   ├── health/           # GET /health/ (liveness); /health/{db,storage} (readiness)
 │   │   ├── auth/             # accounts, cookie sessions, emailed links; CurrentUserDep
@@ -154,11 +154,11 @@ the user is the sole owner of a workspace that has other members.
 
 ### Rate limits
 
-`integrations/ratelimit/` keeps fixed-window counters in the database (an
+`integrations/rate_limit/` keeps fixed-window counters in the database (an
 unlogged table, one upsert per hit; in memory for the tests) and answers 429
 with `Retry-After`. A `Limit` names the policy; the subject
 (client address, email, user) picks the counter. Routes attach
-`per_ip(limit)` or call the `Limiter` themselves; the `Limit`s sit next to
+`per_ip(limit)` or call the `RateLimiter` themselves; the `Limit`s sit next to
 the routes that use them.
 
 | Endpoint                                                | Subject         | Limit         |

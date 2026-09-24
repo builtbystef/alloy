@@ -8,7 +8,7 @@ from alloy_server.shared.exceptions import RateLimitedError
 
 log = logging.getLogger(__name__)
 
-KEY_PREFIX = "ratelimit"
+KEY_PREFIX = "rate_limit"
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +26,7 @@ class Hit:
     retry_after: timedelta
 
 
-class RateLimitStoreProtocol(Protocol):
+class RateLimitStore(Protocol):
     """What the limiter needs from a counter store. Implement it to add a backend.
 
     `window` only takes effect on the hit that starts a new window.
@@ -45,10 +45,10 @@ def too_many_requests(retry_after: timedelta) -> RateLimitedError:
 
 
 @dataclass(frozen=True, slots=True)
-class Limiter:
+class RateLimiter:
     """Raises `RateLimitedError` (a 429 with `Retry-After`) past the limit."""
 
-    store: RateLimitStoreProtocol
+    store: RateLimitStore
 
     @staticmethod
     def key(limit: Limit, subject: str) -> str:

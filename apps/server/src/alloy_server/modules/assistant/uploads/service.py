@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.integrations.storage.uploads import UploadStorage
+    from alloy_server.integrations.storage.uploads import UploadStore
     from alloy_server.modules.assistant.uploads.schemas import ChatUploadCreate
     from alloy_server.modules.workspaces.dependencies import Membership
 
@@ -56,13 +56,13 @@ async def purge_unattached(
 
 async def start_upload(
     session: AsyncSession,
-    storage: UploadStorage,
+    uploads: UploadStore,
     membership: Membership,
     conversation: AssistantConversation,
     body: ChatUploadCreate,
 ) -> ChatUpload:
     """Commits. The caller hands out the upload URL."""
-    storage.check_size(body.size)
+    uploads.check_size(body.size)
     upload_id = uuid.uuid7()
     upload = ChatUpload(
         id=upload_id,
@@ -81,14 +81,14 @@ async def start_upload(
 
 
 async def complete_upload(
-    session: AsyncSession, storage: UploadStorage, membership: Membership, upload_id: UUID
+    session: AsyncSession, uploads: UploadStore, membership: Membership, upload_id: UUID
 ) -> ChatUpload:
     """Called after the `PUT`. `ConflictError` when the object is not in the store
     yet; `PayloadTooLargeError`, and the object removed, when it is bigger than
     allowed. Repeating it is harmless. Commits."""
     upload = await get_upload(session, membership, upload_id)
     if upload.uploaded_at is None:
-        info = await storage.verify(upload.key)
+        info = await uploads.verify(upload.key)
         upload.size = info.size
         upload.content_type = info.content_type
         upload.uploaded_at = utcnow()

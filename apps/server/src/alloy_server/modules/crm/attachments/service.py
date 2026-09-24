@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import InstrumentedAttribute
 
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.integrations.storage.uploads import UploadStorage
+    from alloy_server.integrations.storage.uploads import UploadStore
     from alloy_server.modules.crm.attachments.schemas import AttachmentCreate
     from alloy_server.modules.workspaces.dependencies import Membership
 
@@ -47,14 +47,14 @@ def attachments_query(parent: Contact | Company) -> Select[tuple[Attachment]]:
 
 async def start_upload(
     session: AsyncSession,
-    storage: UploadStorage,
+    uploads: UploadStore,
     membership: Membership,
     parent: Contact | Company,
     body: AttachmentCreate,
 ) -> AttachmentUpload:
     """Create the row and hand out the upload URL. Commits. `PayloadTooLargeError`
     when `size` is over the limit."""
-    storage.check_size(body.size)
+    uploads.check_size(body.size)
     attachment_id = uuid.uuid7()
     attachment = Attachment(
         id=attachment_id,
@@ -72,22 +72,22 @@ async def start_upload(
     await session.refresh(attachment, ["uploaded_by"])
     return AttachmentUpload(
         attachment=AttachmentResponse.model_validate(attachment),
-        upload_url=await storage.upload_url(
+        upload_url=await uploads.upload_url(
             attachment.key, attachment.content_type, attachment.size
         ),
-        expires_at=storage.expires_at(),
+        expires_at=uploads.expires_at(),
     )
 
 
 async def complete_upload(
-    session: AsyncSession, storage: UploadStorage, membership: Membership, attachment_id: UUID
+    session: AsyncSession, uploads: UploadStore, membership: Membership, attachment_id: UUID
 ) -> Attachment:
     """Called after the `PUT`. `ConflictError` when the object is not in the store
     yet; `PayloadTooLargeError`, and the object is removed, when it is bigger than
     allowed. Repeating it is harmless. Commits."""
     attachment = await fetch_owned(session, Attachment, attachment_id, membership, WITH_UPLOADER)
     if attachment.uploaded_at is None:
-        info = await storage.verify(attachment.key)
+        info = await uploads.verify(attachment.key)
         attachment.size = info.size
         attachment.content_type = info.content_type
         attachment.uploaded_at = utcnow()
@@ -96,12 +96,12 @@ async def complete_upload(
 
 
 async def download_url(
-    session: AsyncSession, storage: UploadStorage, membership: Membership, attachment_id: UUID
+    session: AsyncSession, uploads: UploadStore, membership: Membership, attachment_id: UUID
 ) -> str:
     attachment = await fetch_owned(session, Attachment, attachment_id, membership)
     if attachment.uploaded_at is None:
         raise not_found(Attachment)
-    return await storage.download_url(attachment.key, attachment.filename)
+    return await uploads.download_url(attachment.key, attachment.filename)
 
 
 async def delete_attachment(

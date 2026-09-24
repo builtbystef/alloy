@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response, status
 
 from alloy_server.db.session import SessionDep
-from alloy_server.integrations.ratelimit import TOKEN_PER_IP, Limit, LimiterDep, per_ip
+from alloy_server.integrations.rate_limit import TOKEN_PER_IP, Limit, RateLimiterDep, per_ip
 from alloy_server.modules.auth.dependencies import CurrentUserDep, VerifiedUserDep
 from alloy_server.modules.workspaces.invites import service
 from alloy_server.modules.workspaces.invites.schemas import InvitePreview, PendingInviteResponse
@@ -33,7 +33,7 @@ async def list_pending_invites(
 
 @router.post("/pending/{invite_id}/accept")
 async def accept_pending_invite(
-    invite_id: UUID, session: SessionDep, user: VerifiedUserDep, limiter: LimiterDep
+    invite_id: UUID, session: SessionDep, user: VerifiedUserDep, limiter: RateLimiterDep
 ) -> WorkspaceResponse:
     """404 unless pending and addressed to the caller."""
     await limiter.hit(INVITE_ACCEPT_PER_USER, str(user.id))
@@ -71,7 +71,7 @@ async def read_invite(token: str, session: SessionDep) -> InvitePreview:
 
 @router.post("/{token}/accept")
 async def accept_invite(
-    token: str, session: SessionDep, user: CurrentUserDep, limiter: LimiterDep
+    token: str, session: SessionDep, user: CurrentUserDep, limiter: RateLimiterDep
 ) -> WorkspaceResponse:
     """Take the seat. The logged-in account's email must be the invited one.
 

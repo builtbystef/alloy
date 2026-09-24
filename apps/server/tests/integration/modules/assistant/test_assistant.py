@@ -22,7 +22,7 @@ from sqlalchemy.orm import selectinload
 from alloy_server.config import Settings
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.ai.models import ModelCall
-from alloy_server.integrations.ratelimit import Limiter, MemoryRateLimitStore
+from alloy_server.integrations.rate_limit import MemoryRateLimitStore, RateLimiter
 from alloy_server.jobs.purge import PurgeReport, purge
 from alloy_server.main import app
 from alloy_server.modules.assistant import tools
@@ -235,7 +235,7 @@ def test_unconfigured_assistant_answers_503(alice: Actor):
 def test_messages_are_rate_limited_per_user(alice: Actor, rate_limits: MemoryRateLimitStore):
     chat = Chat(alice)
     me = alice.client.get("/auth/me", headers=alice.headers).json()
-    key = Limiter.key(ASSISTANT_MESSAGE_PER_USER, me["id"])
+    key = RateLimiter.key(ASSISTANT_MESSAGE_PER_USER, me["id"])
 
     async def fill() -> None:
         for _ in range(ASSISTANT_MESSAGE_PER_USER.limit):

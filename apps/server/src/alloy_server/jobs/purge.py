@@ -10,7 +10,7 @@ from sqlalchemy.orm import aliased
 
 from alloy_server.config import Settings
 from alloy_server.db.base import utcnow
-from alloy_server.integrations.ratelimit.models import RateLimitWindow
+from alloy_server.integrations.rate_limit.models import RateLimitWindow
 from alloy_server.integrations.storage import ObjectStore
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
 from alloy_server.jobs.app import app, task

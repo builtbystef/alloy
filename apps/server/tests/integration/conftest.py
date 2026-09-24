@@ -22,10 +22,10 @@ from alloy_server.config import Settings, get_settings
 from alloy_server.db.models import Base
 from alloy_server.db.session import get_session
 from alloy_server.integrations.mail import Email
-from alloy_server.integrations.ratelimit import (
-    Limiter,
+from alloy_server.integrations.rate_limit import (
     MemoryRateLimitStore,
-    get_limiter,
+    RateLimiter,
+    get_rate_limiter,
 )
 from alloy_server.integrations.storage import get_object_store
 from alloy_server.integrations.storage.memory import MemoryObjectStore
@@ -147,7 +147,7 @@ def app_client(
     mailer, and run inline."""
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_object_store] = lambda: object_store
-    app.dependency_overrides[get_limiter] = lambda: Limiter(rate_limits)
+    app.dependency_overrides[get_rate_limiter] = lambda: RateLimiter(rate_limits)
     # https: the session cookie is `Secure`, and httpx's jar only sends it over https.
     with TestClient(app, base_url="https://testserver") as client:
         queue.resources = Resources(
