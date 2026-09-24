@@ -4,7 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { conversationListQuery } from "@/features/assistant/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi } from "@/lib/auth/session";
+import { getSessionApi } from "@/features/auth/server";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 

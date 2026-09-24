@@ -6,11 +6,11 @@ import { Suspense } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getQueryClient } from "@/lib/query-client";
-import { pendingInviteListQuery } from "@/features/workspaces/queries";
-import { getSessionApi, requireUser } from "@/lib/auth/session";
+import { pendingInviteListQuery } from "@/features/workspaces/invites/queries";
+import { getSessionApi, requireUser } from "@/features/auth/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 
-import { PendingInvites } from "@/features/workspaces/components/pending-invites";
+import { PendingInvites } from "@/features/workspaces/invites/components/pending-invites";
 
 export const metadata: Metadata = { title: "Your invitations" };
 

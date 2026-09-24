@@ -6,13 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { acceptPendingInvite, declinePendingInvite } from "@/features/workspaces/mutations";
+import { acceptPendingInvite, declinePendingInvite } from "@/features/workspaces/invites/mutations";
 import { Button } from "@/components/ui/button";
 import { browserApi } from "@/lib/api/client";
 import { errorMessage } from "@/lib/api/errors";
 import { formatDate } from "@/lib/formatting/dates";
 import { roleLabels } from "@/features/workspaces/roles";
-import { invalidateWorkspaces, pendingInviteListQuery } from "@/features/workspaces/queries";
+import { pendingInviteListQuery } from "@/features/workspaces/invites/queries";
+import { invalidateWorkspaces } from "@/features/workspaces/queries";
 
 /**
  * Accepting opens the workspace. With `whenEmpty="onboarding"`, declining the

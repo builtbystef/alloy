@@ -6,7 +6,7 @@ import { TableSkeleton } from "@/components/shared/skeletons";
 import { importListQuery } from "@/features/crm/imports/queries";
 import { getQueryClient } from "@/lib/query-client";
 import { parseImportSearch } from "@/features/crm/imports/schemas";
-import { getSessionApi } from "@/lib/auth/session";
+import { getSessionApi } from "@/features/auth/server";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 import { Can } from "@/features/workspaces/workspace-provider";

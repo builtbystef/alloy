@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { SESSION_COOKIE } from "@/lib/auth/session";
+import { SESSION_COOKIE } from "@/features/auth/server";
 
 /**
  * Clears a session cookie the API no longer accepts (expired, or revoked by

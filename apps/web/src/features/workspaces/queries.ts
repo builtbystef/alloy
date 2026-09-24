@@ -13,9 +13,6 @@ export const workspaceKeys = {
   list: () => [...workspaceKeys.all, "list"] as const,
   detail: (id: string) => [...workspaceKeys.all, "detail", id] as const,
   members: (id: string) => [...workspaceKeys.detail(id), "members"] as const,
-  invites: (id: string) => [...workspaceKeys.detail(id), "invites"] as const,
-  /** The caller's own, across workspaces. */
-  pending: () => [...workspaceKeys.all, "pending"] as const,
 };
 
 export function workspaceListQuery(api: ApiClient) {
@@ -37,26 +34,7 @@ export function memberListQuery(api: ApiClient, ws: string) {
   });
 }
 
-export function inviteListQuery(api: ApiClient, ws: string) {
-  return queryOptions({
-    queryKey: workspaceKeys.invites(ws),
-    queryFn: async () =>
-      unwrap(
-        await api.GET("/workspaces/{workspace_id}/invites", {
-          params: { path: { workspace_id: ws } },
-        }),
-      ),
-  });
-}
-
-export function pendingInviteListQuery(api: ApiClient) {
-  return queryOptions({
-    queryKey: workspaceKeys.pending(),
-    queryFn: async () => unwrap(await api.GET("/invites/pending")),
-  });
-}
-
-/** Drop the workspace list, members, and invitations after a membership change. */
+/** Drop the workspace list, members, and invitations (keyed under these) after a membership change. */
 export async function invalidateWorkspaces(queryClient: QueryClient): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
 }

@@ -21,6 +21,9 @@ export default defineConfig({
       typeAware: true,
       typeCheck: true,
     },
+    rules: {
+      "no-duplicate-imports": "error",
+    },
     ignorePatterns: [
       "**/dist/**",
       "**/.next/**",

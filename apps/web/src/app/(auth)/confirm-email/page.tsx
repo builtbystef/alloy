@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/features/auth/server";
 
 import { ConfirmEmailChange } from "@/features/auth/components/confirm-email-card";
 

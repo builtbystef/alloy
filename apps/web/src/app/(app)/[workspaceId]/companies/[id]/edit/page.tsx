@@ -5,7 +5,10 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/shared/layout/page-header";
 import { FormPage } from "@/components/shared/layout/form-page";
 import { FormSkeleton } from "@/components/shared/skeletons";
-import { getSessionApi } from "@/lib/auth/session";
+import { getSessionApi } from "@/features/auth/server";
+import { companyQuery } from "@/features/crm/companies/queries";
+import { ApiError } from "@/lib/api/errors";
+import { getQueryClient } from "@/lib/query-client";
 import { requireWorkspace } from "@/features/workspaces/server";
 
 import { CompanyForm } from "@/features/crm/companies/components/company-form";
@@ -26,10 +29,13 @@ async function EditCompanyForm({ params }: { params: Params }) {
   const { workspaceId, id } = await params;
   await requireWorkspace(workspaceId);
   const api = await getSessionApi();
-  const { data: company } = await api.GET("/workspaces/{workspace_id}/companies/{company_id}", {
-    params: { path: { workspace_id: workspaceId, company_id: id } },
-  });
-  if (!company) notFound();
+  let company;
+  try {
+    company = await getQueryClient().query(companyQuery(api, workspaceId, id));
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 422)) notFound();
+    throw error;
+  }
   return (
     <FormPage>
       <PageHeader title={company.name} />

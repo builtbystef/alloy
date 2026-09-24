@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AuthForm } from "@/features/auth/components/auth-form";
-import { inviteFromNext } from "@/features/auth/invite-from-next";
+import { inviteFromNext } from "@/features/workspaces/invites/server";
 
 export const metadata: Metadata = { title: "Sign up" };
 

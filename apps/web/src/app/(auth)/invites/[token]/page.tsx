@@ -5,11 +5,11 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/lib/api/server-client";
 import { ApiError, tooManyAttempts } from "@/lib/api/errors";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/features/auth/server";
 
-import { AcceptInvite } from "@/features/workspaces/components/accept-invite";
+import { AcceptInvite } from "@/features/workspaces/invites/components/accept-invite";
+import { previewInvite } from "@/features/workspaces/invites/server";
 
 export const metadata: Metadata = { title: "Invitation" };
 
@@ -29,10 +29,7 @@ export default function InvitePage({ params }: { params: Params }) {
 
 async function InviteContent({ params }: { params: Params }) {
   const { token } = await params;
-  const [preview, user] = await Promise.all([
-    api.GET("/invites/{token}", { params: { path: { token } } }),
-    getCurrentUser(),
-  ]);
+  const [preview, user] = await Promise.all([previewInvite(token), getCurrentUser()]);
 
   if (!preview.data) {
     const status = preview.response.status;

@@ -4,13 +4,14 @@ import { Suspense } from "react";
 
 import { SettingsSection, SettingsSections } from "@/components/shared/layout/settings-section";
 import { TableSkeleton } from "@/components/shared/skeletons";
-import { inviteListQuery, memberListQuery } from "@/features/workspaces/queries";
+import { inviteListQuery } from "@/features/workspaces/invites/queries";
+import { memberListQuery } from "@/features/workspaces/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi, requireUser } from "@/lib/auth/session";
+import { getSessionApi, requireUser } from "@/features/auth/server";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 
-import { Invites } from "@/features/workspaces/components/invites";
+import { Invites } from "@/features/workspaces/invites/components/invites";
 import { MembersTable } from "@/features/workspaces/components/members-table";
 
 export const metadata: Metadata = { title: "Members" };

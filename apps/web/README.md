@@ -34,8 +34,9 @@ apps/web/
     │           ├── contacts/, companies/   # list, new/, [id]/, [id]/edit/
     │           ├── tasks/, imports/, assistant/, members/, settings/, account/
     ├── features/         # product code, by domain; each has only the files it needs
-    │   ├── auth/         # components/ (auth-form, the emailed-link cards, account forms), schemas.ts, mutations.ts, hooks/use-logout.ts
-    │   ├── workspaces/   # components/ (switcher, members, invites, settings), workspace-provider.tsx, server.ts, queries.ts, mutations.ts, schemas.ts, roles.ts, cookie.ts
+    │   ├── auth/         # components/ (auth-form, the emailed-link cards, account forms), server.ts (getSessionApi, requireUser), schemas.ts, mutations.ts, hooks/use-logout.ts
+    │   ├── workspaces/   # components/ (sidebar, switcher, nav, user menu, members, settings), workspace-provider.tsx, server.ts, queries.ts, mutations.ts, schemas.ts, roles.ts, cookie.ts
+    │   │   └── invites/  # components/ (invite list, pending invitations, accept card), server.ts (previewInvite, listPendingInvites), queries.ts, mutations.ts, schemas.ts
     │   ├── crm/
     │   │   ├── queries.ts            # invalidateCrm(): every CRM query, after any write
     │   │   ├── contacts/             # components/ (table, columns, form, detail, activity feed, status badge), hooks/, queries.ts, mutations.ts, schemas.ts, labels.ts
@@ -43,18 +44,17 @@ apps/web/
     │   │   ├── attachments/          # components/attachments-card, hooks/, queries.ts, mutations.ts (the three-step upload), limits.ts
     │   │   ├── imports/              # components/ (card, table, details dialog), hooks/, queries.ts, mutations.ts, schemas.ts, labels.ts, limits.ts
     │   │   └── dashboard/            # components/dashboard.tsx (Server Component), server.ts
-    │   └── assistant/    # components/ (chat-panel, conversation-list, approval-card, message-parts), hooks/use-chat-uploads, queries.ts, mutations.ts, tools.ts, types.ts
+    │   └── assistant/    # components/ (chat-panel, conversation-list, approval-card, message-parts), hooks/use-chat-uploads, server.ts, queries.ts, mutations.ts, tools.ts, types.ts
     ├── components/       # generic: knows nothing about the domain
     │   ├── ui/           # shadcn/ui components, owned by this repo
     │   └── shared/       # everything else that is reusable
-    │       ├── layout/   # app-sidebar, nav-menu, user-menu, page-header
+    │       ├── layout/   # page-header, page-title, settings-section, form-page
     │       ├── chat/     # chat primitives (conversation, message, prompt-input, tool, confirmation, ...)
     │       ├── form/     # useAppForm + TextField, TextareaField, SelectField, DateTimeField, SubmitButton
     │       └── data-table.tsx, confirm-dialog.tsx, entity-combobox.tsx, skeletons.tsx, logo.tsx, time-zone-sync.tsx, truncated-note.tsx
     ├── hooks/            # generic hooks: use-list-state, use-url-filters, use-debounced-value, use-mobile
     └── lib/              # infrastructure
         ├── api/          # client.ts (browserApi, pointed at /api), server-client.ts (createApi from API_URL), errors.ts (ApiError, unwrap, errorMessage), upload.ts (presigned PUT)
-        ├── auth/session.ts   # server-only: getSessionApi(), getCurrentUser(), requireUser()
         ├── formatting/   # dates.ts (ISO ⇄ datetime-local in a zone; relative days), bytes.ts
         ├── time-zone/    # server.ts: the zone from the `tz` cookie; cookie.ts
         ├── lists.ts      # paging: PAGE_SIZE, listPage(), paged(); URL search parsing shared by the list schemas

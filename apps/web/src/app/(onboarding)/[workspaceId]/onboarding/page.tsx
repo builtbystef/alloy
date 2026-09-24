@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { importListQuery } from "@/features/crm/imports/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi } from "@/lib/auth/session";
+import { getSessionApi } from "@/features/auth/server";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 import { WorkspaceProvider } from "@/features/workspaces/workspace-provider";

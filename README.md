@@ -350,11 +350,11 @@ apps/web/src/
 │   ├── api/[...path]/route.ts   # forwards /api/* to the API with the cookie and the visitor's address
 │   ├── (auth)/                  # login, signup, and the emailed-link pages
 │   └── (app)/[workspaceId]/     # sidebar layout; dashboard, contacts, companies, tasks, assistant, imports, members, settings, account
-├── features/                 # product code by domain, mirroring the API: auth, workspaces, crm/*, assistant
+├── features/                 # product code by domain, mirroring the API: auth, workspaces (+ invites/), crm/*, assistant
 │   └── <feature>/            # components/, hooks/, queries.ts, mutations.ts, schemas.ts, server.ts
 ├── components/               # ui/ (shadcn) and shared/ (layout, form, chat, data-table, ...)
 ├── hooks/                    # generic hooks
-└── lib/                      # infrastructure: api/, auth/session.ts, formatting/, time-zone/, lists.ts, validation.ts, routes.ts
+└── lib/                      # infrastructure: api/, formatting/, time-zone/, lists.ts, validation.ts, routes.ts
 ```
 
 The browser only talks to Next.js: `API_URL` is read on the server and the

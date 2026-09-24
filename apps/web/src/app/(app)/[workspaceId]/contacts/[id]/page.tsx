@@ -10,7 +10,7 @@ import { contactActivitiesQuery, contactQuery } from "@/features/crm/contacts/qu
 import { attachmentsQuery } from "@/features/crm/attachments/queries";
 import { taskListQuery } from "@/features/crm/tasks/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi } from "@/lib/auth/session";
+import { getSessionApi } from "@/features/auth/server";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 

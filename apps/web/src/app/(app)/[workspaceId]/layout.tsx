@@ -10,7 +10,7 @@ import { getTimeZone } from "@/lib/time-zone/server";
 import { workspacePaths } from "@/lib/routes";
 import { WorkspaceProvider } from "@/features/workspaces/workspace-provider";
 
-import { AppSidebar } from "@/components/shared/layout/app-sidebar";
+import { AppSidebar } from "@/features/workspaces/components/app-sidebar";
 import { PageTitle } from "@/components/shared/layout/page-title";
 
 type Params = Promise<{ workspaceId: string }>;

@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { listPendingInvites, listWorkspaces } from "@/features/workspaces/server";
+import { listPendingInvites } from "@/features/workspaces/invites/server";
+import { listWorkspaces } from "@/features/workspaces/server";
 import { WORKSPACE_COOKIE } from "@/features/workspaces/cookie";
 
 export const metadata: Metadata = { title: "Workspaces" };

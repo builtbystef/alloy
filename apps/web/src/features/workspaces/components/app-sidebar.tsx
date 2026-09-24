@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listWorkspaces } from "@/features/workspaces/server";
-import { requireUser } from "@/lib/auth/session";
+import { requireUser } from "@/features/auth/server";
 
 import { NavMenu, NavMenuFallback } from "./nav-menu";
 import { UserMenu } from "./user-menu";

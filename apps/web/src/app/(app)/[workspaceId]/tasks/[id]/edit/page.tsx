@@ -5,7 +5,10 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/shared/layout/page-header";
 import { FormPage } from "@/components/shared/layout/form-page";
 import { FormSkeleton } from "@/components/shared/skeletons";
-import { getSessionApi } from "@/lib/auth/session";
+import { getSessionApi } from "@/features/auth/server";
+import { taskQuery } from "@/features/crm/tasks/queries";
+import { ApiError } from "@/lib/api/errors";
+import { getQueryClient } from "@/lib/query-client";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 
@@ -27,10 +30,13 @@ async function EditTaskForm({ params }: { params: Params }) {
   const { workspaceId, id } = await params;
   await requireWorkspace(workspaceId);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
-  const { data: task } = await api.GET("/workspaces/{workspace_id}/tasks/{task_id}", {
-    params: { path: { workspace_id: workspaceId, task_id: id } },
-  });
-  if (!task) notFound();
+  let task;
+  try {
+    task = await getQueryClient().query(taskQuery(api, workspaceId, id));
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 422)) notFound();
+    throw error;
+  }
   return (
     <FormPage>
       <PageHeader title={task.title} />

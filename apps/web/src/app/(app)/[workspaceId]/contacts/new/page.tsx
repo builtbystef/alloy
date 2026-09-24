@@ -6,7 +6,7 @@ import { FormPage } from "@/components/shared/layout/form-page";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { companyPickerQuery } from "@/features/crm/companies/queries";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi } from "@/lib/auth/session";
+import { getSessionApi } from "@/features/auth/server";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 

@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useLogout } from "@/features/auth/hooks/use-logout";
-import { acceptInvite } from "@/features/workspaces/mutations";
+import { acceptInvite } from "@/features/workspaces/invites/mutations";
 import { FormError } from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
 import {

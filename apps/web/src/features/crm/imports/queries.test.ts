@@ -1,5 +1,4 @@
-import type { ImportResponse } from "@alloy/api-client";
-import { createApiClient } from "@alloy/api-client";
+import { createApiClient, type ImportResponse } from "@alloy/api-client";
 import { expect, test, vi } from "vite-plus/test";
 
 import { importKeys, importListQuery, isImportActive } from "./queries";

@@ -1,26 +1,17 @@
 import "server-only";
 
-import type { PendingInviteResponse, WorkspaceResponse } from "@alloy/api-client";
+import type { WorkspaceResponse } from "@alloy/api-client";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { ApiError } from "@/lib/api/errors";
-import { getSessionApi, requireUser } from "@/lib/auth/session";
+import { getSessionApi, requireUser } from "@/features/auth/server";
 
 /** The caller's workspaces, for Server Components. */
 export async function listWorkspaces(): Promise<WorkspaceResponse[]> {
   await requireUser();
   const api = await getSessionApi();
   const result = await api.GET("/workspaces/");
-  if (result.data) return result.data;
-  throw ApiError.fromResult(result);
-}
-
-/** The caller's own, for Server Components. */
-export async function listPendingInvites(): Promise<PendingInviteResponse[]> {
-  await requireUser();
-  const api = await getSessionApi();
-  const result = await api.GET("/invites/pending");
   if (result.data) return result.data;
   throw ApiError.fromResult(result);
 }

@@ -5,8 +5,8 @@ import { Suspense } from "react";
 import { SettingsSection, SettingsSections } from "@/components/shared/layout/settings-section";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { getQueryClient } from "@/lib/query-client";
-import { pendingInviteListQuery } from "@/features/workspaces/queries";
-import { getSessionApi, requireUser } from "@/lib/auth/session";
+import { pendingInviteListQuery } from "@/features/workspaces/invites/queries";
+import { getSessionApi, requireUser } from "@/features/auth/server";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 
@@ -15,7 +15,7 @@ import { EmailForm } from "@/features/auth/components/email-form";
 import { NameForm } from "@/features/auth/components/name-form";
 import { PasswordForm } from "@/features/auth/components/password-form";
 import { SessionsCard } from "@/features/auth/components/sessions-card";
-import { PendingInvites } from "@/features/workspaces/components/pending-invites";
+import { PendingInvites } from "@/features/workspaces/invites/components/pending-invites";
 
 export const metadata: Metadata = { title: "Settings" };
 

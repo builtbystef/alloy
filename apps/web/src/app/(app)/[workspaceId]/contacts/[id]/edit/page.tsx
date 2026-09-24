@@ -7,8 +7,10 @@ import { PageHeader } from "@/components/shared/layout/page-header";
 import { FormPage } from "@/components/shared/layout/form-page";
 import { FormSkeleton } from "@/components/shared/skeletons";
 import { companyPickerQuery } from "@/features/crm/companies/queries";
+import { contactQuery } from "@/features/crm/contacts/queries";
+import { ApiError } from "@/lib/api/errors";
 import { getQueryClient } from "@/lib/query-client";
-import { getSessionApi } from "@/lib/auth/session";
+import { getSessionApi } from "@/features/auth/server";
 import { requireWorkspace } from "@/features/workspaces/server";
 import { getTimeZone } from "@/lib/time-zone/server";
 
@@ -31,13 +33,16 @@ async function EditContactForm({ params }: { params: Params }) {
   await requireWorkspace(workspaceId);
   const [api, timeZone] = await Promise.all([getSessionApi(), getTimeZone()]);
   const queryClient = getQueryClient();
-  const [{ data: contact }] = await Promise.all([
-    api.GET("/workspaces/{workspace_id}/contacts/{contact_id}", {
-      params: { path: { workspace_id: workspaceId, contact_id: id } },
-    }),
-    queryClient.query(companyPickerQuery(api, workspaceId, "")).catch(noop),
-  ]);
-  if (!contact) notFound();
+  let contact;
+  try {
+    [contact] = await Promise.all([
+      queryClient.query(contactQuery(api, workspaceId, id)),
+      queryClient.query(companyPickerQuery(api, workspaceId, "")).catch(noop),
+    ]);
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 422)) notFound();
+    throw error;
+  }
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <FormPage>

@@ -6,19 +6,18 @@ import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-q
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { createInvite, resendInvite, revokeInvite } from "@/features/workspaces/mutations";
+import { createInvite, resendInvite, revokeInvite } from "@/features/workspaces/invites/mutations";
 import { Form, FormError, useAppForm } from "@/components/shared/form";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { browserApi } from "@/lib/api/client";
 import { ApiError, errorMessage } from "@/lib/api/errors";
 import { formatDate } from "@/lib/formatting/dates";
-import { roleDescriptions, roleLabels } from "@/features/workspaces/roles";
-import { invalidateWorkspaces, inviteListQuery } from "@/features/workspaces/queries";
-import { inviteSchema, type InviteInput } from "@/features/workspaces/schemas";
+import { assignableRoles, roleDescriptions, roleLabels } from "@/features/workspaces/roles";
+import { inviteListQuery } from "@/features/workspaces/invites/queries";
+import { invalidateWorkspaces } from "@/features/workspaces/queries";
+import { inviteSchema, type InviteInput } from "@/features/workspaces/invites/schemas";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
-
-import { assignableRoles } from "@/features/workspaces/roles";
 
 export function Invites({ timeZone }: { timeZone: string }) {
   const queryClient = useQueryClient();
