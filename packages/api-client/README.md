@@ -11,12 +11,9 @@ const api = createApiClient({ baseUrl: "http://127.0.0.1:8000" });
 const { data, error } = await api.GET("/health/");
 ```
 
-## Regenerating
-
 ```sh
-vp run generate          # export schema from apps/server, regenerate types
+vp run generate          # regenerate after changing a route or model in apps/server
 vp run generate:check    # fail if the committed files are stale (CI)
 ```
 
-Both `openapi.json` and `src/generated/schema.ts` are committed. Regenerate
-after changing a route or model in `apps/server` and commit the result.
+Both `openapi.json` and `src/generated/schema.ts` are committed.
