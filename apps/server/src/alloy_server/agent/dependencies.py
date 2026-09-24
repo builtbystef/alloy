@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
     from alloy_server.config import Settings
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 
 @dataclass(kw_only=True)

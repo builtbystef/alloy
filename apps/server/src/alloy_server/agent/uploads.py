@@ -4,10 +4,10 @@ from fastapi import APIRouter, status
 
 from alloy_server.agent import service
 from alloy_server.agent.schemas import ChatUploadCreate, ChatUploadResponse, ChatUploadTicket
-from alloy_server.crm.attachments.deps import AttachmentStorageDep
+from alloy_server.crm.attachments.dependencies import AttachmentStorageDep
 from alloy_server.db.base import utcnow
 from alloy_server.db.session import SessionDep
-from alloy_server.workspaces.deps import CanReadCrm
+from alloy_server.workspaces.dependencies import CanReadCrm
 
 router = APIRouter(tags=["agent"])
 

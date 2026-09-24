@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 
-from alloy_server.auth.deps import CurrentUserDep, VerifiedUserDep
+from alloy_server.auth.dependencies import CurrentUserDep, VerifiedUserDep
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import TOKEN_PER_IP, Limit, LimiterDep, per_ip
 from alloy_server.workspaces import service

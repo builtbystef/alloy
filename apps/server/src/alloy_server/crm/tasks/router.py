@@ -7,7 +7,7 @@ from alloy_server.crm.pagination import PageOf, paginate
 from alloy_server.crm.tasks import service
 from alloy_server.crm.tasks.schemas import TaskCreate, TaskFilters, TaskResponse, TaskUpdate
 from alloy_server.db.session import SessionDep
-from alloy_server.workspaces.deps import CanReadCrm, CanWriteCrm
+from alloy_server.workspaces.dependencies import CanReadCrm, CanWriteCrm
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 

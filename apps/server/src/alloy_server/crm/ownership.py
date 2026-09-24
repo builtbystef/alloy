@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.orm.interfaces import ORMOption
 
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 
 def not_found(model: type[OwnedByWorkspace]) -> NotFoundError:

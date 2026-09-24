@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from alloy_server.auth.deps import VerifiedUserDep
+from alloy_server.auth.dependencies import VerifiedUserDep
 from alloy_server.db.session import SessionDep
 from alloy_server.workspaces.models import Workspace, WorkspaceMember, WorkspaceRole
 from alloy_server.workspaces.permissions import Permission, permissions_for

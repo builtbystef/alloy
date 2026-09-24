@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from alloy_server.crm.dashboard.schemas import DashboardOptions
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 
 async def read_dashboard(

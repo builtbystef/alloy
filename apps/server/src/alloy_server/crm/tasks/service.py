@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from alloy_server.crm.models import RowSource
     from alloy_server.crm.tasks.schemas import TaskCreate, TaskFilters, TaskUpdate
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 # `contact.company` too, for `Task.linked_company`.
 WITH_RELATIONS = (

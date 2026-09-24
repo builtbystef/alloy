@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from alloy_server.agent.schemas import ChatUploadCreate
     from alloy_server.crm.attachments.service import AttachmentStorage
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 
 # --- Conversations -----------------------------------------------------------------

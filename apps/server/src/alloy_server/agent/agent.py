@@ -8,7 +8,7 @@ from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 
-from alloy_server.agent.deps import AgentDeps
+from alloy_server.agent.dependencies import AgentDeps
 from alloy_server.agent.tools import permitted_toolset
 from alloy_server.db.base import utcnow
 from alloy_server.workspaces.permissions import Permission

@@ -30,7 +30,7 @@ from alloy_server.agent.agent import (
     history_capability,
     model_settings,
 )
-from alloy_server.agent.deps import AgentDeps
+from alloy_server.agent.dependencies import AgentDeps
 from alloy_server.agent.history import append_messages, load_history, truncate_after_last_prompt
 from alloy_server.agent.models import AgentConversation, ChatUpload
 from alloy_server.agent.schemas import (
@@ -43,7 +43,7 @@ from alloy_server.core.logs import request_id
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import Limit, LimiterDep
 from alloy_server.integrations.storage import ObjectStoreDep
-from alloy_server.workspaces.deps import CanReadCrm
+from alloy_server.workspaces.dependencies import CanReadCrm
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 logger = logging.getLogger(__name__)
 

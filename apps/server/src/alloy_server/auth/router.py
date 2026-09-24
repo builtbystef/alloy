@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Response, status
 
 from alloy_server.auth import service
 from alloy_server.auth.cookies import clear_session_cookie, set_session_cookie
-from alloy_server.auth.deps import CurrentPrincipal, CurrentUserDep, unauthorized
+from alloy_server.auth.dependencies import CurrentPrincipal, CurrentUserDep, unauthorized
 from alloy_server.auth.passwords import verify_password
 from alloy_server.auth.schemas import (
     AccountDeletion,

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
     from alloy_server.config import Settings
     from alloy_server.crm.attachments.schemas import AttachmentCreate
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 WITH_UPLOADER = selectinload(Attachment.uploaded_by)
 

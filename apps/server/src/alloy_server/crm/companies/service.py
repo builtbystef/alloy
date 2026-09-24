@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from alloy_server.crm.companies.schemas import CompanyCreate, CompanyFilters, CompanyUpdate
     from alloy_server.crm.models import RowSource
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 SORT_COLUMNS = {
     CompanySort.NAME: Company.name,

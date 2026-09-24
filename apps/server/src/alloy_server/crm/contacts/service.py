@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     )
     from alloy_server.crm.models import RowSource
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 WITH_COMPANY = selectinload(Contact.company)
 

@@ -8,7 +8,7 @@ from pydantic_ai.toolsets import FilteredToolset, FunctionToolset
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from alloy_server.agent.deps import AgentDeps, ApprovalPreviewEvent
+from alloy_server.agent.dependencies import AgentDeps, ApprovalPreviewEvent
 from alloy_server.agent.models import ChatUpload
 from alloy_server.crm.attachments import service as attachment_service
 from alloy_server.crm.attachments.models import Attachment

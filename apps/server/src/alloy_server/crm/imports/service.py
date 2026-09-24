@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from alloy_server.config import Settings
     from alloy_server.crm.imports.schemas import ImportCreate
     from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.workspaces.deps import Membership
+    from alloy_server.workspaces.dependencies import Membership
 
 CSV_CONTENT_TYPE = "text/csv"
 WITH_REQUESTER = selectinload(Import.requested_by)

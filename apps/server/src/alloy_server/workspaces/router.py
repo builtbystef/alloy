@@ -3,13 +3,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Response, status
 
-from alloy_server.auth.deps import VerifiedUserDep
+from alloy_server.auth.dependencies import VerifiedUserDep
 from alloy_server.config import SettingsDep
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import Limit, LimiterDep
 from alloy_server.integrations.storage import ObjectStoreDep
 from alloy_server.workspaces import service
-from alloy_server.workspaces.deps import (
+from alloy_server.workspaces.dependencies import (
     CanDeleteWorkspace,
     CanManageMembers,
     CanManageWorkspace,

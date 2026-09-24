@@ -80,7 +80,7 @@ apps/server/
 Each feature package has only the files it needs: `router.py` (paths, status
 codes, dependencies, `commit`), `schemas.py` (Pydantic), `models.py`
 (SQLAlchemy), `service.py` (the work: takes a session and parsed input, owns
-the queries, raises `AppError`s rather than `HTTPException`s), and `deps.py`
+the queries, raises `AppError`s rather than `HTTPException`s), and `dependencies.py`
 for dependencies other packages use. There is no repository layer: the
 session is the unit of work. The assistant's tools and the worker's jobs call
 the same service functions the routes do.
@@ -183,7 +183,7 @@ steps, then `POST /workspaces/{id}/onboarding/complete`, which stamps
 | viewer | `crm:read`, `members:read`                                                    |
 
 Handlers never ask for a role: they take a `Can*` dependency from
-`workspaces/deps.py`, which loads the caller's membership (404 for
+`workspaces/dependencies.py`, which loads the caller's membership (404 for
 non-members, so ids leak nothing) and answers 403 when the role lacks the
 permission. Owners manage everyone, others only roles below their own, and a
 workspace always keeps at least one owner. Invitations are emailed links

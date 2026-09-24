@@ -15,7 +15,7 @@ from alloy_server.crm.contacts.schemas import ContactResponse
 from alloy_server.crm.pagination import Page, PageOf, paginate
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.storage import ObjectStoreDep
-from alloy_server.workspaces.deps import CanReadCrm, CanWriteCrm
+from alloy_server.workspaces.dependencies import CanReadCrm, CanWriteCrm
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 

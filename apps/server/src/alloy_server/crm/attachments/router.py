@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import RedirectResponse
 
 from alloy_server.crm.attachments import service
-from alloy_server.crm.attachments.deps import AttachmentStorageDep
+from alloy_server.crm.attachments.dependencies import AttachmentStorageDep
 from alloy_server.crm.attachments.schemas import (
     AttachmentCreate,
     AttachmentResponse,
@@ -15,7 +15,7 @@ from alloy_server.crm.companies import service as companies
 from alloy_server.crm.contacts import service as contacts
 from alloy_server.crm.pagination import Page, PageOf, paginate
 from alloy_server.db.session import SessionDep
-from alloy_server.workspaces.deps import CanReadCrm, CanWriteCrm
+from alloy_server.workspaces.dependencies import CanReadCrm, CanWriteCrm
 
 router = APIRouter(tags=["attachments"])
 
