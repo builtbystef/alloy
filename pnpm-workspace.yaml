@@ -7,7 +7,7 @@ catalogMode: prefer
 
 catalog:
   "@ai-sdk/react": ^4.0.96
-  "@base-ui/react": ^1.7.0
+  "@base-ui/react": ^1.8.0
   "@tailwindcss/postcss": ^4.3.3
   "@tanstack/react-form": ^1.33.5
   "@tanstack/react-query": ^5.102.8
