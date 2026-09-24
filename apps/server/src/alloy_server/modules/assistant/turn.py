@@ -1,6 +1,3 @@
-"""One turn of a conversation: the user's new message (with the files it names) as
-a model request, and the run's result written back to the transcript."""
-
 from dataclasses import KW_ONLY, dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, Any

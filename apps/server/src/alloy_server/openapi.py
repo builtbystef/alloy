@@ -1,10 +1,3 @@
-"""Export the OpenAPI schema without starting a server.
-
-    uv run --package alloy-server python -m alloy_server.openapi [-o PATH]
-
-`packages/api-client` runs this to generate its TypeScript types.
-"""
-
 import argparse
 import json
 import sys
@@ -18,7 +11,9 @@ def schema_json() -> str:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description="Export the OpenAPI schema without starting a server."
+    )
     parser.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
     args = parser.parse_args(argv)
 

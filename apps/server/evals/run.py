@@ -1,8 +1,3 @@
-"""Run the agent evals against the live model.
-
-uv run python -m evals.run [--judge]
-"""
-
 import argparse
 import asyncio
 from typing import Any

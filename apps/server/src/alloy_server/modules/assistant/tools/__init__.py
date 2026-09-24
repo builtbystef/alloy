@@ -1,6 +1,3 @@
-"""The assistant's tools, one module per CRM domain. Importing the package
-registers every tool on `toolset`; `permitted_toolset` is what the agent runs."""
-
 from alloy_server.modules.assistant.tools import (  # noqa: F401 - registers the tools
     activities,
     attachments,

@@ -1,6 +1,3 @@
-"""Router order is the OpenAPI schema order, which `packages/api-client` is
-generated from. Keep it stable."""
-
 from fastapi import APIRouter
 
 from alloy_server.modules.assistant.router import router as assistant_router

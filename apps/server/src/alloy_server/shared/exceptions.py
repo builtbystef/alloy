@@ -1,6 +1,3 @@
-"""Raised by services instead of `HTTPException`, so they stay free of HTTP.
-`handle_app_error` answers each with the same `{"detail": ...}` body."""
-
 from typing import TYPE_CHECKING, ClassVar, cast
 
 from starlette import status

@@ -1,6 +1,3 @@
-"""The one `App`, the `task` decorator that gives a job its resources and the
-context it was queued in, and `defer`."""
-
 import functools
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Concatenate

@@ -1,5 +1,3 @@
-"""Activity tools."""
-
 import uuid
 
 from pydantic_ai import RunContext

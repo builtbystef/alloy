@@ -1,5 +1,3 @@
-"""Attachment tools: files the user dropped into the chat, and files on records."""
-
 import uuid
 from typing import TYPE_CHECKING
 

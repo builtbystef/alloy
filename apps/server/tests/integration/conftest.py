@@ -1,11 +1,3 @@
-"""Tests use a real PostgreSQL database, `alloy_test`, created on first use. Each
-test runs in one transaction that is rolled back at the end, DDL included.
-
-Jobs are queued in memory and run by a real worker as soon as they are deferred,
-inside the test transaction and with the same doubles the handlers get, so a
-queued email is in `outbox` by the time the handler responds.
-"""
-
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 

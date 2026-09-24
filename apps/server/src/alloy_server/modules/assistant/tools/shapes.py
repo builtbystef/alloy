@@ -1,5 +1,3 @@
-"""What the tools return to the model, and the shapes of what they take."""
-
 import uuid
 from datetime import datetime
 from typing import Annotated

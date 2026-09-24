@@ -1,5 +1,3 @@
-"""The toolset the agent runs, and how a tool gets on it."""
-
 from typing import Any, Literal
 
 from pydantic_ai import ModelRetry, RunContext

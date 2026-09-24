@@ -1,6 +1,3 @@
-"""The task that sends mail. Imported by name, never from the package: `jobs.app`
-imports this package for `Mailer`, so re-exporting it here would be a cycle."""
-
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 

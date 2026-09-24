@@ -1,8 +1,3 @@
-"""Load all models to register them with Base.
-
-Imported by the package init; separate from db/base.py to avoid circular imports.
-"""
-
 from alloy_server.db.base import Base
 from alloy_server.integrations.ai import models as _ai_models  # noqa: F401
 from alloy_server.integrations.rate_limit import models as _rate_limit_models  # noqa: F401

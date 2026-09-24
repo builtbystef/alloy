@@ -1,5 +1,3 @@
-"""Workspace tools: who the user is, and who else is here."""
-
 from pydantic_ai import RunContext
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload

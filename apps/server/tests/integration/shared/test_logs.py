@@ -1,5 +1,3 @@
-"""Request IDs carry from the request that queued a job into the job itself."""
-
 import logging
 from typing import TYPE_CHECKING
 

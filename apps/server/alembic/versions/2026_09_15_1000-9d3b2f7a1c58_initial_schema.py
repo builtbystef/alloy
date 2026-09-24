@@ -1,10 +1,3 @@
-"""initial schema
-
-Revision ID: 9d3b2f7a1c58
-Revises:
-Create Date: 2026-09-15 10:00:00.000000
-"""
-
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa

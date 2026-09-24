@@ -1,7 +1,3 @@
-"""Shared by `unit/` and `integration/`: the test database URL and the settings
-fixture. Unit tests need neither PostgreSQL nor object storage; the integration
-tree's own conftest adds the database, the app client, and the worker."""
-
 import os
 from typing import TYPE_CHECKING
 

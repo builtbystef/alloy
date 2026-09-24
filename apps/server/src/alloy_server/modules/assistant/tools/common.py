@@ -1,6 +1,3 @@
-"""Helpers the tool modules share: paging, row shapes, ownership checks, bulk
-limits, the approval pause, and the chat's uploads."""
-
 import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any

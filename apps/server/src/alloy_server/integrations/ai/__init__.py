@@ -1,7 +1,3 @@
-"""The model behind the assistant. Pydantic AI's `Model` is the port; the OpenAI
-Responses API is the one adapter. What the agent says and does lives in
-`modules/assistant`, which also decides what an unconfigured model means."""
-
 from functools import lru_cache
 from typing import TYPE_CHECKING, Literal
 

@@ -1,7 +1,3 @@
-"""Fixed-window rate limiting, counted in the database. Each feature owns its
-`Limit` constants. Routes attach `per_ip(limit)` as a dependency, or use
-`RateLimiterDep` when the subject is in the body or only failures should count."""
-
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from typing import Annotated
