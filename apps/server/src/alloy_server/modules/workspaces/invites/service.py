@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from alloy_server.db.base import utcnow
-from alloy_server.jobs.emails import queue_email
+from alloy_server.integrations.mail.jobs import queue_email
 from alloy_server.modules.auth.models import User
 from alloy_server.modules.auth.tokens import hash_token, new_token
 from alloy_server.modules.workspaces.invites.emails import invite_email

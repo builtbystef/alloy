@@ -5,7 +5,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from alloy_server.integrations.storage.cleanup import storage_prefix
-from alloy_server.jobs.imports import queue_import
+from alloy_server.modules.crm.imports.jobs import queue_import
 from alloy_server.modules.crm.imports.models import Import, ImportStatus
 from alloy_server.modules.crm.imports.schemas import ImportResponse, ImportUpload
 from alloy_server.modules.crm.ownership import fetch_owned

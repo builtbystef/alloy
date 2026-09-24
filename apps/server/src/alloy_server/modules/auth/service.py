@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
 from alloy_server.db.base import utcnow
-from alloy_server.jobs.emails import queue_email
+from alloy_server.integrations.mail.jobs import queue_email
 from alloy_server.modules.auth.emails import (
     account_deletion_email,
     email_change_email,

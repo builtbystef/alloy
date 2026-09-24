@@ -73,7 +73,7 @@ apps/server/
 │   │   ├── workspaces/       # workspaces, members, roles, invitations; the Can* dependencies
 │   │   ├── crm/              # the demo: companies/, contacts/, tasks/, attachments/, imports/, dashboard/ + shared mixins, pagination, ownership
 │   │   └── assistant/        # the assistant: a Pydantic AI agent (agent.py) over the CRM
-│   └── jobs/                 # Procrastinate app, task decorator, worker; tasks: emails, purge, imports, stalled
+│   └── jobs/                 # Procrastinate app, task decorator, worker; the platform tasks: purge, stalled
 └── tests/
     ├── unit/                 # no PostgreSQL, no object storage: `uv run pytest apps/server/tests/unit` runs anywhere
     └── integration/          # the app over a real database; one rolled-back transaction per test
@@ -242,6 +242,9 @@ run, and a job is a row a worker takes with `SKIP LOCKED`.
 A task is a function of `Resources` (settings, a session factory, the mailer,
 the object store) and JSON arguments, registered with `task()` in
 `jobs/app.py`; each has a `queue_*` helper that takes the handler's session.
+A task lives in a `jobs.py` next to what it works on (`integrations/mail/`,
+`modules/crm/imports/`), listed in `TASK_MODULES` so the worker imports it;
+`jobs/` itself holds only the tasks about the platform.
 The job row is written on that session's connection, before the commit, so
 it is committed, or rolled back, with the rows it is about, and the worker
 is notified at commit, never before: the queue is its own outbox. This

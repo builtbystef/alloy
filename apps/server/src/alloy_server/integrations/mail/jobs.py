@@ -1,7 +1,10 @@
+"""The task that sends mail. Imported by name, never from the package: `jobs.app`
+imports this package for `Mailer`, so re-exporting it here would be a cycle."""
+
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
-from alloy_server.integrations.mail import Email
+from alloy_server.integrations.mail.base import Email
 from alloy_server.jobs.app import RETRY_ON_ERROR, defer, task
 from alloy_server.jobs.resources import Resources
 

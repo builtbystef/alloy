@@ -5,6 +5,8 @@ import pytest
 from alloy_server.config import Settings
 from alloy_server.integrations.storage import ObjectNotFoundError
 from alloy_server.integrations.storage.memory import MemoryObjectStore
+from alloy_server.jobs.app import app
+from alloy_server.modules.crm.imports.jobs import run_import_job
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -14,6 +16,12 @@ if TYPE_CHECKING:
 @pytest.fixture
 def settings() -> Settings:
     return Settings(app_name="Test API", import_max_bytes=1024)
+
+
+def test_the_run_task_is_registered_without_retries():
+    """A CSV that fails to load is reported on the row, not tried again."""
+    assert app.tasks["imports.run"] is run_import_job
+    assert run_import_job.retry_strategy is None
 
 
 def start(actor: Actor, store: MemoryObjectStore, kind: str, data: bytes) -> dict:

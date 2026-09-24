@@ -7,10 +7,11 @@ if TYPE_CHECKING:
     from alloy_server.config import Settings
 
 # Imported by the worker before it starts, so every task is registered. The API
-# imports the ones it queues.
+# imports the ones it queues. A domain task lives in a `jobs.py` next to what it
+# works on and is listed here; the tasks in this package are about the platform.
 TASK_MODULES = [
-    "alloy_server.jobs.emails",
-    "alloy_server.jobs.imports",
+    "alloy_server.integrations.mail.jobs",
+    "alloy_server.modules.crm.imports.jobs",
     "alloy_server.jobs.purge",
     "alloy_server.jobs.stalled",
 ]

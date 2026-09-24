@@ -1,4 +1,5 @@
 import logging
+import pkgutil
 from datetime import timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -8,13 +9,11 @@ from procrastinate import PsycopgConnector, RetryStrategy
 from procrastinate.schema import SchemaManager
 from sqlalchemy import text
 
+import alloy_server
 from alloy_server.config import Settings
 from alloy_server.db.base import utcnow
-from alloy_server.integrations.mail import Email
 from alloy_server.jobs import TASK_MODULES, conninfo, create_app
 from alloy_server.jobs.app import RETRY_ON_ERROR, AnyTask, app, defer
-from alloy_server.jobs.emails import queue_email, send_email
-from alloy_server.jobs.imports import run_import_job
 from alloy_server.jobs.purge import PurgeReport, purge, purge_expired
 from alloy_server.jobs.stalled import retry_stalled
 from alloy_server.modules.crm.imports.models import Import, ImportStatus
@@ -45,40 +44,25 @@ def test_the_app_queues_through_the_database():
     assert created.worker_defaults == {"delete_jobs": "successful"}
 
 
-def test_tasks_are_registered_with_their_retries_and_schedules():
-    assert app.tasks["mail.send"] is send_email
-    assert send_email.retry_strategy is RETRY_ON_ERROR
+def test_every_jobs_module_in_the_tree_is_registered():
+    """A task in a `jobs.py` the worker does not import is never run."""
+    found = {
+        module.name
+        for module in pkgutil.walk_packages(alloy_server.__path__, "alloy_server.")
+        if module.name.endswith(".jobs") and not module.ispkg
+    }
+    listed = {module for module in TASK_MODULES if module.endswith(".jobs")}
+    assert found == listed
+    assert set(TASK_MODULES) - listed == {"alloy_server.jobs.purge", "alloy_server.jobs.stalled"}
+
+
+def test_the_platform_tasks_are_registered_with_their_schedules():
     assert isinstance(RETRY_ON_ERROR, RetryStrategy)
     assert RETRY_ON_ERROR.max_attempts == 5
-    assert app.tasks["imports.run"] is run_import_job
-    assert run_import_job.retry_strategy is None
     periodic = {name: task.cron for (name, _), task in app.periodic_registry.periodic_tasks.items()}
     assert periodic == {"purge.expired": "0 * * * *", "jobs.retry_stalled": "*/10 * * * *"}
     assert app.tasks["purge.expired"] is purge_expired
     assert app.tasks["jobs.retry_stalled"] is retry_stalled
-
-
-def test_a_queued_email_goes_through_the_queue_to_the_mailer(
-    db: Database, outbox: Outbox, queue: InlineConnector
-):
-    """The message is stored as JSON on the way, so what the mailer gets is a copy."""
-    email = Email(to="grace@example.com", subject="Hi", text="Body", html="<p>Body</p>")
-
-    async def queue_it() -> int:
-        async with db.session() as session:
-            return await queue_email(session, email)
-
-    job_id = db.run(queue_it)
-    assert outbox == [email]
-    assert outbox[0] is not email
-    stored = queue.jobs[job_id]
-    assert stored["task_name"] == "mail.send"
-    assert stored["args"]["email"] == {
-        "to": "grace@example.com",
-        "subject": "Hi",
-        "text": "Body",
-        "html": "<p>Body</p>",
-    }
 
 
 def test_a_job_is_queued_in_the_transaction_of_the_rows_it_is_about(

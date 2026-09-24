@@ -1,3 +1,6 @@
+"""The task that loads an import. Kept out of the package's `__init__` so
+importing the models or schemas never pulls in the queue."""
+
 from typing import TYPE_CHECKING
 from uuid import UUID
 
