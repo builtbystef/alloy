@@ -65,7 +65,7 @@ apps/server/
 │   ├── main.py               # app, lifespan (engine, store, job queue), middleware, the AppError handler
 │   ├── config.py             # Settings (pydantic-settings) + get_settings
 │   ├── api/router.py         # the HTTP composition root: includes every feature router
-│   ├── core/                 # exceptions.py (AppError family + handler), middleware.py (request IDs, body limit), logs.py, telemetry.py
+│   ├── shared/               # exceptions.py (AppError family + handler), middleware.py (request IDs, body limit), logs.py, telemetry.py, routing.py
 │   ├── db/                   # session.py (engine, SessionDep), base.py (Base, mixins; imports every model)
 │   ├── integrations/         # ports and adapters: mail/, storage/, ratelimit/ (a protocol + implementations each)
 │   ├── health/               # GET /health/ (liveness); /health/{db,storage} (readiness)

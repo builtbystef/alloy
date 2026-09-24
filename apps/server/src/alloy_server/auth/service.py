@@ -14,9 +14,9 @@ from alloy_server.auth.emails import (
 from alloy_server.auth.models import User, UserSession
 from alloy_server.auth.passwords import hash_password
 from alloy_server.auth.tokens import hash_token, new_token
-from alloy_server.core.exceptions import AppError, ConflictError, GoneError, NotFoundError
 from alloy_server.db.base import utcnow
 from alloy_server.jobs.emails import queue_email
+from alloy_server.shared.exceptions import AppError, ConflictError, GoneError, NotFoundError
 from alloy_server.workspaces.models import (
     Workspace,
     WorkspaceMember,

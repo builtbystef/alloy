@@ -5,10 +5,10 @@ from sqlalchemy.orm import selectinload
 
 from alloy_server.auth.models import User
 from alloy_server.auth.tokens import hash_token, new_token
-from alloy_server.core.exceptions import ConflictError, ForbiddenError, GoneError, NotFoundError
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
 from alloy_server.jobs.emails import queue_email
+from alloy_server.shared.exceptions import ConflictError, ForbiddenError, GoneError, NotFoundError
 from alloy_server.workspaces.emails import invite_email
 from alloy_server.workspaces.models import (
     Workspace,

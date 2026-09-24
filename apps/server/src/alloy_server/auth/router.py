@@ -21,10 +21,10 @@ from alloy_server.auth.schemas import (
     UserResponse,
 )
 from alloy_server.config import SettingsDep
-from alloy_server.core.exceptions import ConflictError
 from alloy_server.db.base import utcnow
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import TOKEN_PER_IP, Limit, LimiterDep, per_ip
+from alloy_server.shared.exceptions import ConflictError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

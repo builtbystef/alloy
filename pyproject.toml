@@ -39,7 +39,7 @@ ignore = [
   # FastAPI, SQLAlchemy, and Pydantic read annotations at runtime, so most imports
   # cannot move into a TYPE_CHECKING block anyway.
   "TC",
-  # An `AppError` (core/exceptions.py) carries the message the client sees, the
+  # An `AppError` (shared/exceptions.py) carries the message the client sees, the
   # assistant's tools answer the model with retry prompts, and the chat route
   # answers the browser with short reasons: the message is the point of the raise.
   "EM",

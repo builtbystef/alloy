@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from alloy_server.core.logs import JsonFormatter, RequestIdFilter, TextFormatter, request_id
 from alloy_server.jobs.app import defer, task
 from alloy_server.jobs.resources import Resources
+from alloy_server.shared.logs import JsonFormatter, RequestIdFilter, TextFormatter, request_id
 
 if TYPE_CHECKING:
     from types import TracebackType

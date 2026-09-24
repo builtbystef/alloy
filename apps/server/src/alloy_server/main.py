@@ -6,19 +6,18 @@ from fastapi import FastAPI
 
 from alloy_server.api.router import router as api_router
 from alloy_server.config import SettingsDep, get_settings
-from alloy_server.core import logs, telemetry
-from alloy_server.core.exceptions import AppError, handle_app_error
-from alloy_server.core.middleware import RequestIdMiddleware
 from alloy_server.db.session import DatabaseState, create_database_state
 from alloy_server.integrations.mail import Mailer, create_mailer
 from alloy_server.integrations.ratelimit import DatabaseRateLimitStore, RateLimitStoreProtocol
 from alloy_server.integrations.storage import ObjectStore, create_object_store
 from alloy_server.jobs.app import app as jobs
+from alloy_server.shared import logs, telemetry
+from alloy_server.shared.exceptions import AppError, handle_app_error
+from alloy_server.shared.middleware import RequestIdMiddleware
+from alloy_server.shared.routing import generate_unique_id
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
-
-    from fastapi.routing import APIRoute
 
 settings = get_settings()
 
@@ -33,17 +32,6 @@ class AppState(DatabaseState):
     mailer: Mailer
     object_store: ObjectStore
     rate_limit_store: RateLimitStoreProtocol
-
-
-def generate_unique_id(route: APIRoute) -> str:
-    """`{tag}-{function}` instead of FastAPI's default `{function}_{path}_{method}`.
-
-    Shorter, stable when a path changes, and the form the FastAPI docs recommend
-    for generated clients (packages/api-client). FastAPI raises on duplicates.
-    """
-    if route.tags:
-        return f"{route.tags[0]}-{route.name}"
-    return route.name
 
 
 @asynccontextmanager

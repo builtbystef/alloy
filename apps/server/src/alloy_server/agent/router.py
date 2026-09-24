@@ -39,10 +39,10 @@ from alloy_server.agent.schemas import (
     ConversationResponse,
 )
 from alloy_server.config import SettingsDep
-from alloy_server.core.logs import request_id
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import Limit, LimiterDep
 from alloy_server.integrations.storage import ObjectStoreDep
+from alloy_server.shared.logs import request_id
 from alloy_server.workspaces.dependencies import CanReadCrm
 
 if TYPE_CHECKING:

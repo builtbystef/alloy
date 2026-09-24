@@ -3,8 +3,8 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from alloy_server.core import telemetry
-from alloy_server.core.logs import new_request_id, request_id
+from alloy_server.shared import telemetry
+from alloy_server.shared.logs import new_request_id, request_id
 
 type Trace = dict[str, str]
 

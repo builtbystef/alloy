@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from starlette import status
 from starlette.responses import JSONResponse
 
-from alloy_server.core.logs import new_request_id, request_id
+from alloy_server.shared.logs import new_request_id, request_id
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Message, Receive, Scope, Send

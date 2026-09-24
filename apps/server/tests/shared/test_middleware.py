@@ -5,8 +5,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from alloy_server.core.logs import RequestIdFilter, request_id
-from alloy_server.core.middleware import INTERNAL_ERROR_DETAIL, RequestIdMiddleware
+from alloy_server.shared.logs import RequestIdFilter, request_id
+from alloy_server.shared.middleware import INTERNAL_ERROR_DETAIL, RequestIdMiddleware
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -58,14 +58,14 @@ def test_unhandled_error_becomes_a_500_with_the_request_id(
     failing_client: TestClient, caplog: pytest.LogCaptureFixture
 ):
     caplog.handler.addFilter(RequestIdFilter())
-    with caplog.at_level(logging.ERROR, logger="alloy_server.core.middleware"):
+    with caplog.at_level(logging.ERROR, logger="alloy_server.shared.middleware"):
         response = failing_client.get("/boom", headers={"X-Request-ID": "report-42"})
     assert response.status_code == 500
     assert response.headers["x-request-id"] == "report-42"
     assert response.json() == {"detail": INTERNAL_ERROR_DETAIL, "request_id": "report-42"}
     assert INTERNAL_DETAIL not in response.text
 
-    [record] = [r for r in caplog.records if r.name == "alloy_server.core.middleware"]
+    [record] = [r for r in caplog.records if r.name == "alloy_server.shared.middleware"]
     assert getattr(record, "request_id", None) == "report-42"
     assert record.exc_info is not None
     assert "Unhandled error on GET /boom" in record.getMessage()

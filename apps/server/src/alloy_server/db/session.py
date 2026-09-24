@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from alloy_server.core import telemetry
+from alloy_server.shared import telemetry
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

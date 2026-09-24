@@ -5,9 +5,9 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from alloy_server.core import telemetry
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.storage import ObjectStoreDep
+from alloy_server.shared import telemetry
 
 logger = logging.getLogger(__name__)
 

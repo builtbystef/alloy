@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from alloy_server.core.exceptions import ConflictError, PayloadTooLargeError
 from alloy_server.crm.attachments.models import Attachment
 from alloy_server.crm.attachments.schemas import AttachmentResponse, AttachmentUpload
 from alloy_server.crm.companies.models import Company
@@ -14,6 +13,7 @@ from alloy_server.crm.ownership import fetch_owned, not_found
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.storage import ObjectStore
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
+from alloy_server.shared.exceptions import ConflictError, PayloadTooLargeError
 
 if TYPE_CHECKING:
     from uuid import UUID

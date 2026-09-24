@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from alloy_server.core.exceptions import ConflictError
 from alloy_server.crm.companies.models import Company
 from alloy_server.crm.contacts.models import Activity, ActivityType, Contact
 from alloy_server.crm.dates import due_clause
@@ -12,6 +11,7 @@ from alloy_server.crm.pagination import sorted_by
 from alloy_server.crm.tasks.models import Task, TaskStatus
 from alloy_server.crm.tasks.schemas import TaskSort
 from alloy_server.db.base import utcnow
+from alloy_server.shared.exceptions import ConflictError
 
 if TYPE_CHECKING:
     from uuid import UUID

@@ -6,9 +6,9 @@ from fastapi import Depends
 from pydantic import Field, HttpUrl, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from alloy_server.core.logs import LogFormat
 from alloy_server.integrations.mail import MailProvider
 from alloy_server.integrations.storage import StorageProvider
+from alloy_server.shared.logs import LogFormat
 
 
 class Settings(BaseSettings):

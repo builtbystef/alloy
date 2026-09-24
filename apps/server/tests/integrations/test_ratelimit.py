@@ -7,7 +7,6 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient as BareTestClient
 
 from alloy_server.auth.router import LOGIN_PER_EMAIL, LOGIN_PER_IP
-from alloy_server.core.exceptions import AppError, RateLimitedError, handle_app_error
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.ratelimit import (
     DatabaseRateLimitStore,
@@ -19,6 +18,7 @@ from alloy_server.integrations.ratelimit import (
     per_ip,
 )
 from alloy_server.integrations.ratelimit.models import RateLimitWindow
+from alloy_server.shared.exceptions import AppError, RateLimitedError, handle_app_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable

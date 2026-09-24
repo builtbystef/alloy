@@ -3,9 +3,9 @@ import logging
 from contextlib import AsyncExitStack
 
 from alloy_server.config import get_settings
-from alloy_server.core import logs, telemetry
 from alloy_server.jobs.app import app
 from alloy_server.jobs.resources import open_resources, worker_context
+from alloy_server.shared import logs, telemetry
 
 logger = logging.getLogger(__name__)
 

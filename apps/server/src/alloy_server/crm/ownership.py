@@ -2,8 +2,8 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from alloy_server.core.exceptions import NotFoundError
 from alloy_server.crm.models import OwnedByWorkspace
+from alloy_server.shared.exceptions import NotFoundError
 
 if TYPE_CHECKING:
     from uuid import UUID

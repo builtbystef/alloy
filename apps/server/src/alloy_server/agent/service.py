@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 from sqlalchemy import exists, select
 
 from alloy_server.agent.models import AgentConversation, AgentMessage, ChatUpload
-from alloy_server.core.exceptions import ConflictError, NotFoundError
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
+from alloy_server.shared.exceptions import ConflictError, NotFoundError
 
 if TYPE_CHECKING:
     from uuid import UUID

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Protocol
 
-from alloy_server.core.exceptions import RateLimitedError
+from alloy_server.shared.exceptions import RateLimitedError
 
 log = logging.getLogger(__name__)
 
