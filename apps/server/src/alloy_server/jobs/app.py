@@ -65,7 +65,9 @@ async def defer(session: AsyncSession, task: AnyTask, **kwargs: JSONValue) -> in
     await session.flush()
     connection = await (await session.connection()).get_raw_connection()
     deferrer = task.configure(connection=connection.driver_connection)
-    return await deferrer.defer_async(trace=trace(), **kwargs)
+    # `Trace` is `dict[str, str]`, which is not a `JSONValue` (dicts are invariant).
+    carrier: dict[str, JSONValue] = {**trace()}
+    return await deferrer.defer_async(trace=carrier, **kwargs)
 
 
 __all__ = ["RETRY_ON_ERROR", "AnyTask", "JobFunction", "app", "defer", "task"]
