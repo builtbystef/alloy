@@ -16,12 +16,12 @@ from alloy_server.modules.auth.emails import (
 from alloy_server.modules.auth.models import User, UserSession
 from alloy_server.modules.auth.passwords import hash_password
 from alloy_server.modules.auth.tokens import hash_token, new_token
+from alloy_server.modules.workspaces.invites.service import get_invite_by_token
 from alloy_server.modules.workspaces.models import (
     Workspace,
     WorkspaceMember,
     WorkspaceRole,
 )
-from alloy_server.modules.workspaces.service import get_invite_by_token
 from alloy_server.shared.exceptions import AppError, ConflictError, GoneError, NotFoundError
 
 if TYPE_CHECKING:

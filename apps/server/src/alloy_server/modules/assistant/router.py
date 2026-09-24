@@ -1,33 +1,20 @@
 import logging
 from collections.abc import AsyncIterator
-from dataclasses import KW_ONLY, dataclass
 from datetime import timedelta
-from functools import cached_property
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
-from pydantic_ai.messages import (
-    BinaryContent,
-    ModelMessage,
-    ModelRequest,
-    ModelResponse,
-    UserContent,
-    UserPromptPart,
-)
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
-from pydantic_ai.ui.vercel_ai.request_types import FileUIPart, TextUIPart, UIMessage
-from sqlalchemy import select
+from pydantic_ai.ui.vercel_ai.request_types import UIMessage
 
 from alloy_server.config import SettingsDep
 from alloy_server.db.session import SessionDep
-from alloy_server.integrations.ai.usage import record_model_calls
 from alloy_server.integrations.ratelimit import Limit, LimiterDep
 from alloy_server.integrations.storage import ObjectStoreDep
-from alloy_server.modules.assistant import service, uploads
+from alloy_server.modules.assistant import service
 from alloy_server.modules.assistant.agent import (
     USAGE_LIMITS,
     agent,
@@ -35,46 +22,35 @@ from alloy_server.modules.assistant.agent import (
     run_settings,
 )
 from alloy_server.modules.assistant.dependencies import AgentDeps, ModelDep
-from alloy_server.modules.assistant.history import (
-    append_messages,
-    load_history,
-    truncate_after_last_prompt,
-)
-from alloy_server.modules.assistant.models import AssistantConversation, ChatUpload
+from alloy_server.modules.assistant.history import append_messages, load_history
+from alloy_server.modules.assistant.models import AssistantConversation
 from alloy_server.modules.assistant.schemas import (
     ChatMessageRequest,
     ConversationDetailResponse,
     ConversationResponse,
 )
+from alloy_server.modules.assistant.turn import (
+    SDK_VERSION,
+    ConversationAdapter,
+    parse_time_zone,
+    persist_run,
+    prepare_turn,
+)
+from alloy_server.modules.assistant.uploads.router import router as uploads_router
 from alloy_server.modules.workspaces.dependencies import CanReadCrm
 from alloy_server.shared.logs import request_id
 
 if TYPE_CHECKING:
     from pydantic_ai.run import AgentRunResult
     from pydantic_ai.ui.vercel_ai.response_types import BaseChunk
-    from sqlalchemy.ext.asyncio import AsyncSession
-
-    from alloy_server.integrations.storage import ObjectStore
-    from alloy_server.modules.workspaces.dependencies import Membership
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/assistant", tags=["assistant"])
-router.include_router(uploads.router)
+router.include_router(uploads_router)
 
 # Each message to the assistant is a model run; this bounds what one user can spend.
 ASSISTANT_MESSAGE_PER_USER = Limit("assistant-message:user", 60, timedelta(hours=1))
-
-SDK_VERSION = 7
-TITLE_LENGTH = 80
-# Files the model can read. Anything else is described by name, type, and size.
-READABLE_TYPES = frozenset(
-    {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"}
-)
-
-
-def bad_request(detail: str) -> HTTPException:
-    return HTTPException(status.HTTP_400_BAD_REQUEST, detail)
 
 
 def read_conversation(conversation: AssistantConversation) -> ConversationResponse:
@@ -143,156 +119,6 @@ async def delete_conversation(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-# --- Sending a message -------------------------------------------------------------
-
-
-def _time_zone(name: str | None) -> ZoneInfo:
-    if not name:
-        return ZoneInfo("UTC")
-    try:
-        return ZoneInfo(name)
-    except ZoneInfoNotFoundError, ValueError:
-        return ZoneInfo("UTC")
-
-
-def _title_from(text: str) -> str | None:
-    line = " ".join(text.split())
-    if not line:
-        return None
-    return line if len(line) <= TITLE_LENGTH else line[: TITLE_LENGTH - 1] + "…"
-
-
-async def _uploads_for(
-    session: AsyncSession,
-    membership: Membership,
-    conversation: AssistantConversation,
-    ids: list[Any],
-) -> list[ChatUpload]:
-    """The uploads named in a message's metadata: this user's, in this conversation,
-    and complete. Anything else is a 400, not silently dropped."""
-    if not ids:
-        return []
-    try:
-        wanted = [UUID(str(i)) for i in ids]
-    except ValueError as exc:
-        raise bad_request("Bad upload id") from exc
-    rows = {
-        u.id: u
-        for u in await session.scalars(
-            select(ChatUpload)
-            .where(ChatUpload.id.in_(wanted))
-            .where(ChatUpload.conversation_id == conversation.id)
-            .where(ChatUpload.user_id == membership.user.id)
-        )
-    }
-    result = []
-    for upload_id in wanted:
-        upload = rows.get(upload_id)
-        if upload is None:
-            raise bad_request(f"Unknown upload {upload_id}")
-        if upload.uploaded_at is None:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT, f"{upload.filename} has not finished uploading"
-            )
-        result.append(upload)
-    return result
-
-
-async def _file_content(
-    store: ObjectStore, upload: ChatUpload, max_bytes: int
-) -> BinaryContent | None:
-    if upload.content_type not in READABLE_TYPES or upload.size > max_bytes:
-        return None
-    data = await store.get(upload.key)
-    return BinaryContent(data, media_type=upload.content_type, identifier=upload.filename)
-
-
-async def _build_prompt(
-    deps: AgentDeps, conversation: AssistantConversation, message: UIMessage
-) -> ModelRequest:
-    """The user's turn: their text, the files they sent (readable ones as content,
-    the rest by name), and a line listing every file with its upload id."""
-    text = "\n".join(part.text for part in message.parts if isinstance(part, TextUIPart)).strip()
-    if any(isinstance(part, FileUIPart) for part in message.parts):
-        raise bad_request("Send files as upload ids in the message metadata")
-    metadata = message.metadata if isinstance(message.metadata, dict) else {}
-    upload_rows = await _uploads_for(
-        deps.session, deps.membership, conversation, list(metadata.get("upload_ids") or [])
-    )
-    content: list[UserContent] = [text] if text else []
-    for upload in upload_rows:
-        binary = await _file_content(
-            deps.store, upload, deps.settings.assistant_file_read_max_bytes
-        )
-        if binary is not None:
-            content.append(binary)
-    if upload_rows:
-        listing = "; ".join(
-            f"{u.filename} ({u.content_type}, {u.size} bytes, upload_id {u.id})"
-            for u in upload_rows
-        )
-        content.append(f"[Files sent with this message: {listing}]")
-    if not content:
-        raise bad_request("The message is empty")
-    prompt: str | list[UserContent] = content
-    if len(content) == 1 and isinstance(content[0], str):
-        prompt = content[0]
-    stored_metadata = {
-        "uploads": [
-            {
-                "id": str(u.id),
-                "filename": u.filename,
-                "content_type": u.content_type,
-                "size": u.size,
-            }
-            for u in upload_rows
-        ]
-    }
-    return ModelRequest(
-        parts=[UserPromptPart(content=prompt)],
-        metadata=stored_metadata if upload_rows else None,
-    )
-
-
-@dataclass
-class ConversationAdapter(VercelAIAdapter[AgentDeps, Any]):
-    """The Vercel adapter with the browser's message list ignored.
-
-    The server holds the history, so the only thing taken from the request is the
-    newest turn: a user message becomes `prompt`, built by the route with its files;
-    an assistant message carries approval responses, which the base class reads.
-    """
-
-    _: KW_ONLY
-    prompt: ModelRequest | None = None
-
-    @cached_property
-    def messages(self) -> list[ModelMessage]:
-        return [self.prompt] if self.prompt is not None else []
-
-
-async def _prepare_turn(
-    deps: AgentDeps, conversation: AssistantConversation, adapter: ConversationAdapter
-) -> ModelRequest | None:
-    """The user's new turn as a request, or None when the request only answers an
-    approval. A retry repeats the last stored user turn."""
-    run_input = adapter.run_input
-    last = run_input.messages[-1] if run_input.messages else None
-    if run_input.trigger == "regenerate-message":
-        prompt = await truncate_after_last_prompt(deps.session, conversation)
-        if prompt is None:
-            raise HTTPException(status.HTTP_409_CONFLICT, "Nothing to retry yet")
-        return ModelRequest(parts=prompt.parts, metadata=prompt.metadata)
-    if last is not None and last.role == "user":
-        if conversation.title is None:
-            text = "\n".join(p.text for p in last.parts if isinstance(p, TextUIPart))
-            conversation.title = _title_from(text) or "Files"
-        return await _build_prompt(deps, conversation, last)
-    if adapter.deferred_tool_results is None:
-        raise bad_request("Send a user message or an approval response")
-    return None
-
-
 @router.post(
     "/conversations/{conversation_id}/messages",
     response_class=StreamingResponse,
@@ -336,7 +162,7 @@ async def send_message(  # noqa: PLR0913, PLR0917
         settings=settings,
         request_id=request_id.get(),
         conversation_id=conversation.id,
-        time_zone=_time_zone(body.tz),
+        time_zone=parse_time_zone(body.tz),
     )
     adapter = ConversationAdapter(
         agent=agent,
@@ -344,7 +170,7 @@ async def send_message(  # noqa: PLR0913, PLR0917
         accept=request.headers.get("accept"),
         sdk_version=SDK_VERSION,
     )
-    adapter.prompt = await _prepare_turn(deps, conversation, adapter)
+    adapter.prompt = await prepare_turn(deps, conversation, adapter)
 
     history = await load_history(session, conversation.id)
     if adapter.prompt is not None:
@@ -353,25 +179,7 @@ async def send_message(  # noqa: PLR0913, PLR0917
     await session.commit()
 
     async def on_complete(result: AgentRunResult[Any]) -> AsyncIterator[BaseChunk]:
-        new_messages = result.new_messages()
-        if deps.approval_previews:
-            for message in reversed(new_messages):
-                if isinstance(message, ModelResponse):
-                    message.metadata = {
-                        **(message.metadata or {}),
-                        "approval_previews": deps.approval_previews,
-                    }
-                    break
-        await append_messages(session, conversation, new_messages)
-        record_model_calls(
-            session,
-            new_messages,
-            workspace_id=deps.workspace_id,
-            user_id=membership.user.id,
-            source="assistant",
-            request_id=deps.request_id,
-        )
-        await session.commit()
+        await persist_run(deps, conversation, result)
         return
         yield  # pragma: no cover - makes this an async generator
 

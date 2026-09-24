@@ -3,9 +3,10 @@ from uuid import UUID
 from fastapi import APIRouter, status
 
 from alloy_server.db.session import SessionDep
-from alloy_server.modules.assistant import service
-from alloy_server.modules.assistant.dependencies import ChatUploadStorageDep
-from alloy_server.modules.assistant.schemas import (
+from alloy_server.modules.assistant import service as conversation_service
+from alloy_server.modules.assistant.uploads import service
+from alloy_server.modules.assistant.uploads.dependencies import ChatUploadStorageDep
+from alloy_server.modules.assistant.uploads.schemas import (
     ChatUploadCreate,
     ChatUploadResponse,
     ChatUploadTicket,
@@ -25,7 +26,7 @@ async def create_upload(
 ) -> ChatUploadTicket:
     """Start a chat upload: the row is created and an upload URL returned. Same size
     limit as attachments; 413 above it."""
-    conversation = await service.get_conversation(session, membership, conversation_id)
+    conversation = await conversation_service.get_conversation(session, membership, conversation_id)
     upload = await service.start_upload(session, storage, membership, conversation, body)
     return ChatUploadTicket(
         upload=ChatUploadResponse.model_validate(upload),

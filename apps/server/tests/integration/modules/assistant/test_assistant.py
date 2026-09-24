@@ -29,6 +29,11 @@ from alloy_server.modules.assistant import tools
 from alloy_server.modules.assistant.dependencies import AgentDeps, get_model
 from alloy_server.modules.assistant.models import AssistantMessage, ChatUpload
 from alloy_server.modules.assistant.router import ASSISTANT_MESSAGE_PER_USER
+from alloy_server.modules.assistant.tools import common, shapes
+from alloy_server.modules.assistant.tools import companies as company_tools
+from alloy_server.modules.assistant.tools import contacts as contact_tools
+from alloy_server.modules.assistant.tools import tasks as task_tools
+from alloy_server.modules.assistant.tools import workspace as workspace_tools
 from alloy_server.modules.crm.attachments.models import Attachment
 from alloy_server.modules.workspaces.dependencies import Membership
 from alloy_server.modules.workspaces.models import WorkspaceMember
@@ -422,11 +427,11 @@ def test_an_approved_delete_removes_the_rows(
 
 
 def test_bulk_calls_are_capped(alice: Actor, script: Script):
-    items = [{"name": f"Person {i}"} for i in range(tools.MAX_BULK + 1)]
+    items = [{"name": f"Person {i}"} for i in range(common.MAX_BULK + 1)]
     script.turns += [("create_contacts", {"items": items}), "Too many."]
     chunks = Chat(alice).send("Add everyone")
     (error,) = of_type(chunks, "tool-output-error")
-    assert f"At most {tools.MAX_BULK} items" in error["errorText"]
+    assert f"At most {common.MAX_BULK} items" in error["errorText"]
     assert alice.get("/contacts/").json()["total"] == 0
 
 
@@ -689,16 +694,16 @@ def test_search_contacts_staleness_and_grouping(alice: Actor, db: Database, sett
 
     async def run():
         ctx = await tool_context(db, alice, settings)
-        stale = await tools.search_contacts(ctx, stale_days=30)
-        grouped = await tools.search_contacts(ctx, stale_days=30, group_by_company=True)
-        companies = await tools.search_companies(ctx)
+        stale = await contact_tools.search_contacts(ctx, stale_days=30)
+        grouped = await contact_tools.search_contacts(ctx, stale_days=30, group_by_company=True)
+        companies = await company_tools.search_companies(ctx)
         return stale, grouped, companies
 
     stale, grouped, companies = db.run(run)
-    assert isinstance(stale, tools.Page)
+    assert isinstance(stale, shapes.Page)
     assert [c.name for c in stale.items] == ["Silent", "Quiet"]  # never contacted first
     assert stale.next_page is None
-    assert isinstance(grouped, tools.GroupedContacts)
+    assert isinstance(grouped, shapes.GroupedContacts)
     assert [
         (g.company.name if g.company else None, [c.name for c in g.contacts])
         for g in grouped.groups
@@ -723,9 +728,9 @@ def test_list_tasks_uses_the_callers_time_zone(alice: Actor, db: Database, setti
     async def run():
         ctx = await tool_context(db, alice, settings)
         ctx.deps.time_zone = ZoneInfo("Pacific/Auckland")
-        overdue = await tools.list_tasks(ctx, due="overdue")
-        every = await tools.list_tasks(ctx, status=None)
-        info = await tools.get_workspace(ctx)
+        overdue = await task_tools.list_tasks(ctx, due="overdue")
+        every = await task_tools.list_tasks(ctx, status=None)
+        info = await workspace_tools.get_workspace(ctx)
         return overdue, every, info
 
     overdue, every, info = db.run(run)
@@ -743,9 +748,9 @@ def test_get_contact_and_company_details(alice: Actor, db: Database, settings: S
 
     async def run():
         ctx = await tool_context(db, alice, settings)
-        return await tools.get_contact(ctx, UUID(grace["id"])), await tools.get_company(
-            ctx, UUID(acme["id"])
-        )
+        contact = await contact_tools.get_contact(ctx, UUID(grace["id"]))
+        company = await company_tools.get_company(ctx, UUID(acme["id"]))
+        return contact, company
 
     contact, company = db.run(run)
     assert contact.contact.company == "Acme"
@@ -966,14 +971,14 @@ def test_completing_a_task_through_the_assistant_is_logged_as_the_agent(
 
 
 def test_a_large_approval_preview_is_truncated_but_counts_everything(alice: Actor, script: Script):
-    count = tools.PREVIEW_ROWS + 5
+    count = common.PREVIEW_ROWS + 5
     items = [{"name": f"Person {i:02d}"} for i in range(count)]
     script.turns += [("create_contacts", {"items": items}), "Done."]
     chat = Chat(alice)
     chunks = chat.send("Add everyone")
     (preview,) = of_type(chunks, "data-approval_preview")
     assert preview["data"]["title"] == f"Create {count} contacts"
-    assert len(preview["data"]["rows"]) == tools.PREVIEW_ROWS
+    assert len(preview["data"]["rows"]) == common.PREVIEW_ROWS
     assert preview["data"]["total"] == count
     resumed = chat.post([approval_response(chunks, approved=True)])
     assert len(of_type(resumed, "tool-output-available")[0]["output"]["created"]) == count

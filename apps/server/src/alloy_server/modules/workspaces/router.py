@@ -16,9 +16,9 @@ from alloy_server.modules.workspaces.dependencies import (
     CanReadMembers,
     CurrentMembership,
 )
+from alloy_server.modules.workspaces.invites import service as invite_service
+from alloy_server.modules.workspaces.invites.schemas import InviteCreate, InviteResponse
 from alloy_server.modules.workspaces.schemas import (
-    InviteCreate,
-    InviteResponse,
     MemberResponse,
     MemberUpdate,
     WorkspaceCreate,
@@ -123,8 +123,8 @@ async def remove_member(
 @scoped.get("/invites")
 async def list_invites(membership: CanManageMembers, session: SessionDep) -> list[InviteResponse]:
     """Pending and declined (`declined_at` set); not accepted, revoked, or expired."""
-    invites = await session.scalars(service.invites_query(membership))
-    return [service.invite_read(i) for i in invites]
+    invites = await session.scalars(invite_service.invites_query(membership))
+    return [invite_service.invite_read(i) for i in invites]
 
 
 @scoped.post("/invites", status_code=status.HTTP_201_CREATED)
@@ -138,10 +138,10 @@ async def create_invite(
     """Email a link that grants `role`. One pending invitation per address; 409 if the
     address is already a member or already invited."""
     await limiter.hit(INVITE_SEND_PER_USER, str(membership.user.id))
-    invite = await service.create_invite(
+    invite = await invite_service.create_invite(
         session, settings, membership, body.email.lower(), body.role
     )
-    return service.invite_read(invite)
+    return invite_service.invite_read(invite)
 
 
 @scoped.post("/invites/{invite_id}/resend")
@@ -154,10 +154,10 @@ async def resend_invite(
 ) -> InviteResponse:
     """Email the invitation again with a fresh link; the previous one stops working
     and the expiry starts over. Counts against the same limit as sending one."""
-    invite = await service.get_pending_invite(session, membership, invite_id)
+    invite = await invite_service.get_pending_invite(session, membership, invite_id)
     await limiter.hit(INVITE_SEND_PER_USER, str(membership.user.id))
-    await service.resend_invite(session, settings, invite)
-    return service.invite_read(invite)
+    await invite_service.resend_invite(session, settings, invite)
+    return invite_service.invite_read(invite)
 
 
 @scoped.delete("/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -165,8 +165,8 @@ async def revoke_invite(
     invite_id: UUID, membership: CanManageMembers, session: SessionDep
 ) -> Response:
     """The link stops working; a declined invitation leaves the list."""
-    invite = await service.get_pending_invite(session, membership, invite_id, declined=True)
-    await service.revoke_invite(session, invite)
+    invite = await invite_service.get_pending_invite(session, membership, invite_id, declined=True)
+    await invite_service.revoke_invite(session, invite)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

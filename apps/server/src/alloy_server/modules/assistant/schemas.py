@@ -4,8 +4,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from alloy_server.modules.crm.attachments.schemas import AttachmentCreate
-
 
 class ResponseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -36,27 +34,3 @@ class ChatMessageRequest(BaseModel):
     message_id: str | None = Field(None, alias="messageId")
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
-
-
-class ChatUploadCreate(AttachmentCreate):
-    """What the browser knows before uploading a file into the chat."""
-
-
-class ChatUploadResponse(ResponseModel):
-    id: UUID
-    conversation_id: UUID
-    filename: str
-    content_type: str
-    size: int
-    uploaded_at: datetime | None
-    attachment_id: UUID | None
-    created_at: datetime
-
-
-class ChatUploadTicket(BaseModel):
-    """Step one of a chat upload: `PUT` the file to `upload_url` with the
-    `Content-Type` and `size` given at creation, then `POST .../uploads/{id}/complete`."""
-
-    upload: ChatUploadResponse
-    upload_url: str
-    expires_at: datetime

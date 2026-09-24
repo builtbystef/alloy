@@ -6,12 +6,10 @@ from fastapi import APIRouter, Depends, Response, status
 from alloy_server.db.session import SessionDep
 from alloy_server.integrations.ratelimit import TOKEN_PER_IP, Limit, LimiterDep, per_ip
 from alloy_server.modules.auth.dependencies import CurrentUserDep, VerifiedUserDep
-from alloy_server.modules.workspaces import service
-from alloy_server.modules.workspaces.schemas import (
-    InvitePreview,
-    PendingInviteResponse,
-    WorkspaceResponse,
-)
+from alloy_server.modules.workspaces.invites import service
+from alloy_server.modules.workspaces.invites.schemas import InvitePreview, PendingInviteResponse
+from alloy_server.modules.workspaces.schemas import WorkspaceResponse
+from alloy_server.modules.workspaces.service import workspace_read
 
 router = APIRouter(prefix="/invites", tags=["invites"])
 
@@ -41,7 +39,7 @@ async def accept_pending_invite(
     await limiter.hit(INVITE_ACCEPT_PER_USER, str(user.id))
     invite = await service.get_pending_invite_for(session, user, invite_id)
     member = await service.accept_invite(session, invite, user)
-    return service.workspace_read(invite.workspace, member.role)
+    return workspace_read(invite.workspace, member.role)
 
 
 @router.post("/pending/{invite_id}/decline", status_code=status.HTTP_204_NO_CONTENT)
@@ -83,4 +81,4 @@ async def accept_invite(
     await limiter.hit(INVITE_ACCEPT_PER_USER, str(user.id))
     invite = await service.get_invite_by_token(session, token)
     member = await service.accept_invite(session, invite, user)
-    return service.workspace_read(invite.workspace, member.role)
+    return workspace_read(invite.workspace, member.role)
