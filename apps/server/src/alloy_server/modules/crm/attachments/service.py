@@ -1,19 +1,16 @@
 import uuid
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from alloy_server.db.base import utcnow
-from alloy_server.integrations.storage import ObjectStore
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
 from alloy_server.modules.crm.attachments.models import Attachment
 from alloy_server.modules.crm.attachments.schemas import AttachmentResponse, AttachmentUpload
 from alloy_server.modules.crm.companies.models import Company
 from alloy_server.modules.crm.contacts.models import Contact
 from alloy_server.modules.crm.ownership import fetch_owned, not_found
-from alloy_server.shared.exceptions import ConflictError, PayloadTooLargeError
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -22,7 +19,8 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.orm import InstrumentedAttribute
 
-    from alloy_server.config import Settings
+    from alloy_server.integrations.storage import ObjectStore
+    from alloy_server.integrations.storage.uploads import UploadStorage
     from alloy_server.modules.crm.attachments.schemas import AttachmentCreate
     from alloy_server.modules.workspaces.dependencies import Membership
 
@@ -37,34 +35,6 @@ def parent_column(parent: Contact | Company) -> InstrumentedAttribute[UUID | Non
     return Attachment.contact_id if isinstance(parent, Contact) else Attachment.company_id
 
 
-@dataclass(frozen=True, slots=True)
-class AttachmentStorage:
-    """The object store plus the two settings the upload handshake needs from it."""
-
-    store: ObjectStore
-    settings: Settings
-
-    @property
-    def max_bytes(self) -> int:
-        return self.settings.attachment_max_bytes
-
-    def too_large(self) -> PayloadTooLargeError:
-        return PayloadTooLargeError(f"Attachments may be at most {self.max_bytes} bytes")
-
-    async def upload_url(self, attachment: Attachment) -> str:
-        return await self.store.upload_url(
-            attachment.key,
-            attachment.content_type,
-            attachment.size,
-            self.settings.storage_url_ttl,
-        )
-
-    async def download_url(self, attachment: Attachment) -> str:
-        return await self.store.download_url(
-            attachment.key, attachment.filename, self.settings.storage_url_ttl
-        )
-
-
 def attachments_query(parent: Contact | Company) -> Select[tuple[Attachment]]:
     return (
         select(Attachment)
@@ -77,15 +47,14 @@ def attachments_query(parent: Contact | Company) -> Select[tuple[Attachment]]:
 
 async def start_upload(
     session: AsyncSession,
-    storage: AttachmentStorage,
+    storage: UploadStorage,
     membership: Membership,
     parent: Contact | Company,
     body: AttachmentCreate,
 ) -> AttachmentUpload:
     """Create the row and hand out the upload URL. Commits. `PayloadTooLargeError`
     when `size` is over the limit."""
-    if body.size > storage.max_bytes:
-        raise storage.too_large()
+    storage.check_size(body.size)
     attachment_id = uuid.uuid7()
     attachment = Attachment(
         id=attachment_id,
@@ -103,26 +72,22 @@ async def start_upload(
     await session.refresh(attachment, ["uploaded_by"])
     return AttachmentUpload(
         attachment=AttachmentResponse.model_validate(attachment),
-        upload_url=await storage.upload_url(attachment),
-        expires_at=utcnow() + storage.settings.storage_url_ttl,
+        upload_url=await storage.upload_url(
+            attachment.key, attachment.content_type, attachment.size
+        ),
+        expires_at=storage.expires_at(),
     )
 
 
 async def complete_upload(
-    session: AsyncSession, storage: AttachmentStorage, membership: Membership, attachment_id: UUID
+    session: AsyncSession, storage: UploadStorage, membership: Membership, attachment_id: UUID
 ) -> Attachment:
     """Called after the `PUT`. `ConflictError` when the object is not in the store
     yet; `PayloadTooLargeError`, and the object is removed, when it is bigger than
     allowed. Repeating it is harmless. Commits."""
     attachment = await fetch_owned(session, Attachment, attachment_id, membership, WITH_UPLOADER)
     if attachment.uploaded_at is None:
-        info = await storage.store.head(attachment.key)
-        if info is None:
-            raise ConflictError("The file has not been uploaded yet")
-        if info.size > storage.max_bytes:
-            await storage.store.delete(attachment.key)
-            raise storage.too_large()
-        # The store is the authority on what was actually received.
+        info = await storage.verify(attachment.key)
         attachment.size = info.size
         attachment.content_type = info.content_type
         attachment.uploaded_at = utcnow()
@@ -131,12 +96,12 @@ async def complete_upload(
 
 
 async def download_url(
-    session: AsyncSession, storage: AttachmentStorage, membership: Membership, attachment_id: UUID
+    session: AsyncSession, storage: UploadStorage, membership: Membership, attachment_id: UUID
 ) -> str:
     attachment = await fetch_owned(session, Attachment, attachment_id, membership)
     if attachment.uploaded_at is None:
         raise not_found(Attachment)
-    return await storage.download_url(attachment)
+    return await storage.download_url(attachment.key, attachment.filename)
 
 
 async def delete_attachment(

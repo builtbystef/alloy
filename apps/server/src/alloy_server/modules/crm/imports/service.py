@@ -4,13 +4,12 @@ from typing import TYPE_CHECKING, Any, cast
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
-from alloy_server.db.base import utcnow
 from alloy_server.integrations.storage.cleanup import storage_prefix
 from alloy_server.jobs.imports import queue_import
 from alloy_server.modules.crm.imports.models import Import, ImportStatus
 from alloy_server.modules.crm.imports.schemas import ImportResponse, ImportUpload
 from alloy_server.modules.crm.ownership import fetch_owned
-from alloy_server.shared.exceptions import ConflictError, PayloadTooLargeError
+from alloy_server.shared.exceptions import ConflictError
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -18,8 +17,7 @@ if TYPE_CHECKING:
     from sqlalchemy import CursorResult, Select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from alloy_server.config import Settings
-    from alloy_server.integrations.storage import ObjectStore
+    from alloy_server.integrations.storage.uploads import UploadStorage
     from alloy_server.modules.crm.imports.schemas import ImportCreate
     from alloy_server.modules.workspaces.dependencies import Membership
 
@@ -29,10 +27,6 @@ WITH_REQUESTER = selectinload(Import.requested_by)
 
 def object_key(workspace_id: UUID, import_id: UUID) -> str:
     return f"{storage_prefix(workspace_id)}imports/{import_id}"
-
-
-def too_large(settings: Settings) -> PayloadTooLargeError:
-    return PayloadTooLargeError(f"Import files may be at most {settings.import_max_bytes} bytes")
 
 
 def imports_query(membership: Membership) -> Select[tuple[Import]]:
@@ -50,15 +44,13 @@ async def get_import(session: AsyncSession, membership: Membership, import_id: U
 
 async def start_upload(
     session: AsyncSession,
-    store: ObjectStore,
-    settings: Settings,
+    storage: UploadStorage,
     membership: Membership,
     body: ImportCreate,
 ) -> ImportUpload:
     """Create the row and hand out the upload URL for the CSV. Commits.
     `PayloadTooLargeError` when `size` is over the limit."""
-    if body.size > settings.import_max_bytes:
-        raise too_large(settings)
+    storage.check_size(body.size)
     import_id = uuid.uuid7()
     record = Import(
         id=import_id,
@@ -74,19 +66,13 @@ async def start_upload(
     await session.refresh(record, ["requested_by"])
     return ImportUpload(
         import_=ImportResponse.model_validate(record),
-        upload_url=await store.upload_url(
-            record.key, CSV_CONTENT_TYPE, record.size, settings.storage_url_ttl
-        ),
-        expires_at=utcnow() + settings.storage_url_ttl,
+        upload_url=await storage.upload_url(record.key, CSV_CONTENT_TYPE, record.size),
+        expires_at=storage.expires_at(),
     )
 
 
 async def mark_queued(
-    session: AsyncSession,
-    store: ObjectStore,
-    settings: Settings,
-    membership: Membership,
-    import_id: UUID,
+    session: AsyncSession, storage: UploadStorage, membership: Membership, import_id: UUID
 ) -> Import:
     """Called after the `PUT`: check the file is there, move the row to `queued`,
     and queue the job with it. Commits. `ConflictError` when the file is not in
@@ -95,12 +81,7 @@ async def mark_queued(
     record = await get_import(session, membership, import_id)
     if record.status is not ImportStatus.PENDING:
         raise ConflictError("The import has already been started")
-    info = await store.head(record.key)
-    if info is None:
-        raise ConflictError("The file has not been uploaded yet")
-    if info.size > settings.import_max_bytes:
-        await store.delete(record.key)
-        raise too_large(settings)
+    info = await storage.verify(record.key)
     # One conditional UPDATE, so of two `start`s at once exactly one queues the job.
     result = await session.execute(
         update(Import)

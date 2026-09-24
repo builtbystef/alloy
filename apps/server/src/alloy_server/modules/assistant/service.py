@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from alloy_server.integrations.storage import ObjectStore
+    from alloy_server.integrations.storage.uploads import UploadStorage
     from alloy_server.modules.assistant.schemas import ChatUploadCreate
-    from alloy_server.modules.crm.attachments.service import AttachmentStorage
     from alloy_server.modules.workspaces.dependencies import Membership
 
 
@@ -124,14 +124,13 @@ async def purge_unattached(
 
 async def start_upload(
     session: AsyncSession,
-    storage: AttachmentStorage,
+    storage: UploadStorage,
     membership: Membership,
     conversation: AssistantConversation,
     body: ChatUploadCreate,
 ) -> ChatUpload:
     """Commits. The caller hands out the upload URL."""
-    if body.size > storage.max_bytes:
-        raise storage.too_large()
+    storage.check_size(body.size)
     upload_id = uuid.uuid7()
     upload = ChatUpload(
         id=upload_id,
@@ -150,19 +149,14 @@ async def start_upload(
 
 
 async def complete_upload(
-    session: AsyncSession, storage: AttachmentStorage, membership: Membership, upload_id: UUID
+    session: AsyncSession, storage: UploadStorage, membership: Membership, upload_id: UUID
 ) -> ChatUpload:
     """Called after the `PUT`. `ConflictError` when the object is not in the store
     yet; `PayloadTooLargeError`, and the object removed, when it is bigger than
     allowed. Repeating it is harmless. Commits."""
     upload = await get_upload(session, membership, upload_id)
     if upload.uploaded_at is None:
-        info = await storage.store.head(upload.key)
-        if info is None:
-            raise ConflictError("The file has not been uploaded yet")
-        if info.size > storage.max_bytes:
-            await storage.store.delete(upload.key)
-            raise storage.too_large()
+        info = await storage.verify(upload.key)
         upload.size = info.size
         upload.content_type = info.content_type
         upload.uploaded_at = utcnow()
