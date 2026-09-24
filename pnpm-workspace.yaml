@@ -14,7 +14,7 @@ catalog:
   "@tanstack/react-query-devtools": ^5.103.1
   "@tanstack/react-table": ^9.2.4
   "@types/node": ^24
-  ai: ^7.0.93
+  ai: ^7.0.107
   class-variance-authority: ^0.7.1
   cn: ^0.2.4
   concurrently: ^10.0.5
