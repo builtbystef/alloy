@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 
-from alloy_server.api.router import router as api_router
 from alloy_server.config import SettingsDep, get_settings
 from alloy_server.db.session import DatabaseState, create_database_state
 from alloy_server.integrations.mail import Mailer, create_mailer
 from alloy_server.integrations.ratelimit import DatabaseRateLimitStore, RateLimitStoreProtocol
 from alloy_server.integrations.storage import ObjectStore, create_object_store
 from alloy_server.jobs.app import app as jobs
+from alloy_server.modules.router import router as api_router
 from alloy_server.shared import logs, telemetry
 from alloy_server.shared.exceptions import AppError, handle_app_error
 from alloy_server.shared.middleware import RequestIdMiddleware

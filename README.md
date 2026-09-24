@@ -64,11 +64,10 @@ apps/server/
 ├── src/alloy_server/
 │   ├── main.py               # app, lifespan (engine, store, job queue), middleware, the AppError handler
 │   ├── config.py             # Settings (pydantic-settings) + get_settings
-│   ├── api/router.py         # the HTTP composition root: includes every feature router
 │   ├── shared/               # exceptions.py (AppError family + handler), middleware.py (request IDs, body limit), logs.py, telemetry.py, routing.py
 │   ├── db/                   # session.py (engine, SessionDep), base.py (Base, mixins), models.py (imports every model)
 │   ├── integrations/         # ports and adapters: mail/, storage/, ratelimit/, ai/ (a protocol + implementations each)
-│   ├── modules/              # the features, one package each
+│   ├── modules/              # the features, one package each; router.py includes every feature router
 │   │   ├── health/           # GET /health/ (liveness); /health/{db,storage} (readiness)
 │   │   ├── auth/             # accounts, cookie sessions, emailed links; CurrentUserDep
 │   │   ├── workspaces/       # workspaces, members, roles, invitations; the Can* dependencies
@@ -91,9 +90,10 @@ routes do.
 
 Two rules keep the modules apart. A module imports `config`, `db`, `shared`,
 `integrations`, and other modules only through their `service`, `models`, and
-`dependencies`. Nothing outside `modules/` imports a module except the two
-lists that wire them in, `api/router.py` and `db/models.py`, and the jobs
-that run for them.
+`dependencies`. Nothing outside `modules/` imports a module except
+`db/models.py`, the list that registers every model, and the jobs that run for
+them; `modules/router.py` is the HTTP composition root that includes every
+feature router.
 
 Settings come from `ALLOY_*` environment variables or a local `.env`; tests
 override `get_settings`. Operation IDs are `{tag}-{function}`, and
