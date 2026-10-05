@@ -19,6 +19,14 @@ updates:
       # See the catalog note in pnpm-workspace.yaml.
       vite-plus:
         patterns: ["vite", "vite-plus", "@voidzero-dev/vite-plus-core"]
+      # These release in lockstep and pin each other: @ai-sdk/react depends on
+      # the matching ai, and the devtools peer-depend on the matching
+      # react-query. Separate PRs merge in the wrong order and either
+      # duplicate ai in the lockfile or leave a peer range unsatisfied.
+      ai-sdk:
+        patterns: ["ai", "@ai-sdk/*"]
+      tanstack-query:
+        patterns: ["@tanstack/react-query", "@tanstack/react-query-devtools"]
       dev-dependencies:
         dependency-type: development
 
