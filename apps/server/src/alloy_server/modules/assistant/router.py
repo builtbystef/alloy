@@ -10,10 +10,8 @@ from pydantic import ValidationError
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.ui.vercel_ai.request_types import UIMessage
 
-from alloy_server.config import SettingsDep
-from alloy_server.db.session import SessionDep
-from alloy_server.integrations.rate_limit import Limit, RateLimiterDep
-from alloy_server.integrations.storage import ObjectStoreDep
+from alloy_server.dependencies import ObjectStoreDep, RateLimiterDep, SessionDep, SettingsDep
+from alloy_server.integrations.rate_limit import Limit
 from alloy_server.modules.assistant import service
 from alloy_server.modules.assistant.agent import (
     USAGE_LIMITS,

@@ -1,3 +1,5 @@
+"""Fixtures for the app client, the test transaction, and the inline job queue."""
+
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
@@ -5,47 +7,33 @@ import pytest
 from fastapi.testclient import TestClient
 from procrastinate.testing import InMemoryConnector
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from alloy_server.config import Settings, get_settings
+from alloy_server.config import Settings
 from alloy_server.db.models import Base
-from alloy_server.db.session import get_session
+from alloy_server.dependencies import get_session
 from alloy_server.integrations.mail import Email
-from alloy_server.integrations.rate_limit import (
-    MemoryRateLimitStore,
-    RateLimiter,
-    get_rate_limiter,
-)
-from alloy_server.integrations.storage import get_object_store
+from alloy_server.integrations.rate_limit import MemoryRateLimitStore
 from alloy_server.integrations.storage.memory import MemoryObjectStore
-from alloy_server.jobs.app import app as jobs_app
-from alloy_server.jobs.resources import Resources, worker_context
-from alloy_server.main import app
+from alloy_server.main import create_app
 from alloy_server.modules.auth.cookies import SESSION_COOKIE
+from alloy_server.resources import Resources, worker_context
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
 
     from anyio.from_thread import BlockingPortal
+    from fastapi import FastAPI
     from procrastinate.testing import JobRow
     from procrastinate.types import JobToDefer
     from sqlalchemy.engine import URL
 
-# The root conftest pointed the settings at the test database.
-TEST_DATABASE = make_url(str(Settings().database_url)).database
-
-# A worker fires a periodic task on start when its last tick was less than this
-# long ago (ten minutes by default). Never in the tests, which start a worker
-# per deferred job.
-jobs_app.periodic_defaults["max_delay"] = 0
-
 
 @pytest.fixture(scope="session", autouse=True)
-def test_database(configured_url: URL) -> None:
-    """Create `alloy_test` on the configured server if it is not there yet.
+def test_database(configured_url: URL, test_database_name: str) -> None:
+    """Create the test database on the configured server if it is not there yet.
 
     Connects to the configured (development) database to do it: CREATE DATABASE
     cannot run inside a transaction, hence autocommit.
@@ -54,10 +42,11 @@ def test_database(configured_url: URL) -> None:
     try:
         with engine.connect() as connection:
             exists = connection.execute(
-                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": TEST_DATABASE}
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": test_database_name},
             ).scalar()
             if not exists:
-                connection.execute(text(f'CREATE DATABASE "{TEST_DATABASE}"'))
+                connection.execute(text(f'CREATE DATABASE "{test_database_name}"'))
     except OperationalError as exc:
         pytest.fail(f"PostgreSQL is not reachable at {engine.url}. Run `vp run db:up`. ({exc})")
     finally:
@@ -96,7 +85,7 @@ class InlineConnector(InMemoryConnector):
     async def defer_jobs_all(self, jobs: list[JobToDefer]) -> list[JobRow]:
         rows = await super().defer_jobs_all(jobs)
         assert self.resources is not None, "deferred before the app client was set up"
-        await jobs_app.run_worker_async(
+        await self.resources.jobs.run_worker_async(
             wait=False,
             install_signal_handlers=False,
             listen_notify=False,
@@ -110,11 +99,9 @@ class InlineConnector(InMemoryConnector):
 
 
 @pytest.fixture
-def queue() -> Iterator[InlineConnector]:
-    """The in-memory job queue, swapped in for the length of the test."""
-    connector = InlineConnector()
-    with jobs_app.replace_connector(connector):
-        yield connector
+def queue() -> InlineConnector:
+    """The in-memory job queue the app is built on."""
+    return InlineConnector()
 
 
 @pytest.fixture
@@ -127,29 +114,37 @@ def rate_limits() -> MemoryRateLimitStore:
 
 
 @pytest.fixture
-def app_client(
+def app(
     settings: Settings,
     outbox: Outbox,
     object_store: MemoryObjectStore,
     rate_limits: MemoryRateLimitStore,
     queue: InlineConnector,
-) -> Iterator[TestClient]:
-    """Settings, object store, and rate limit counters overridden, real database
-    wiring. The jobs get the same settings and store, plus `outbox` as their
-    mailer, and run inline."""
-    app.dependency_overrides[get_settings] = lambda: settings
-    app.dependency_overrides[get_object_store] = lambda: object_store
-    app.dependency_overrides[get_rate_limiter] = lambda: RateLimiter(rate_limits)
+) -> FastAPI:
+    """The API over the test database, with `outbox` as its mailer and an
+    in-memory store, counters, and job queue. The jobs run inline with the same
+    resources."""
+    return create_app(
+        settings,
+        mailer=outbox,
+        object_store=object_store,
+        rate_limit_store=rate_limits,
+        jobs_connector=queue,
+    )
+
+
+@pytest.fixture
+def app_client(app: FastAPI, queue: InlineConnector) -> Iterator[TestClient]:
+    """The started app: its resources are built and the inline jobs run with them."""
     # https: the session cookie is `Secure`, and httpx's jar only sends it over https.
     with TestClient(app, base_url="https://testserver") as client:
-        queue.resources = Resources(
-            settings=settings,
-            session_factory=client.app_state["session_factory"],
-            mailer=outbox,
-            object_store=object_store,
-        )
+        resources: Resources = client.app_state["resources"]
+        queue.resources = resources
+        # A worker fires a periodic task on start when its last tick was less than
+        # this many seconds ago (ten minutes by default). Never in the tests, which
+        # start a worker per deferred job.
+        resources.jobs.periodic_defaults["max_delay"] = 0
         yield client
-    app.dependency_overrides.clear()
 
 
 @dataclass
@@ -169,7 +164,7 @@ class Database:
         )
 
     async def get_session(self) -> AsyncIterator[AsyncSession]:
-        """Drop-in for `alloy_server.db.get_session`."""
+        """Drop-in for `alloy_server.dependencies.get_session`."""
         async with self.session() as session:
             yield session
 
@@ -191,7 +186,9 @@ async def _end(connection: AsyncConnection, engine: AsyncEngine) -> None:
 
 
 @pytest.fixture
-def db(app_client: TestClient, engine: AsyncEngine, queue: InlineConnector) -> Iterator[Database]:
+def db(
+    app: FastAPI, app_client: TestClient, engine: AsyncEngine, queue: InlineConnector
+) -> Iterator[Database]:
     """The app's sessions and the jobs' join this transaction."""
     assert app_client.portal is not None
     connection = app_client.portal.call(_begin, engine)

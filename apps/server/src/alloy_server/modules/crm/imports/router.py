@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from alloy_server.db.session import SessionDep
+from alloy_server.dependencies import SessionDep
 from alloy_server.modules.crm.imports import service
 from alloy_server.modules.crm.imports.dependencies import ImportStoreDep
 from alloy_server.modules.crm.imports.schemas import ImportCreate, ImportResponse, ImportUpload

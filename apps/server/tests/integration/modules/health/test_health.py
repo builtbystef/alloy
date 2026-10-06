@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING
 
-from alloy_server.integrations.storage import get_object_store
+from alloy_server.dependencies import get_object_store
 from alloy_server.integrations.storage.memory import MemoryObjectStore
-from alloy_server.main import app
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
 
@@ -21,7 +21,7 @@ class DownStore(MemoryObjectStore):
         raise RuntimeError(msg)
 
 
-def test_a_dead_store_is_a_503(client: TestClient):
+def test_a_dead_store_is_a_503(app: FastAPI, client: TestClient):
     app.dependency_overrides[get_object_store] = DownStore
     response = client.get("/health/storage")
     assert response.status_code == 503

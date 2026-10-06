@@ -3,11 +3,13 @@ import json
 import sys
 from pathlib import Path
 
-from alloy_server.main import app
+from alloy_server.config import Settings
+from alloy_server.main import create_app
 
 
 def schema_json() -> str:
-    return json.dumps(app.openapi(), indent=2) + "\n"
+    # The app is built, never started: no database, store, or queue is touched.
+    return json.dumps(create_app(Settings()).openapi(), indent=2) + "\n"
 
 
 def main(argv: list[str] | None = None) -> None:

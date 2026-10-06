@@ -11,9 +11,9 @@ from sqlalchemy import text
 
 from alloy_server.db.base import include_name
 from alloy_server.db.models import Base
-from alloy_server.main import app
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
     from sqlalchemy.engine import Connection
     from sqlalchemy.ext.asyncio import AsyncEngine
     from tests.integration.conftest import Database
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 API_ROOT = Path(__file__).resolve().parents[3]
 
 
-def test_health_db_without_override_uses_lifespan_engine():
+def test_health_db_without_override_uses_lifespan_engine(app: FastAPI):
     """The real `get_session`, not the test override."""
     with TestClient(app) as client:
         response = client.get("/health/db")

@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import RedirectResponse
 
-from alloy_server.db.session import SessionDep
+from alloy_server.dependencies import SessionDep
 from alloy_server.modules.crm.attachments import service
 from alloy_server.modules.crm.attachments.dependencies import AttachmentStoreDep
 from alloy_server.modules.crm.attachments.schemas import (

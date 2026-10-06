@@ -24,7 +24,6 @@ from alloy_server.db.base import utcnow
 from alloy_server.integrations.ai.models import ModelCall
 from alloy_server.integrations.rate_limit import MemoryRateLimitStore, RateLimiter
 from alloy_server.jobs.purge import PurgeReport, purge
-from alloy_server.main import app
 from alloy_server.modules.assistant import tools
 from alloy_server.modules.assistant.dependencies import AgentDeps, get_model
 from alloy_server.modules.assistant.models import AssistantMessage, ChatUpload
@@ -41,6 +40,7 @@ from alloy_server.modules.workspaces.models import WorkspaceMember
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable
 
+    from fastapi import FastAPI
     from tests.integration.conftest import Actor, Database
 
     from alloy_server.integrations.storage.memory import MemoryObjectStore
@@ -90,7 +90,7 @@ def script() -> Script:
 
 
 @pytest.fixture(autouse=True)
-def scripted_model(script: Script) -> None:
+def scripted_model(app: FastAPI, script: Script) -> None:
     app.dependency_overrides[get_model] = script.model
 
 
@@ -222,7 +222,7 @@ def test_viewers_can_chat(alice: Actor, join: Join, script: Script):
     assert reply_text(chat.send("hello")) == "Sure."
 
 
-def test_unconfigured_assistant_answers_503(alice: Actor):
+def test_unconfigured_assistant_answers_503(app: FastAPI, alice: Actor):
     app.dependency_overrides.pop(get_model)
     chat = Chat(alice)
     response = alice.post(
@@ -587,11 +587,11 @@ def test_upload_size_limit(alice: Actor, object_store: MemoryObjectStore):
 
 
 @pytest.fixture
-def settings(request: pytest.FixtureRequest) -> Settings:
+def settings(request: pytest.FixtureRequest, settings: Settings) -> Settings:
     limit = getattr(request, "param", None)
     if limit is None:
-        return Settings(app_name="Test API", openai_api_key=None)
-    return Settings(app_name="Test API", openai_api_key=None, attachment_max_bytes=limit)
+        return settings
+    return settings.model_copy(update={"attachment_max_bytes": limit})
 
 
 def test_removing_a_file_before_sending_deletes_its_upload(

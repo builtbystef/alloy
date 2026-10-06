@@ -3,10 +3,9 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Response, status
 
-from alloy_server.config import SettingsDep
 from alloy_server.db.base import utcnow
-from alloy_server.db.session import SessionDep
-from alloy_server.integrations.rate_limit import TOKEN_PER_IP, Limit, RateLimiterDep, per_ip
+from alloy_server.dependencies import RateLimiterDep, SessionDep, SettingsDep, per_ip
+from alloy_server.integrations.rate_limit import TOKEN_PER_IP, Limit
 from alloy_server.modules.auth import service
 from alloy_server.modules.auth.cookies import clear_session_cookie, set_session_cookie
 from alloy_server.modules.auth.dependencies import CurrentPrincipal, CurrentUserDep, unauthorized

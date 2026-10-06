@@ -2,8 +2,8 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
 from alloy_server.integrations.mail.base import Email
-from alloy_server.jobs.app import RETRY_ON_ERROR, defer, task
-from alloy_server.jobs.resources import Resources
+from alloy_server.jobs.tasks import RETRY_ON_ERROR, defer, task
+from alloy_server.resources import Resources
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

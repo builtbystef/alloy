@@ -12,10 +12,10 @@ from sqlalchemy import text
 import alloy_server
 from alloy_server.config import Settings
 from alloy_server.db.base import utcnow
-from alloy_server.jobs import TASK_MODULES, conninfo, create_app
-from alloy_server.jobs.app import RETRY_ON_ERROR, AnyTask, app, defer
+from alloy_server.jobs import TASK_MODULES, conninfo, create_app, registry
 from alloy_server.jobs.purge import PurgeReport, purge, purge_expired
 from alloy_server.jobs.stalled import retry_stalled
+from alloy_server.jobs.tasks import RETRY_ON_ERROR, AnyTask, defer
 from alloy_server.modules.crm.imports.models import Import, ImportStatus
 
 if TYPE_CHECKING:
@@ -42,6 +42,9 @@ def test_the_app_queues_through_the_database():
     assert isinstance(created.connector, PsycopgConnector)
     assert created.import_paths == TASK_MODULES
     assert created.worker_defaults == {"delete_jobs": "successful"}
+    # Every registered task is on it, and queues through it.
+    assert set(registry.tasks) <= set(created.tasks)
+    assert all(task.blueprint is created for task in registry.tasks.values())
 
 
 def test_every_jobs_module_in_the_tree_is_registered():
@@ -59,10 +62,12 @@ def test_every_jobs_module_in_the_tree_is_registered():
 def test_the_platform_tasks_are_registered_with_their_schedules():
     assert isinstance(RETRY_ON_ERROR, RetryStrategy)
     assert RETRY_ON_ERROR.max_attempts == 5
-    periodic = {name: task.cron for (name, _), task in app.periodic_registry.periodic_tasks.items()}
+    periodic = {
+        name: task.cron for (name, _), task in registry.periodic_registry.periodic_tasks.items()
+    }
     assert periodic == {"purge.expired": "0 * * * *", "jobs.retry_stalled": "*/10 * * * *"}
-    assert app.tasks["purge.expired"] is purge_expired
-    assert app.tasks["jobs.retry_stalled"] is retry_stalled
+    assert registry.tasks["purge.expired"] is purge_expired
+    assert registry.tasks["jobs.retry_stalled"] is retry_stalled
 
 
 def test_a_job_is_queued_in_the_transaction_of_the_rows_it_is_about(

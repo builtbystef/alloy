@@ -4,8 +4,9 @@ from typing import Any
 
 from pydantic_evals import Dataset
 from pydantic_evals.evaluators import Evaluator, LLMJudge
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from alloy_server.db.session import create_database_state
+from alloy_server.db.session import create_engine
 from alloy_server.integrations.ai import create_model
 from alloy_server.integrations.storage.memory import MemoryObjectStore
 
@@ -22,9 +23,9 @@ async def main(*, judge: bool) -> None:
     if model is None:
         msg = "Set ALLOY_OPENAI_API_KEY to run the evals"
         raise SystemExit(msg)
-    state = create_database_state(settings)
-    await migrate(state["engine"])
-    session_factory = state["session_factory"]
+    engine = create_engine(settings)
+    await migrate(engine)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
     async with session_factory() as session:
         fixture = await seed(session)
     try:
@@ -52,7 +53,7 @@ async def main(*, judge: bool) -> None:
     finally:
         async with session_factory() as session:
             await teardown(session, fixture)
-        await state["engine"].dispose()
+        await engine.dispose()
 
 
 if __name__ == "__main__":

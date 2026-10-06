@@ -2,8 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from alloy_server.config import SettingsDep
-from alloy_server.integrations.storage import ObjectStoreDep
+from alloy_server.dependencies import ObjectStoreDep, SettingsDep
 from alloy_server.integrations.storage.uploads import UploadStore
 
 

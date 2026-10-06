@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from alloy_server.jobs.app import defer, task
-from alloy_server.jobs.resources import Resources
+from alloy_server.jobs.tasks import defer, task
+from alloy_server.resources import Resources
 from alloy_server.shared.logs import RequestIdFilter, request_id
 
 if TYPE_CHECKING:

@@ -6,7 +6,7 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from alloy_server.config import get_settings
+from alloy_server.config import Settings
 from alloy_server.db.base import include_name
 from alloy_server.db.models import Base
 
@@ -25,7 +25,7 @@ target_metadata = Base.metadata
 def run_migrations_offline() -> None:
     """`--sql`: print the SQL instead of running it."""
     context.configure(
-        url=str(get_settings().database_url),
+        url=str(Settings().database_url),
         target_metadata=target_metadata,
         include_name=include_name,
         literal_binds=True,
@@ -46,7 +46,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    engine = create_async_engine(str(get_settings().database_url), poolclass=pool.NullPool)
+    engine = create_async_engine(str(Settings().database_url), poolclass=pool.NullPool)
 
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)

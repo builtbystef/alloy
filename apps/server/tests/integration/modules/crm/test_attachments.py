@@ -93,13 +93,11 @@ def test_pending_uploads_are_hidden_until_complete(
 
 
 @pytest.fixture
-def settings(request: pytest.FixtureRequest) -> Settings:
+def settings(request: pytest.FixtureRequest, settings: Settings) -> Settings:
     """Overrides conftest's: `indirect` parametrization sets the size limit."""
     limit = getattr(request, "param", None)
     return (
-        Settings(app_name="Test API")
-        if limit is None
-        else Settings(app_name="Test API", attachment_max_bytes=limit)
+        settings if limit is None else settings.model_copy(update={"attachment_max_bytes": limit})
     )
 
 

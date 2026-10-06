@@ -1,6 +1,4 @@
-from typing import TYPE_CHECKING, Annotated, Literal
-
-from fastapi import Depends, Request
+from typing import TYPE_CHECKING, Literal
 
 from alloy_server.integrations.storage.base import ObjectInfo, ObjectNotFoundError, ObjectStore
 from alloy_server.integrations.storage.s3 import S3Config, S3ObjectStore
@@ -34,18 +32,10 @@ def url_or_none(url: object) -> str | None:
     return None if url is None else str(url).rstrip("/")
 
 
-async def get_object_store(request: Request) -> ObjectStore:
-    store: ObjectStore = request.state.object_store
-    return store
-
-
-ObjectStoreDep = Annotated[ObjectStore, Depends(get_object_store)]
-
 __all__ = [
     "ObjectInfo",
     "ObjectNotFoundError",
     "ObjectStore",
-    "ObjectStoreDep",
     "S3Config",
     "S3ObjectStore",
     "StorageProvider",

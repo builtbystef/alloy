@@ -1,33 +1,31 @@
+"""`alloy-worker`: the process that runs queued jobs. The one place, with asgi.py,
+that reads the environment."""
+
 import asyncio
 import logging
-from contextlib import AsyncExitStack
 
-from alloy_server.config import get_settings
-from alloy_server.jobs.app import app
-from alloy_server.jobs.resources import open_resources, worker_context
+from alloy_server.config import Settings
+from alloy_server.resources import build_resources, worker_context
 from alloy_server.shared import logs, telemetry
 
 logger = logging.getLogger(__name__)
 
 
-async def run() -> None:
-    settings = get_settings()
+async def run(settings: Settings) -> None:
     logs.configure(settings.log_level, settings.log_format)
     if (log_handler := telemetry.configure(settings, service_name="alloy-worker")) is not None:
         logging.getLogger().addHandler(log_handler)
-    app.perform_import_paths()
-    async with AsyncExitStack() as stack:
-        resources = await open_resources(settings, stack)
-        async with app.open_async():
-            logger.info("Worker ready: %d tasks registered", len(app.tasks))
-            await app.run_worker_async(
-                concurrency=settings.jobs_concurrency,
-                additional_context=worker_context(resources),
-            )
+    async with build_resources(settings) as resources:
+        jobs = resources.jobs
+        logger.info("Worker ready: %d tasks registered", len(jobs.tasks))
+        await jobs.run_worker_async(
+            concurrency=settings.jobs_concurrency,
+            additional_context=worker_context(resources),
+        )
 
 
 def main() -> None:
-    asyncio.run(run())
+    asyncio.run(run(Settings()))
 
 
 if __name__ == "__main__":

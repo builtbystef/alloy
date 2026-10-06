@@ -212,9 +212,9 @@ def test_resend_replaces_the_pending_link(client: TestClient, outbox: Outbox):
 
 class TestExpired:
     @pytest.fixture
-    def settings(self) -> Settings:
+    def settings(self, settings: Settings) -> Settings:
         """Verification links expire at once. Scoped to this class, not the module."""
-        return Settings(app_name="Test API", verification_ttl=timedelta(seconds=-1))
+        return settings.model_copy(update={"verification_ttl": timedelta(seconds=-1)})
 
     def test_expired_verification_link(self, client: TestClient, outbox: Outbox):
         client.post("/auth/signup", json=SIGNUP)
@@ -326,8 +326,8 @@ class TestPasswordReset:
 
 class TestExpiredReset:
     @pytest.fixture
-    def settings(self) -> Settings:
-        return Settings(app_name="Test API", password_reset_ttl=timedelta(seconds=-1))
+    def settings(self, settings: Settings) -> Settings:
+        return settings.model_copy(update={"password_reset_ttl": timedelta(seconds=-1)})
 
     def test_expired_reset_link(self, client: TestClient, outbox: Outbox):
         client.post("/auth/signup", json=SIGNUP)
@@ -468,8 +468,8 @@ class TestEmailChange:
 
 class TestExpiredEmailChange:
     @pytest.fixture
-    def settings(self) -> Settings:
-        return Settings(app_name="Test API", email_change_ttl=timedelta(seconds=-1))
+    def settings(self, settings: Settings) -> Settings:
+        return settings.model_copy(update={"email_change_ttl": timedelta(seconds=-1)})
 
     def test_expired_link(self, client: TestClient, outbox: Outbox):
         client.post("/auth/signup", json=SIGNUP)
@@ -545,8 +545,8 @@ class TestAccountDeletion:
 
 class TestExpiredSession:
     @pytest.fixture
-    def settings(self) -> Settings:
-        return Settings(app_name="Test API", session_ttl=timedelta(seconds=-1))
+    def settings(self, settings: Settings) -> Settings:
+        return settings.model_copy(update={"session_ttl": timedelta(seconds=-1)})
 
     def test_an_expired_session_is_no_session(self, client: TestClient):
         assert client.post("/auth/signup", json=SIGNUP).status_code == 201

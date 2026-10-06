@@ -29,7 +29,9 @@ dev = ["httpx2>=2.12,<3", "pydantic-evals>=2.40,<3", "types-aiobotocore-s3>=3.9,
 alloy-worker = "alloy_server.jobs.worker:main"
 
 [tool.fastapi]
-entrypoint = "alloy_server.main:app"
+# The ASGI app, built from the environment. Everything else gets its settings as
+# an argument.
+entrypoint = "alloy_server.asgi:app"
 
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]

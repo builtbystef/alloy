@@ -1,6 +1,4 @@
-from typing import TYPE_CHECKING, Annotated, Literal
-
-from fastapi import Depends, Request
+from typing import TYPE_CHECKING, Literal
 
 from alloy_server.integrations.mail.base import Email, Mailer
 from alloy_server.integrations.mail.console import ConsoleMailer
@@ -17,11 +15,4 @@ def create_mailer(settings: Settings) -> Mailer:
             return ConsoleMailer(sender=settings.mail_from)
 
 
-async def get_mailer(request: Request) -> Mailer:
-    mailer: Mailer = request.state.mailer
-    return mailer
-
-
-MailerDep = Annotated[Mailer, Depends(get_mailer)]
-
-__all__ = ["ConsoleMailer", "Email", "MailProvider", "Mailer", "MailerDep", "create_mailer"]
+__all__ = ["ConsoleMailer", "Email", "MailProvider", "Mailer", "create_mailer"]

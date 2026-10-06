@@ -2,14 +2,15 @@ from typing import TYPE_CHECKING
 
 from alloy_server.integrations.mail import Email
 from alloy_server.integrations.mail.jobs import queue_email, send_email
-from alloy_server.jobs.app import RETRY_ON_ERROR, app
+from alloy_server.jobs import registry
+from alloy_server.jobs.tasks import RETRY_ON_ERROR
 
 if TYPE_CHECKING:
     from tests.integration.conftest import Database, InlineConnector, Outbox
 
 
 def test_the_send_task_is_registered_with_retries():
-    assert app.tasks["mail.send"] is send_email
+    assert registry.tasks["mail.send"] is send_email
     assert send_email.retry_strategy is RETRY_ON_ERROR
 
 

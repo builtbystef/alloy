@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from alloy_server.db.base import utcnow
-from alloy_server.db.session import SessionDep
+from alloy_server.dependencies import SessionDep
 from alloy_server.modules.auth.cookies import SESSION_COOKIE
 from alloy_server.modules.auth.models import User, UserSession
 from alloy_server.modules.auth.tokens import hash_token

@@ -1,8 +1,5 @@
 from datetime import timedelta
-from functools import lru_cache
-from typing import Annotated
 
-from fastapi import Depends
 from pydantic import Field, HttpUrl, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,7 +11,11 @@ from alloy_server.shared.logs import LogFormat
 
 class Settings(BaseSettings):
     """Read from `ALLOY_*` environment variables and `.env`. `.env.example` documents
-    every field."""
+    every field.
+
+    Built once per process by its entry point (asgi.py, the worker, a script) and
+    passed on from there; nothing reads the environment at import time. Tests build
+    their own."""
 
     # --- App ---
     app_name: str = "Alloy API"
@@ -94,11 +95,3 @@ class Settings(BaseSettings):
     # env_ignore_empty: hosting platforms often pass an unset variable as "",
     # which must read as the default (None for the Logfire token), not as "".
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ALLOY_", env_ignore_empty=True)
-
-
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
-
-
-SettingsDep = Annotated[Settings, Depends(get_settings)]

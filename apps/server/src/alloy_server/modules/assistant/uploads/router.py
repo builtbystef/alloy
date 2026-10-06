@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, status
 
-from alloy_server.db.session import SessionDep
+from alloy_server.dependencies import SessionDep
 from alloy_server.modules.assistant import service as conversation_service
 from alloy_server.modules.assistant.uploads import service
 from alloy_server.modules.assistant.uploads.dependencies import ChatUploadStoreDep

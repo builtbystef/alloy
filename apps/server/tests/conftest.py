@@ -1,22 +1,24 @@
-import os
+"""The settings every test builds on. Nothing here touches the environment: the
+configured server (environment or `.env`) is read once, and the tests get a copy
+pointed at the test database."""
+
 from typing import TYPE_CHECKING
 
 import pytest
+from pydantic import PostgresDsn
 from sqlalchemy.engine import make_url
 
-from alloy_server.config import Settings, get_settings
+from alloy_server.config import Settings
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import URL
 
 TEST_DATABASE = "alloy_test"
-# The configured server (environment or `.env`), with the database swapped for the
-# test one. Every `Settings(...)` a test builds picks this up from the environment.
-_configured_url = make_url(str(Settings().database_url))
-os.environ["ALLOY_DATABASE_URL"] = _configured_url.set(database=TEST_DATABASE).render_as_string(
-    hide_password=False
-)
-get_settings.cache_clear()
+
+# The development server, as configured.
+_configured = Settings()
+_configured_url = make_url(str(_configured.database_url))
+_test_url = _configured_url.set(database=TEST_DATABASE).render_as_string(hide_password=False)
 
 
 @pytest.fixture(scope="session")
@@ -25,7 +27,20 @@ def configured_url() -> URL:
     return _configured_url
 
 
+@pytest.fixture(scope="session")
+def test_database_name() -> str:
+    return TEST_DATABASE
+
+
 @pytest.fixture
 def settings() -> Settings:
-    # No OpenAI key, whatever a local `.env` says: tests never call the model.
-    return Settings(app_name="Test API", openai_api_key=None)
+    """The configured settings, on the test database. No OpenAI key, whatever a
+    local `.env` says: tests never call the model. A module or class that needs
+    other values overrides this fixture, requesting it as the base."""
+    return _configured.model_copy(
+        update={
+            "database_url": PostgresDsn(_test_url),
+            "app_name": "Test API",
+            "openai_api_key": None,
+        }
+    )

@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from alloy_server.db.session import SessionDep
+from alloy_server.dependencies import SessionDep
 from alloy_server.modules.crm.dashboard import service
 from alloy_server.modules.crm.dashboard.schemas import DashboardOptions, DashboardResponse
 from alloy_server.modules.workspaces.dependencies import CanReadCrm

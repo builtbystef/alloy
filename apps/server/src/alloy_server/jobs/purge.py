@@ -13,13 +13,13 @@ from alloy_server.db.base import utcnow
 from alloy_server.integrations.rate_limit.models import RateLimitWindow
 from alloy_server.integrations.storage import ObjectStore
 from alloy_server.integrations.storage.cleanup import delete_stored, storage_prefix
-from alloy_server.jobs.app import app, task
-from alloy_server.jobs.resources import Resources
+from alloy_server.jobs.tasks import task
 from alloy_server.modules.assistant.models import ChatUpload
 from alloy_server.modules.auth.models import User, UserSession
 from alloy_server.modules.crm.attachments.models import Attachment
 from alloy_server.modules.crm.imports.models import Import, ImportStatus
 from alloy_server.modules.workspaces.models import Workspace, WorkspaceInvite, WorkspaceMember
+from alloy_server.resources import Resources
 
 if TYPE_CHECKING:
     from sqlalchemy import CursorResult
@@ -196,7 +196,7 @@ async def purge_expired(res: Resources) -> dict[str, int]:
     async with res.session() as session:
         report = await purge(session, res.object_store, res.settings)
     # Failed jobs, kept for inspection (jobs/__init__.py), go after the same time.
-    await app.job_manager.delete_old_jobs(
+    await res.jobs.job_manager.delete_old_jobs(
         nb_hours=math.ceil(res.settings.purge_after / timedelta(hours=1)), include_failed=True
     )
     logger.info("Purged %s", report)

@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends, HTTPException, status
 
-from alloy_server.config import SettingsDep
+from alloy_server.dependencies import SettingsDep
 from alloy_server.integrations.ai import create_model
 
 if TYPE_CHECKING:

@@ -289,9 +289,9 @@ def test_invitation_role_defaults_to_member_and_is_validated(alice: Actor):
 
 class TestExpired:
     @pytest.fixture
-    def settings(self) -> Settings:
+    def settings(self, settings: Settings) -> Settings:
         """Invitations expire at once. Scoped to this class, not the module."""
-        return Settings(app_name="Test API", invite_ttl=timedelta(seconds=-1))
+        return settings.model_copy(update={"invite_ttl": timedelta(seconds=-1)})
 
     def test_expired_invitations(
         self, client: TestClient, alice: Actor, outbox: Outbox, new_actor: NewActor

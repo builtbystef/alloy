@@ -7,14 +7,13 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient as BareTestClient
 
 from alloy_server.db.base import utcnow
+from alloy_server.dependencies import get_rate_limiter, per_ip
 from alloy_server.integrations.rate_limit import (
     DatabaseRateLimitStore,
     Hit,
     Limit,
     MemoryRateLimitStore,
     RateLimiter,
-    get_rate_limiter,
-    per_ip,
 )
 from alloy_server.integrations.rate_limit.models import RateLimitWindow
 from alloy_server.modules.auth.router import LOGIN_PER_EMAIL, LOGIN_PER_IP

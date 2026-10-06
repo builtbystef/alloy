@@ -1,3 +1,5 @@
+"""`task`, the decorator that makes a job, and `defer`, which queues one."""
+
 import functools
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Concatenate
@@ -6,15 +8,12 @@ from procrastinate import JobContext, RetryStrategy
 from procrastinate.tasks import Task
 from procrastinate.types import JSONValue
 
-from alloy_server.config import get_settings
-from alloy_server.jobs import create_app
+from alloy_server.jobs import registry
 from alloy_server.jobs.context import Trace, running, trace
-from alloy_server.jobs.resources import Resources, resources
+from alloy_server.resources import Resources, resources_of
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-app = create_app(get_settings())
 
 # For a job that fails on a flaky peer (the mail provider): five tries, the waits
 # growing from a quarter of a minute to about four.
@@ -43,11 +42,11 @@ def task(
                 # The tick, as Procrastinate sends it. No job here needs it.
                 kwargs.pop("timestamp", None)
             with running(name, context.job.id, trace):
-                return await func(resources(context), **kwargs)
+                return await func(resources_of(context), **kwargs)
 
-        registered: AnyTask = app.task(name=name, pass_context=True, retry=retry or False)(run)
+        registered: AnyTask = registry.task(name=name, pass_context=True, retry=retry or False)(run)
         if cron is not None:
-            registered = app.periodic(cron=cron)(registered)
+            registered = registry.periodic(cron=cron)(registered)
         return registered
 
     return decorator
@@ -58,7 +57,8 @@ async def defer(session: AsyncSession, task: AnyTask, **kwargs: JSONValue) -> in
     is written on the session's own connection, so it is committed, or rolled
     back, with the rows it is about; a worker is notified at commit, never before.
     (Sessions run on psycopg, which is the connection Procrastinate accepts; this
-    would not survive a change of driver.)"""
+    would not survive a change of driver.) Goes through the `App` the task was
+    last bound to (jobs/__init__.py): the process's one queue."""
     await session.flush()
     connection = await (await session.connection()).get_raw_connection()
     deferrer = task.configure(connection=connection.driver_connection)
@@ -67,4 +67,4 @@ async def defer(session: AsyncSession, task: AnyTask, **kwargs: JSONValue) -> in
     return await deferrer.defer_async(trace=carrier, **kwargs)
 
 
-__all__ = ["RETRY_ON_ERROR", "AnyTask", "JobFunction", "app", "defer", "task"]
+__all__ = ["RETRY_ON_ERROR", "AnyTask", "JobFunction", "defer", "task"]
