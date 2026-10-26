@@ -9,7 +9,7 @@
 # --- Dependencies -------------------------------------------------------------
 # The Node version from .node-version. pnpm is the version pinned in
 # package.json "packageManager"; Corepack is deprecated, so npm installs it.
-FROM node:24.18.0-bookworm-slim AS deps
+FROM node:24.22.1-bookworm-slim AS deps
 
 RUN npm install --global pnpm@12.3.4
 
@@ -37,7 +37,7 @@ COPY apps/web apps/web
 RUN pnpm --filter @alloy/web exec next build
 
 # --- Runtime ------------------------------------------------------------------
-FROM node:24.18.0-bookworm-slim AS runtime
+FROM node:24.22.1-bookworm-slim AS runtime
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

@@ -40,7 +40,7 @@ SORT_COLUMNS = {
 }
 
 
-def tasks_query(membership: Membership, filters: TaskFilters) -> Select[tuple[Task]]:
+def tasks_query(membership: Membership, filters: TaskFilters) -> Select[Task]:
     """The workspace's tasks, filtered and sorted. Shared with the assistant."""
     query = (
         select(Task).options(*WITH_RELATIONS).where(Task.workspace_id == membership.workspace.id)

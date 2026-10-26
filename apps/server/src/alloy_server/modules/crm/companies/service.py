@@ -30,7 +30,7 @@ SORT_COLUMNS = {
 }
 
 
-def companies_query(membership: Membership, filters: CompanyFilters) -> Select[tuple[Company]]:
+def companies_query(membership: Membership, filters: CompanyFilters) -> Select[Company]:
     """The workspace's companies, filtered and sorted. Shared with the assistant."""
     query = select(Company).where(Company.workspace_id == membership.workspace.id)
     if filters.q:

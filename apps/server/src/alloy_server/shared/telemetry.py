@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterator, Mapping
+from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, contextmanager
 from typing import TYPE_CHECKING, Any
 
@@ -87,7 +87,7 @@ def inject(carrier: dict[str, str]) -> None:
 
 
 @contextmanager
-def job_span(name: str, job_id: int | None, carrier: Mapping[str, str]) -> Iterator[None]:
+def job_span(name: str, job_id: int | None, carrier: Mapping[str, str]) -> Generator[None]:
     """One span per job run, under the request that queued it when `carrier` holds
     its trace context. An exception is recorded and re-raised. Nothing is
     recorded when telemetry is off."""

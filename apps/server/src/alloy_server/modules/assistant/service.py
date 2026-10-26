@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from alloy_server.modules.workspaces.dependencies import Membership
 
 
-def conversations_query(membership: Membership) -> Select[tuple[AssistantConversation]]:
+def conversations_query(membership: Membership) -> Select[AssistantConversation]:
     return (
         select(AssistantConversation)
         .where(AssistantConversation.workspace_id == membership.workspace.id)

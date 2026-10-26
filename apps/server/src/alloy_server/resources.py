@@ -6,7 +6,7 @@ The API's lifespan, the worker, and the tests call `build_resources` with their 
 settings. Nothing reads settings or opens a connection at import time.
 """
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -54,7 +54,7 @@ async def build_resources(
     object_store: ObjectStore | None = None,
     rate_limit_store: RateLimitStore | None = None,
     jobs_connector: BaseConnector | None = None,
-) -> AsyncIterator[Resources]:
+) -> AsyncGenerator[Resources]:
     """Open every resource from `settings` and close them on exit. The engine
     connects lazily; the object store and the job queue open their pools here.
     Tests pass doubles: an outbox, an in-memory store and counters, an in-memory

@@ -29,7 +29,7 @@ def object_key(workspace_id: UUID, import_id: UUID) -> str:
     return f"{storage_prefix(workspace_id)}imports/{import_id}"
 
 
-def imports_query(membership: Membership) -> Select[tuple[Import]]:
+def imports_query(membership: Membership) -> Select[Import]:
     return (
         select(Import)
         .options(WITH_REQUESTER)

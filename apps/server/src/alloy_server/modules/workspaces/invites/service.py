@@ -57,7 +57,7 @@ def pending_invite_read(invite: WorkspaceInvite) -> PendingInviteResponse:
 # --- Invitations -------------------------------------------------------------------
 
 
-def open_invites() -> Select[tuple[WorkspaceInvite]]:
+def open_invites() -> Select[WorkspaceInvite]:
     """Not accepted, not revoked, not expired: pending, or declined by the invitee."""
     return (
         select(WorkspaceInvite)
@@ -67,7 +67,7 @@ def open_invites() -> Select[tuple[WorkspaceInvite]]:
     )
 
 
-def pending_invites(workspace_id: UUID) -> Select[tuple[WorkspaceInvite]]:
+def pending_invites(workspace_id: UUID) -> Select[WorkspaceInvite]:
     return (
         open_invites()
         .where(WorkspaceInvite.workspace_id == workspace_id)
@@ -75,7 +75,7 @@ def pending_invites(workspace_id: UUID) -> Select[tuple[WorkspaceInvite]]:
     )
 
 
-def invites_query(membership: Membership) -> Select[tuple[WorkspaceInvite]]:
+def invites_query(membership: Membership) -> Select[WorkspaceInvite]:
     """Pending and declined, so admins see a refusal."""
     return (
         open_invites()
@@ -85,7 +85,7 @@ def invites_query(membership: Membership) -> Select[tuple[WorkspaceInvite]]:
     )
 
 
-def pending_invites_for(email: str) -> Select[tuple[WorkspaceInvite]]:
+def pending_invites_for(email: str) -> Select[WorkspaceInvite]:
     """With the workspace and inviter loaded."""
     return (
         open_invites()

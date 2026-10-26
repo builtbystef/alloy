@@ -35,7 +35,7 @@ def parent_column(parent: Contact | Company) -> InstrumentedAttribute[UUID | Non
     return Attachment.contact_id if isinstance(parent, Contact) else Attachment.company_id
 
 
-def attachments_query(parent: Contact | Company) -> Select[tuple[Attachment]]:
+def attachments_query(parent: Contact | Company) -> Select[Attachment]:
     return (
         select(Attachment)
         .options(WITH_UPLOADER)

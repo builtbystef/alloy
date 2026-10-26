@@ -6,7 +6,7 @@ license = "MIT"
 authors = [{ name = "builtbystef" }]
 
 [dependency-groups]
-dev = ["pytest>=9.1.1", "ruff>=0.16.5", "ty>=0.0.77"]
+dev = ["pytest>=9.1.1", "ruff>=0.17.1", "ty>=0.0.90"]
 
 [tool.uv]
 required-version = ">=0.12"
@@ -22,9 +22,6 @@ members = ["apps/server"]
 
 [tool.ruff]
 line-length = 100
-# Vendored agent tooling. Excluded here, not only via .gitignore, so it never
-# fails checks if it is committed.
-extend-exclude = [".agents", ".claude"]
 # Lets isort classify imports of workspace members as first-party.
 src = [".", "apps/*/src", "packages/*/src", "tools/*/src"]
 
@@ -73,9 +70,6 @@ runtime-evaluated-base-classes = [
 
 [tool.ruff.format]
 docstring-code-format = true
-
-[tool.ty.src]
-exclude = ["**/.agents/**", "**/.claude/**"]
 
 [tool.pytest]
 minversion = "9.0"

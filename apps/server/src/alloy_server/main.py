@@ -3,7 +3,7 @@ resources once and puts them on `request.state` (dependencies.py reads them from
 there)."""
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -41,7 +41,7 @@ def create_app(
         logging.getLogger().addHandler(log_handler)
 
     @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[dict[str, object]]:
+    async def lifespan(_app: FastAPI) -> AsyncGenerator[dict[str, object]]:
         """The yielded dict becomes `request.state`."""
         async with build_resources(
             settings,

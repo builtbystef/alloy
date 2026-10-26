@@ -56,7 +56,7 @@ def member_read(member: WorkspaceMember) -> MemberResponse:
 # --- Workspaces --------------------------------------------------------------------
 
 
-def workspaces_query(user: User) -> Select[tuple[WorkspaceMember]]:
+def workspaces_query(user: User) -> Select[WorkspaceMember]:
     return (
         select(WorkspaceMember)
         .join(WorkspaceMember.workspace)
@@ -127,7 +127,7 @@ async def ensure_not_last_owner(session: AsyncSession, member: WorkspaceMember) 
         raise ConflictError("A workspace needs at least one owner")
 
 
-def members_query(membership: Membership) -> Select[tuple[WorkspaceMember]]:
+def members_query(membership: Membership) -> Select[WorkspaceMember]:
     return (
         select(WorkspaceMember)
         .options(WITH_USER)

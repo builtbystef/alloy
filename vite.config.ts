@@ -5,16 +5,8 @@ export default defineConfig({
     "*": "vp check --fix",
     "*.py": ["uv run ruff check --fix", "uv run ruff format"],
   },
-  // Vendored agent tooling. Excluded here, not only via .gitignore, so it never
-  // fails checks if it is committed.
   fmt: {
-    ignorePatterns: [
-      "**/.agents/**",
-      "**/.claude/**",
-      "**/.next/**",
-      "**/src/generated/**",
-      "packages/api-client/openapi.json",
-    ],
+    ignorePatterns: ["**/.next/**", "**/src/generated/**", "packages/api-client/openapi.json"],
   },
   lint: {
     options: {
@@ -24,14 +16,7 @@ export default defineConfig({
     rules: {
       "no-duplicate-imports": "error",
     },
-    ignorePatterns: [
-      "**/dist/**",
-      "**/.next/**",
-      "**/coverage/**",
-      "**/.agents/**",
-      "**/.claude/**",
-      "**/src/generated/**",
-    ],
+    ignorePatterns: ["**/dist/**", "**/.next/**", "**/coverage/**", "**/src/generated/**"],
     overrides: [
       {
         files: ["**/*.test.ts", "**/*.spec.ts"],

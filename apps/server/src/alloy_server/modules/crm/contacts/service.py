@@ -37,7 +37,7 @@ SORT_COLUMNS = {
 }
 
 
-def contacts_query(membership: Membership, filters: ContactFilters) -> Select[tuple[Contact]]:
+def contacts_query(membership: Membership, filters: ContactFilters) -> Select[Contact]:
     """The workspace's contacts, filtered and sorted. Shared with the assistant."""
     query = (
         select(Contact).options(WITH_COMPANY).where(Contact.workspace_id == membership.workspace.id)
@@ -59,7 +59,7 @@ def contacts_query(membership: Membership, filters: ContactFilters) -> Select[tu
     return sorted_by(query, SORT_COLUMNS[filters.sort], filters.order, Contact.id)
 
 
-def company_contacts_query(company: Company) -> Select[tuple[Contact]]:
+def company_contacts_query(company: Company) -> Select[Contact]:
     return (
         select(Contact)
         .options(WITH_COMPANY)
@@ -68,7 +68,7 @@ def company_contacts_query(company: Company) -> Select[tuple[Contact]]:
     )
 
 
-def activities_query(contact: Contact) -> Select[tuple[Activity]]:
+def activities_query(contact: Contact) -> Select[Activity]:
     return (
         select(Activity)
         .where(Activity.contact_id == contact.id)

@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -29,7 +29,7 @@ class PageOf[T](BaseModel):
     offset: int
 
     @classmethod
-    def model_parametrized_name(cls, params: tuple[type, ...]) -> str:
+    def model_parametrized_name(cls, params: tuple[Any, ...]) -> str:
         """`PageOf[ContactResponse]` is `ContactPage` in the OpenAPI schema."""
         return f"{params[0].__name__.removesuffix('Read')}Page"
 

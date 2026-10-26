@@ -27,7 +27,7 @@ services:
   # downloads from port 9000 directly, through presigned URLs the API signs.
   # Console (bucket browser) at http://localhost:9001, same credentials.
   storage:
-    image: rustfs/rustfs:1.0.0-rc.5
+    image: rustfs/rustfs:1.0.4
     restart: unless-stopped
     environment:
       RUSTFS_VOLUMES: /data
@@ -52,7 +52,7 @@ services:
   # GET objects through presigned URLs, then exits. RustFS ships no client, so
   # the AWS CLI does it. Rerun with `docker compose up storage-init`.
   storage-init:
-    image: amazon/aws-cli:2.32.0
+    image: amazon/aws-cli:2.38.5
     depends_on:
       storage:
         condition: service_healthy

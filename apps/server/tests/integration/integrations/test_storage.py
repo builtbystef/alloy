@@ -17,7 +17,7 @@ from alloy_server.integrations.storage.memory import MemoryObjectStore
 from alloy_server.integrations.storage.s3 import content_disposition
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator, AsyncIterator
 
     from alloy_server.integrations.storage import ObjectStore
 
@@ -27,7 +27,7 @@ TTL = timedelta(minutes=5)
 
 
 @asynccontextmanager
-async def open_s3() -> AsyncIterator[S3ObjectStore]:
+async def open_s3() -> AsyncGenerator[S3ObjectStore]:
     store = create_object_store(Settings(app_name="Test API"))
     assert isinstance(store, S3ObjectStore)
     async with store:

@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 from alloy_server.shared import telemetry
@@ -24,7 +24,7 @@ def trace() -> Trace:
 
 
 @contextmanager
-def running(name: str, job_id: int | None, carrier: Trace | None) -> Iterator[None]:
+def running(name: str, job_id: int | None, carrier: Trace | None) -> Generator[None]:
     """The context a run executes in. A job the schedule sent, or a retry of one,
     has no request: it gets an ID of its own, so its lines still group."""
     carrier = carrier or {}
