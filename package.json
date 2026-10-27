@@ -16,7 +16,6 @@
     "test:ts": "vp test",
     "test:py": "uv run pytest",
     "build": "vp run -r build",
-    "db:up": "cd apps/server && docker compose up --detach --wait",
     "db:down": "cd apps/server && docker compose down",
     "db:migrate": "cd apps/server && uv run alembic upgrade head",
     "dev": "concurrently --kill-others-on-fail --prefix-colors \"cyan,magenta,green\" --names api,worker,web \"pnpm run dev:api\" \"pnpm run dev:worker\" \"pnpm --filter @alloy/web run dev\"",

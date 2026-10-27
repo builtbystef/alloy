@@ -75,5 +75,9 @@ export default defineConfig({
   },
   run: {
     cache: true,
+    tasks: {
+      // Starts containers, so a cache hit would skip it and leave them down.
+      "db:up": { command: "docker compose up --detach --wait", cwd: "apps/server", cache: false },
+    },
   },
 });
