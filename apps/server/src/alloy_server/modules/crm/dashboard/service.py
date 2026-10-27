@@ -8,8 +8,8 @@ from alloy_server.db.base import utcnow
 from alloy_server.modules.crm.contacts.models import Contact
 from alloy_server.modules.crm.contacts.schemas import ContactResponse
 from alloy_server.modules.crm.dashboard.schemas import DashboardResponse
-from alloy_server.modules.crm.dates import DueFilter, due_clause
 from alloy_server.modules.crm.tasks.models import Task, TaskStatus
+from alloy_server.shared.dates import DueFilter, due_clause
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

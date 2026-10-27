@@ -6,11 +6,11 @@ from sqlalchemy.orm import selectinload
 from alloy_server.db.base import utcnow
 from alloy_server.modules.crm.companies.models import Company
 from alloy_server.modules.crm.contacts.models import Activity, ActivityType, Contact
-from alloy_server.modules.crm.dates import due_clause
 from alloy_server.modules.crm.ownership import check_owned, fetch_owned
 from alloy_server.modules.crm.pagination import sorted_by
 from alloy_server.modules.crm.tasks.models import Task, TaskStatus
 from alloy_server.modules.crm.tasks.schemas import TaskSort
+from alloy_server.shared.dates import due_clause
 from alloy_server.shared.exceptions import ConflictError
 
 if TYPE_CHECKING:

@@ -23,11 +23,11 @@ from alloy_server.modules.assistant.tools.registry import (
     write_tool,
 )
 from alloy_server.modules.assistant.tools.shapes import Deleted, Page, TaskChange, TaskRow
-from alloy_server.modules.crm.dates import DueFilter
 from alloy_server.modules.crm.models import RowSource
 from alloy_server.modules.crm.tasks import service as task_service
 from alloy_server.modules.crm.tasks.models import Task, TaskStatus
 from alloy_server.modules.crm.tasks.schemas import TaskCreate, TaskFilters
+from alloy_server.shared.dates import DueFilter
 
 
 @read_tool

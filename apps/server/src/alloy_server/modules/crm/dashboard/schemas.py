@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from alloy_server.modules.crm.contacts.schemas import ContactResponse
-from alloy_server.modules.crm.dates import UTC_ZONE, TimeZoneField
+from alloy_server.shared.dates import UTC_ZONE, TimeZoneField
 
 
 class DashboardOptions(BaseModel):

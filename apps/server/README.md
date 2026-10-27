@@ -19,7 +19,7 @@ apps/server/
 │   ├── integrations/     # ports with their adapters: mail, storage, ai, rate_limit
 │   ├── jobs/             # the worker, the task registry, and platform tasks (purge, stalled)
 │   ├── db/               # declarative base, session, and models.py, which imports every model
-│   └── shared/           # AppError and subclasses, middleware, logs, telemetry
+│   └── shared/           # AppError and subclasses, middleware, logs, telemetry, dates, tokens
 ├── alembic/              # migrations
 ├── evals/                # assistant evals, run by hand
 └── tests/
@@ -31,7 +31,7 @@ apps/server/
 
 - **One place for the work.** A module's `service.py` does the work and raises `AppError`s. Routes, the assistant's tools, and the worker's jobs all call the same service functions; none holds logic of its own.
 - **No repository layer.** Services take the session; the session is the unit of work.
-- **Narrow imports between modules.** A module imports another only through its `service`, `models`, and `dependencies`.
+- **Narrow imports between modules.** A module imports another only through its `service`, `models`, `schemas`, `permissions`, and `dependencies`. Helpers with no feature of their own go in `shared/`.
 - **Workspace scoping.** Every record belongs to a workspace. Every handler takes a `Can*` dependency (`CanReadCrm`, `CanManageMembers`, ...): 404 for non-members, 403 without the permission.
 - **The environment is read in two places.** Only `asgi.py` and `jobs/worker.py` read it. Everything else, tests included, receives a `Settings`.
 - **Jobs commit with their data.** A job is queued on the handler's session, so it commits or rolls back with the rows it is about.

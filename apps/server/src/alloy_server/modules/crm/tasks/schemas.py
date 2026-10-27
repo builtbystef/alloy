@@ -7,11 +7,11 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from alloy_server.modules.crm.companies.schemas import CompanyRef
 from alloy_server.modules.crm.contacts.schemas import ContactRef
-from alloy_server.modules.crm.dates import UTC_ZONE, DueFilter, TimeZoneField
 from alloy_server.modules.crm.models import RowSource
 from alloy_server.modules.crm.pagination import Page, SortOrder
 from alloy_server.modules.crm.schemas import Name, Notes, NotNull, ResponseModel, UserRef
 from alloy_server.modules.crm.tasks.models import TaskStatus
+from alloy_server.shared.dates import UTC_ZONE, DueFilter, TimeZoneField
 
 ContactLink = Annotated[UUID | None, Field(description="Links the task to a person.")]
 CompanyLink = Annotated[

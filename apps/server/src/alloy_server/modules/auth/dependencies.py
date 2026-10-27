@@ -11,7 +11,7 @@ from alloy_server.db.base import utcnow
 from alloy_server.dependencies import SessionDep
 from alloy_server.modules.auth.cookies import SESSION_COOKIE
 from alloy_server.modules.auth.models import User, UserSession
-from alloy_server.modules.auth.tokens import hash_token
+from alloy_server.shared.tokens import hash_token
 
 # auto_error=False: a missing cookie is a 401 like an invalid one, not a 403.
 session_cookie = APIKeyCookie(

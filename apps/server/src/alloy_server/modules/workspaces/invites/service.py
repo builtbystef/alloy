@@ -6,13 +6,13 @@ from sqlalchemy.orm import selectinload
 from alloy_server.db.base import utcnow
 from alloy_server.integrations.mail.jobs import queue_email
 from alloy_server.modules.auth.models import User
-from alloy_server.modules.auth.tokens import hash_token, new_token
 from alloy_server.modules.workspaces.invites.emails import invite_email
 from alloy_server.modules.workspaces.invites.schemas import InviteResponse, PendingInviteResponse
 from alloy_server.modules.workspaces.models import WorkspaceInvite, WorkspaceMember, WorkspaceRole
 from alloy_server.modules.workspaces.permissions import can_manage_role
 from alloy_server.modules.workspaces.service import role_forbidden
 from alloy_server.shared.exceptions import ConflictError, ForbiddenError, GoneError, NotFoundError
+from alloy_server.shared.tokens import hash_token, new_token
 
 if TYPE_CHECKING:
     from uuid import UUID
