@@ -20,9 +20,10 @@ FastAPI behind. Extends [carbon-fiber](https://github.com/builtbystef/carbon-fib
 
 ```sh
 vp run check         # format + lint + typecheck, both languages (check:fix to apply fixes)
-vp run test          # Vitest + pytest
+vp run test          # Vitest + pytest; one file: vp test <file> or uv run pytest <path>
+vp run generate      # regenerate the API client after an API change
 vp run ci            # everything CI runs
-vp run db:up         # PostgreSQL and RustFS in Docker
+vp run db:up         # PostgreSQL and RustFS in Docker, needed by integration tests
 vp run db:migrate    # alembic upgrade head
 vp run dev           # API, worker, and web together
 vp run dev:api       # http://127.0.0.1:8000/docs
@@ -33,37 +34,22 @@ Run `vp config` once after cloning to activate the pre-commit hook.
 
 ## Layout
 
-- `apps/server`: FastAPI app, Procrastinate worker, and the assistant agent (package `alloy_server`).
-- `apps/web`: Next.js 16 front end (`@alloy/web`).
-- `packages/api-client`: typed fetch client generated from the API's OpenAPI schema (`@alloy/api-client`).
+Each project has a README with its code map and the rules its code relies on.
+Read it before changing the project.
+
+| Project               | What it is                                                   | README                                                         |
+| --------------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
+| `apps/server`         | FastAPI app, Procrastinate worker, and the assistant agent   | [apps/server/README.md](apps/server/README.md)                 |
+| `apps/web`            | Next.js 16 front end; the only process with a public address | [apps/web/README.md](apps/web/README.md)                       |
+| `packages/api-client` | Typed fetch client generated from the API's OpenAPI schema   | [packages/api-client/README.md](packages/api-client/README.md) |
+
+The browser talks only to `apps/web`, which forwards `/api/*` to `apps/server`.
+The two share types only through the generated client.
 
 New projects go in `apps/*`, `packages/*`, or `tools/*`. TypeScript projects
 extend a preset from `tsconfig/` and take versions from the catalog in
 `pnpm-workspace.yaml`. Python projects are listed under
 `[tool.uv.workspace] members` in the root `pyproject.toml`.
-
-## apps/server
-
-A modular monolith. Each feature under `modules/` has `router.py`,
-`schemas.py`, `models.py`, `service.py` (the work, raises `AppError`s), and
-`dependencies.py`. There is no repository layer: the session is the unit of
-work. The assistant's tools and the worker's jobs call the same service
-functions the routes do. A module imports other modules only through their
-`service`, `models`, and `dependencies`.
-
-Settings come from `ALLOY_*` environment variables or a local `.env`; every
-one is documented in `apps/server/.env.example`. Routes are documented at
-`/docs`.
-
-- **Errors and logs**: every response and log line carries `X-Request-ID`. Unhandled exceptions become a plain 500.
-- **Database**: SQLAlchemy 2 async over psycopg 3, Alembic migrations (`cd apps/server && uv run alembic revision --autogenerate -m "..."`). Integration tests run against real PostgreSQL in a rolled-back transaction; a model change without a migration fails CI.
-- **Auth**: opaque server-side sessions in an `HttpOnly` `__Host-session` cookie, Argon2id passwords, emailed links for verification, reset, and email change. Deleted accounts are purged after `ALLOY_ACCOUNT_DELETION_GRACE`.
-- **Rate limits**: fixed-window counters in the database, 429 with `Retry-After`. The `Limit`s sit next to the routes that use them.
-- **Workspaces**: every record belongs to a workspace; roles are owner, admin, member, viewer. Handlers take a `Can*` dependency (404 for non-members, 403 without the permission). Invitations are emailed links.
-- **Email and storage**: ports in `integrations/`. Email is queued and sent by the worker (console mailer by default). Storage is S3-compatible (RustFS locally); uploads and downloads are presigned URLs, keys are `workspaces/{id}/...`.
-- **Jobs**: [Procrastinate](https://procrastinate.readthedocs.io) on the app's PostgreSQL, no broker. Jobs are written on the handler's session, so they commit or roll back with the rows they are about. Tasks live in a `jobs.py` next to what they work on.
-- **Assistant**: one [Pydantic AI](https://pydantic.dev/docs/ai/) agent over the CRM services. `ALLOY_OPENAI_API_KEY` turns it on. Reads run freely, single writes run at once, deletes and bulk calls pause for approval. Every model call is recorded in `model_calls`.
-- **CRM**: the demo (contacts, companies, tasks, attachments, CSV imports, dashboard). Deletable as a unit.
 
 ## Deploying
 

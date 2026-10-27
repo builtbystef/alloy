@@ -11,7 +11,7 @@ dependencies = [
   # 0.x: minor bumps can break, so pin the minor. Starlette is left to FastAPI.
   "fastapi[standard-no-fastapi-cloud-cli]>=0.160,<0.161",
   "logfire[fastapi,sqlalchemy]>=4.41,<6",
-  # The job queue, on PostgreSQL. A bump may need a migration: see Background jobs in the README.
+  # The job queue, on PostgreSQL. A bump may need a migration: see Adding things in apps/server/README.md.
   "procrastinate>=3.9,<4",
   "psycopg[binary]>=3.3.5,<4",
   # Password hashing. 0.x: pin the minor.

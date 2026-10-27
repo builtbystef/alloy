@@ -52,7 +52,7 @@ EXPOSE 8000
 
 # No HEALTHCHECK here: the worker runs from this image too and serves no HTTP,
 # so an image-level check would mark it unhealthy for good.
-# The deployment gives the `api` process one (see Processes in the root README).
+# The deployment gives the `api` process one (see Deploying in the root README).
 
 # No reload, binds 0.0.0.0.
 CMD ["fastapi", "run", "--port", "8000", "--proxy-headers"]
