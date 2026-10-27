@@ -24,7 +24,7 @@ Prove the implementation does what the ticket says, or find where it doesn't. Th
 
 ## 3. Write the tests
 
-- One behavior per test, named for the behavior and its expected outcome.
+- One behavior per test, named for the behavior and its expected outcome. The name is the documentation: no docstrings that repeat it and no `# Arrange`/`# Act`/`# Assert` or step-by-step comments. A comment earns its place only to show how a hand-worked expected value was derived.
 - Hard-code expected values from the ticket or work them out by hand. Computing them with the code under test, or a copy of its logic, makes a test that can't fail.
 - Assert on outcomes the ticket cares about (response body, stored row, rendered text), not on which internal functions were called. Assert what the contract promises, no less and no more: the status or error type callers branch on, not exact error wording nobody reads.
 - When the behavior is that something doesn't happen ("an empty cart never charges"), pair the test with one where it does, so the test shows it can see the effect.

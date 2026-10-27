@@ -57,7 +57,9 @@ Apply each lens that fits the code. The linters already enforce formatting, func
 ## Dead weight
 
 - Unused exports, parameters, config, flags, and branches; code reachable only from tests.
-- Comments that narrate code, have gone stale, or describe history; `TODO`s that will never be done.
+- Comments and docstrings that narrate code, restate a signature, have gone stale, or describe history; `TODO`s that will never be done.
+- A comment explaining surprising code of our own: the finding is the reshape (rename, extract, type) that makes the comment unnecessary. Comments about things we can't change (a library quirk, a protocol, a vendor limit) stay.
+- `do not remove` or `IMPORTANT` warnings and lint or type suppressions: each is a rule a test, type, or lint could enforce, or a workaround hiding a root cause.
 
 ## Tests as a design signal
 

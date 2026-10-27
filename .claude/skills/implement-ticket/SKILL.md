@@ -30,13 +30,15 @@ Make the ticket's behavior work, correctly and completely, and nothing beyond it
 - Touch only what the ticket needs. Problems you notice elsewhere go in the report, not the diff: no drive-by refactors, renames, config or dependency changes, or deletions.
 - Let unexpected states fail loudly. Handle an error only where the ticket defines what should happen; otherwise no broad `except`/`catch`, no fallback default that hides missing data, no `?.` or `or` covering a value that must exist.
 - Deliver real behavior. A stub, hard-coded sample data, or output with the right shape but not the right content is unfinished work; if you can't finish a criterion, stop and say so.
-- Match the surrounding code's naming, structure, and comment density. Comments explain why, never narrate the change.
+- Match the surrounding code's naming and structure.
+- Default to no comments. Agents over-comment, and every comment is one more thing the next reader, often another agent, takes as true and must keep true. If code needs a comment to say what it does, rename or extract until it doesn't. Comment only what the code can't say: why it is this way, a constraint from outside the code (a library quirk, a protocol, a deadline), an invariant that isn't visible. Never narrate the code, describe the change or the ticket ("now", "added", "fixed", "used by X"), or address a reviewer; that belongs in the commit message. Docstrings only where a public function's contract isn't obvious from its name and types, and then one line: no blocks that restate the parameters.
 - A model change needs an Alembic migration. An API shape change needs `vp run generate`.
 
 ## 4. Verify
 
 - For a refactor ticket, pin the behavior first: tests that cover what the code does today must exist and pass before you move anything, and pass unmodified after.
 - Exercise each criterion for real: call the endpoint, run the function from a scratch script, load the page. A passing typecheck is not evidence the behavior works. Delete scratch code afterwards.
+- Read every comment and docstring your diff adds (`git diff`) and delete each one that fails the rule above. Writing them is a habit, so this pass is where they get caught.
 - `vp run check` passes. Run the tests near your change while you work (`uv run pytest <path>`, `vp test <path>`), then the full `vp run test` once at the end. Integration tests need `vp run db:up`.
 - New tests are /test-ticket's job. When an existing test fails, work out whether the code or the test is wrong. Change a test only when the ticket deliberately changes that behavior. Deleting, skipping, or loosening a test, or adding a lint or type ignore, to get green is never the fix.
 

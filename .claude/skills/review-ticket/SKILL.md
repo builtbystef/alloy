@@ -31,7 +31,7 @@ You didn't write this code. Judge whether the next engineer can read it, change 
 - **Hollow work**: stubs, hard-coded sample data, `TODO` returns, output with the right shape but not the right content.
 - **Boundaries**: external input validated once where it enters; types that make invalid states unrepresentable.
 - **Scope**: changes the ticket didn't ask for (refactors, config, dependencies, deletions), plus leftover debug code, scratch files, and commented-out code.
-- **Comments**: explain why. Flag comments that narrate the code, describe the change, or address a reviewer.
+- **Comments and docstrings**: read every one the diff adds or leaves stale. Each must say what the code can't: why, a constraint from outside the code, an invisible invariant. Flag ones that restate the code or the signature, narrate the change or the ticket ("now", "added", "fixed", "used by X"), address a reviewer, or run to paragraphs where a line would do. A comment explaining surprising code of our own is a symptom: the fix is the rename, extraction, or type that makes it obvious, then delete the comment. A `do not remove` or `IMPORTANT` warning is a rule waiting for a test or type to enforce it. Comments the change made wrong are misleading code, since the next agent will believe them.
 
 ## 3. Review the tests
 
@@ -48,7 +48,8 @@ You didn't write this code. Judge whether the next engineer can read it, change 
 - Drop "I'd have done it differently" without a concrete cost, abstractions suggested for code that varies in only one way, and patterns consistent with the rest of the codebase.
 - A reviewer asked for problems always finds some. Keep what will cause a bug or cost someone real time; drop matters of taste. Zero findings is a valid result.
 - When a finding is a rule that a lint, type, or test could enforce, say so: the rule fixes every future instance, not just this one.
-- Severity: **Must fix** (a bug, misleading code, hidden errors, broken layering), **Should fix** (will slow down the next change), **Consider** (optional; at most three).
+- Severity: **Must fix** (a bug, misleading code including wrong or stale comments, hidden errors, broken layering), **Should fix** (will slow down the next change, including redundant comments), **Consider** (optional; at most three).
+- Group redundant comments into one finding that lists their lines, so they don't crowd out the rest.
 
 ## 5. Report
 
