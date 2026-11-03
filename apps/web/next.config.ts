@@ -5,6 +5,7 @@ import path from "node:path";
 const nextConfig: NextConfig = {
   // Routes prerender a static shell; uncached reads stream behind <Suspense>.
   cacheComponents: true,
+  partialPrefetching: true,
   typedRoutes: true,
   reactCompiler: true,
   // The FastAPI collection routes end in a slash (`/contacts/`). Without this,

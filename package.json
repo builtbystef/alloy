@@ -7,7 +7,7 @@
   "scripts": {
     "check": "vp run check:ts && vp run check:py",
     "check:fix": "vp run check:ts --fix && vp run check:py:fix",
-    "check:ts": "vp check",
+    "check:ts": "vp check --deny-warnings",
     "check:py": "uv run ruff format --check . && uv run ruff check . && uv run ty check",
     "check:generated": "vp run -r generate:check",
     "generate": "vp run -r generate",
