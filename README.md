@@ -81,11 +81,11 @@ after CI passes on `main`.
 
 ## Supply-chain policy
 
-New package versions are held back for 4 days before install (pnpm
-`minimumReleaseAge`, uv `exclude-newer`), and Dependabot runs weekly with the
-same cooldown. pnpm runs no dependency build scripts (`strictDepBuilds` with
-an empty `allowBuilds`), blocks exotic sub-dependencies, and refuses trust
-downgrades. CI uses least-privilege permissions, SHA-pinned actions, and
+A new package version must be 4 days old before it can be installed (pnpm
+`minimumReleaseAge`, uv `exclude-newer`), and Dependabot checks weekly with the
+same cooldown. pnpm skips dependency build scripts (`strictDepBuilds` with an
+empty `allowBuilds`), blocks exotic sub-dependencies, and rejects trust
+downgrades. CI runs with least-privilege permissions, SHA-pinned actions, and
 frozen lockfiles.
 
 ## License
